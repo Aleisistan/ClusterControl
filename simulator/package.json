@@ -1,0 +1,8 @@
+{
+  "name": "dciot-simulator",
+  "version": "1.0.0",
+  "main": "simulator.js",
+  "dependencies": {
+    "mqtt": "^5.15.1"
+  }
+}

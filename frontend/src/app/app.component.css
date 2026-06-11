@@ -1,0 +1,10 @@
+.camera-container {
+  width: 100%;
+}
+
+.camera-stream {
+  width: 100%;
+  max-width: 800px;
+  border-radius: 12px;
+  border: 2px solid #333;
+}

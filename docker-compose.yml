@@ -1,0 +1,105 @@
+services:
+
+  mosquitto:
+    image: eclipse-mosquitto
+    container_name: mosquitto
+
+    ports:
+      - "1883:1883"
+
+    volumes:
+      - ./mosquitto/config:/mosquitto/config
+
+  postgres:
+    image: postgres:16
+    container_name: postgres
+
+    restart: unless-stopped
+
+    environment:
+      POSTGRES_DB: datacenter
+      POSTGRES_USER: dcuser
+      POSTGRES_PASSWORD: dcpass
+
+    ports:
+      - "5432:5432"
+
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backend/database/init.sql:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dcuser -d datacenter"]
+      interval: 5s
+      timeout: 5s
+      retries: 10  
+
+  pgadmin:
+    image: dpage/pgadmin4
+
+    container_name: pgadmin
+
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+
+    ports:
+      - "5050:80"
+
+  backend:
+    build: ./backend
+
+    container_name: backend
+
+    depends_on:
+      postgres:
+
+        condition: service_healthy
+      mosquitto:
+
+        condition: service_started  
+
+
+    ports:
+      - "3000:3000"
+    volumes:
+    - ./backend:/app
+    - /app/node_modules
+    
+    command: npm run start:dev  
+    environment:
+    - CAMERA_URL=http://192.168.2.66/capture
+
+  simulator:
+    build: ./simulator
+
+    container_name: simulator
+
+    depends_on:
+      - mosquitto
+
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend 
+
+    container_name: frontend
+
+    depends_on:
+      - backend
+
+    ports:
+      - "4200:4200"
+    
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+      - /app/.angular
+
+    stdin_open: true
+    tty: true
+    environment:
+    - CHOKIDAR_USEPOLLING=true
+    command: npm start -- --host 0.0.0.0 --poll 2000
+
+volumes:
+  postgres_data:
