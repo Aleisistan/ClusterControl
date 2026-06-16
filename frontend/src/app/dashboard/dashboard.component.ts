@@ -46,13 +46,19 @@ export class DashboardComponent implements OnInit {
   lastWsTime: number = 0;
   onClusterChange() {
 
-    console.log('CAMBIO DE CLUSTER');
+  console.log('CAMBIO DE CLUSTER');
+  // reset estado WS
+  this.lastWsTime = 0;
   this.selectedCluster =
     this.clusters.find(
       c => c.id == this.selectedClusterId
     );
 
   console.log('Cluster seleccionado', this.selectedCluster);
+  console.log(
+  'RESET TIMESTAMP',
+  this.selectedClusterId
+);
 
   this.loadTelemetry();
 
@@ -381,7 +387,15 @@ this.socketService.onTelemetry(
       'ACEPTADO',
       data.cluster?.id
     );
+console.log(
+  'PUERTA RECIBIDA:',
+  data.puerta
+);
 
+console.log(
+  'TIPO PUERTA:',
+  typeof data.puerta
+);
     this.lastWsTime = Date.now();
 
     console.log(
@@ -531,12 +545,12 @@ isClusterOnline(): boolean {
 
   console.log(
     'ONLINE?',
-    diff < 30,
+    diff < 10,
     'DIFF:',
     diff
   );
 
-  return diff < 30;
+  return diff < 12;
 }
   loadTelemetry() {
     this.telemetryService

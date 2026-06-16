@@ -74,11 +74,21 @@ export class TelemetryService implements OnModuleInit {
     });
 
     await this.telemetryRepository.save(telemetry);
-    console.log(telemetry);
+   console.log(
+  'ANTES WS',
+  telemetry.cluster.id
+);
 
-    this.telemetryGateway.sendTelemetry(telemetry);
+this.telemetryGateway.sendTelemetry(
+  telemetry
+);
 
-    console.log('Guardado PostgreSQL');
+console.log(
+  'DESPUES WS',
+  telemetry.cluster.id
+);
+
+console.log('Guardado PostgreSQL');
 
   } catch (error) {
     console.log(error);
