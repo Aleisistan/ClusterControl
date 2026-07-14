@@ -1,12 +1,10 @@
 import { Component } from '@angular/core';
-import { RouterOutlet } from '@angular/router';
-import { FormsModule } from '@angular/forms';
+import { RouterOutlet, RouterLink } from '@angular/router';
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, FormsModule],
+  imports: [RouterOutlet, RouterLink],
   templateUrl: './app.component.html',
   styleUrl: './app.component.css'
 })
 export class AppComponent {
-  title = 'Cluster Control';
 }
