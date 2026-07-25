@@ -195,16 +195,16 @@ get displayedHumidity(): number {
   }
   getAirClass(): string {
 
-    if (!this.latest) return 'normal';
+    if (!this.latest) return 'air-off';
 
     return this.latest.aire
       ? 'air-on'
-      : 'warning';
+      : 'air-off';
 
   }
   getExtractorClass(): string {
 
-    if (!this.latest) return 'normal';
+    if (!this.latest) return 'extractor-off';
 
     return this.latest.extractor
       ? 'extractor-on'

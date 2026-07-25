@@ -1,223 +1,228 @@
-<div class="mb-3">
+<div class="d-flex justify-content-between align-items-start mb-4">
 
-  <label>Cluster</label>
+  <!-- Izquierda -->
+  <div>
 
-  <select
-    class="form-select"
-    [(ngModel)]="selectedClusterId"
-    (change)="onClusterChange()">
+    <div class="mb-3">
 
-    <option
-      *ngFor="let cluster of clusters"
-      [value]="cluster.id">
+      <label>Cluster</label>
 
-      {{ cluster.name }}
+      <select class="form-select" [(ngModel)]="selectedClusterId" (change)="onClusterChange()">
 
-    </option>
+        <option *ngFor="let cluster of clusters" [value]="cluster.id">
 
-  </select>
+          {{ cluster.name }}
 
-</div>
-<div
-  class="status-badge"
-  [class.online]="isClusterOnline()"
-  [class.offline]="!isClusterOnline()">
+        </option>
 
- <div>
-ONLINE = {{ isClusterOnline() }}
-</div>
+      </select>
 
-<div>
-WS = {{ lastWsTime }}
-</div>
-</div>
-<div class="dashboard-container">
+    </div>
 
-  
-     <!-- WEATHER -->
-    <div class="weather-card" [ngClass]="getWeatherClass()">
+    <div class="status-badge" [class.online]="isClusterOnline()" [class.offline]="!isClusterOnline()">
 
-      
-         
-      <h5>Hora Local</h5>
+      <div>
+        ONLINE = {{ isClusterOnline() }}
+      </div>
 
-    <h3>🕒{{ clusterTime }}</h3>
-    <p>{{ clusterDate }}</p>
-    <p>{{ getTimezoneLabel() }}</p>
-
-      <h3>
-        📍 {{ weather?.name }}
-      </h3>
-
-      <h1>
-        {{ weather?.main?.temp }} °C
-      </h1>
-
-      <p>
-        💧 {{ weather?.main?.humidity }} %
-      </p>
-
-      <div class="weather-info">
-
-        <img [src]="
-            'https://openweathermap.org/img/wn/' +
-            weather?.weather[0]?.icon +
-            '@2x.png'
-          " alt="weather icon" />
-
-        <p>
-          {{ weather?.weather[0]?.description }}
-        </p>
-
+      <div>
+        WS = {{ lastWsTime }}
       </div>
 
     </div>
 
-  
+  </div>
 
-  <!-- ========================= -->
-  <!-- FORECAST -->
-  <!-- ========================= -->
+  <!-- Derecha -->
+  <div class="weather-card" [ngClass]="getWeatherClass()">
 
-  <div class="forecast">
+    <h5>Hora Local</h5>
 
-    <div class="forecast-item" *ngFor="let item of forecast">
+    <h3>🕒 {{ clusterTime }}</h3>
+    <p>{{ clusterDate }}</p>
+    <p>{{ getTimezoneLabel() }}</p>
 
-      <img [src]="
+    <h3>📍 {{ weather?.name }}</h3>
+
+    <h1>{{ weather?.main?.temp }} °C</h1>
+
+    <p>💧 {{ weather?.main?.humidity }} %</p>
+
+    <div class="weather-info">
+
+      <img [src]="'https://openweathermap.org/img/wn/' +
+               weather?.weather[0]?.icon +
+               '@2x.png'" alt="weather icon">
+
+      <p>{{ weather?.weather[0]?.description }}</p>
+
+    </div>
+
+  </div>
+
+</div>
+
+
+
+
+<!-- ========================= -->
+<!-- FORECAST -->
+<!-- ========================= -->
+
+<div class="forecast">
+
+  <div class="forecast-item" *ngFor="let item of forecast">
+
+    <img [src]="
           'https://openweathermap.org/img/wn/' +
           item.weather[0].icon +
           '@2x.png'
         " alt="forecast icon" />
 
-      <p>
-        {{ item.dt_txt | date:'HH:mm' }}
-      </p>
+    <p>
+      {{ item.dt_txt | date:'HH:mm' }}
+    </p>
 
-      <h3>
-        {{ item.main.temp }} °C
-      </h3>
-
-    </div>
+    <h3>
+      {{ item.main.temp }} °C
+    </h3>
 
   </div>
-
-  <!-- ========================= -->
-  <!-- KPI CARDS -->
-  <!-- ========================= -->
-
-  <div class="cards">
-
-    <div class="card" [ngClass]="getTemperatureClass()">
-
-      <h2>🌡 Temperatura</h2>
-      <select
-  class="form-select"
-  [(ngModel)]="temperatureView">
-
-  <option value="avg">Promedio</option>
-  <option value="s1">Sensor 1</option>
-  <option value="s2">Sensor 2</option>
-
-</select>
-      <p>
-        {{ temperatureView === 'avg' ? 'Promedio' :
-         temperatureView  === 's1' ? 'Sensor 1' :
-          'Sensor 2' }}
-      </p>
-      <p>{{ displayedTemperature | number:'1.1-1' }} °C</p>
-    </div>
-    
-    <div class="card" [ngClass]="getHumidityClass()">
-
-      <h2>💧 Humedad</h2>
-        <select
-  class="form-select"
-  [(ngModel)]="humidityView">
-
-  <option value="avg">Promedio</option>
-  <option value="s1">Sensor 1</option>
-  <option value="s2">Sensor 2</option>
-
-</select>
-      <p>
-        {{ humidityView === 'avg' ? 'Promedio' :
-         humidityView === 's1' ? 'Sensor 1' :
-          'Sensor 2' }}
-      </p>
-
-      <p>{{ displayedHumidity | number:'1.1-1' }} %</p>
-
-    </div>
-
-    <div class="card" [ngClass]="getExtractorClass()">
-
-      <h2>🌀 Extractor</h2>
-
-      <p>
-        {{ latest?.extractor
-        ? 'ENCENDIDO'
-        : 'APAGADO'
-        }}
-      </p>
-
-    </div>
-
-    <div class="card" [ngClass]="getAirClass()">
-
-      <h2>❄ Aire</h2>
-
-      <p>
-        {{ latest?.aire
-        ? 'ENCENDIDO'
-        : 'APAGADO'
-        }}
-      </p>
-
-    </div>
-
-    <div class="card">
-
-      <h2>🚪 Puerta</h2>
-
-      <p>
-        {{ latest?.puerta
-        ? 'ABIERTA'
-        : 'CERRADA'
-        }}
-      </p>
-      
-    </div>
-
-  </div>
-
-  <!-- ========================= -->
-  <!-- CAMERA + CHART -->
-  <!-- ========================= -->
-
-  <div class="camera-container">
-
-    <h2>Cámara Datacenter</h2>
-
-    <img src="http://192.168.2.66:81/stream" width="640" />
-
-  </div>
-  <div class="camera-container">
-
-    <h2>Última captura</h2>
-
-    <img [src]="snapshotUrl" width="640" />
-
-  </div>
-
-  <!-- CHART -->
-
-  <div class="card chart-card">
-
-    <canvas baseChart [data]="lineChartData" [options]="lineChartOptions" [type]="'line'">
-    </canvas>
-
-  </div>
-
-
 
 </div>
+
+<!-- ========================= -->
+<!-- KPI CARDS -->
+<!-- ========================= -->
+
+<div class="row g-3 cards-row">
+
+  <div class="col-12 col-sm-6 col-md-4 col-lg-2">
+
+  <div class="card" [ngClass]="getTemperatureClass()">
+
+    <h2>🌡 Temperatura</h2>
+    <select class="form-select" [(ngModel)]="temperatureView">
+
+      <option value="avg">Promedio</option>
+      <option value="s1">Sensor 1</option>
+      <option value="s2">Sensor 2</option>
+
+    </select>
+    <p>
+      {{ temperatureView === 'avg' ? 'Promedio' :
+      temperatureView === 's1' ? 'Sensor 1' :
+      'Sensor 2' }}
+    </p>
+    <p>{{ displayedTemperature | number:'1.1-1' }} °C</p>
+  </div>
+
+  </div>
+
+  <div class="col-12 col-sm-6 col-md-4 col-lg-2">
+
+  <div class="card" [ngClass]="getHumidityClass()">
+
+    <h2>💧 Humedad</h2>
+    <select class="form-select" [(ngModel)]="humidityView">
+
+      <option value="avg">Promedio</option>
+      <option value="s1">Sensor 1</option>
+      <option value="s2">Sensor 2</option>
+
+    </select>
+    <p>
+      {{ humidityView === 'avg' ? 'Promedio' :
+      humidityView === 's1' ? 'Sensor 1' :
+      'Sensor 2' }}
+    </p>
+
+    <p>{{ displayedHumidity | number:'1.1-1' }} %</p>
+
+  </div>
+
+  </div>
+
+  <div class="col-12 col-sm-6 col-md-4 col-lg-2">
+
+  <div class="card" [ngClass]="getExtractorClass()">
+
+    <h2>🌀 Extractor</h2>
+
+    <p>
+      {{ latest?.extractor
+      ? 'ENCENDIDO'
+      : 'APAGADO'
+      }}
+    </p>
+
+  </div>
+
+  </div>
+
+  <div class="col-12 col-sm-6 col-md-4 col-lg-2">
+
+  <div class="card" [ngClass]="getAirClass()">
+
+    <h2>❄ Aire</h2>
+
+    <p>
+      {{ latest?.aire
+      ? 'ENCENDIDO'
+      : 'APAGADO'
+      }}
+    </p>
+
+  </div>
+
+  </div>
+
+  <div class="col-12 col-sm-6 col-md-4 col-lg-2">
+
+  <div class="card" [ngClass]="getDoorClass()">
+
+    <h2>🚪 Puerta</h2>
+
+    <p>
+      {{ latest?.puerta
+      ? 'ABIERTA'
+      : 'CERRADA'
+      }}
+    </p>
+
+  </div>
+
+  </div>
+
+</div>
+
+<!-- ========================= -->
+<!-- CAMERA + CHART -->
+<!-- ========================= -->
+
+<div class="camera-container">
+
+  <h2>Cámara Datacenter</h2>
+
+  <img src="http://192.168.2.66:81/stream" />
+
+</div>
+<div class="camera-container">
+
+  <h2>Última captura</h2>
+
+  <img [src]="snapshotUrl" />
+
+</div>
+
+<!-- CHART -->
+
+<div class="card chart-card">
+
+  <canvas baseChart [data]="lineChartData" [options]="lineChartOptions" [type]="'line'">
+  </canvas>
+
+</div>
+
+
+

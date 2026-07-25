@@ -89,6 +89,33 @@
 
 }
 
+.cards-row {
+  margin-bottom: 30px;
+  justify-content: center;
+}
+
+.cards-row > [class*='col-'] {
+
+  display: flex;
+
+}
+
+.cards-row > [class*='col-'] > .card {
+
+  width: 100%;
+
+  height: 100%;
+
+  min-height: 250px;
+
+  display: flex;
+
+  flex-direction: column;
+
+  justify-content: space-between;
+
+}
+
 .card {
 
   background: #1e293b;
@@ -97,7 +124,7 @@
 
   padding: 20px;
 
-  border-radius: 12px;
+  border-radius: 22px;
 
   text-align: center;
 
@@ -106,21 +133,17 @@
 }
 
 .card h2 {
-
   margin-bottom: 10px;
-
+  font-size: 1.65rem;
 }
 
 .card p {
-
-  font-size: 24px;
-
-  font-weight: bold;
-
+  font-size: 1.4rem;
 }
+
 .normal {
 
-  background: #16a34a;
+  background: #1e2d33;
 
 }
 
@@ -143,6 +166,12 @@
 
 }
 
+.air-off {
+
+  background: #dc2626;
+
+}
+
 .extractor-on {
 
   background: #0ea5e9;
@@ -151,27 +180,7 @@
 
 .extractor-off {
 
-  background: #64748b;
-
-}
-
-.warning {
-
-  background: #eab308;
-
-  color: black;
-
-}
-
-.critical {
-
   background: #dc2626;
-
-}
-
-.normal {
-
-  background: #16a34a;
 
 }
 .header-dashboard {
@@ -193,6 +202,52 @@
   border-radius: 16px;
 
   width: 280px;
+
+.camera-container {
+
+  width: 100%;
+
+}
+
+.camera-container img {
+
+  display: block;
+
+  max-width: 100%;
+
+  width: 100%;
+
+  height: auto;
+
+}
+
+@media (max-width: 576px) {
+
+  .card {
+
+    padding: 16px;
+
+  }
+
+  .weather-card {
+
+    width: 100%;
+
+  }
+
+  .camera-container {
+
+    overflow: hidden;
+
+  }
+
+  .camera-container img {
+
+    width: 100%;
+
+  }
+
+}
 
   position: relative;
 
@@ -321,22 +376,24 @@
   animation: rain 0.5s linear infinite;
 
 }
-.weather-rain {
+.weather-storm {
 
   background:
     linear-gradient(
       180deg,
-      #1e293b,
-      #334155
+      #111827,
+      #1f2937
     );
 
   position: relative;
 
   overflow: hidden;
 
+  animation: flash 6s infinite;
+
 }
 
-.weather-rain::before {
+.weather-storm::before {
 
   content: '';
 
@@ -349,12 +406,12 @@
   background-image:
     repeating-linear-gradient(
       transparent,
-      transparent 10px,
-      rgba(255,255,255,0.1) 10px,
-      rgba(255,255,255,0.1) 20px
+      transparent 12px,
+      rgba(255,255,255,0.12) 12px,
+      rgba(255,255,255,0.12) 24px
     );
 
-  animation: rain 0.5s linear infinite;
+  animation: rain 0.6s linear infinite;
 
 }
 .weather-night {

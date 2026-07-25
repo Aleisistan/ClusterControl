@@ -1,10 +1,42 @@
-header {
-    background-color: #00000073;
-    backdrop-filter: blur(21px);
+.custom-bg {
+    background: rgba(19, 32, 36, 0.426);
+    backdrop-filter: blur(25px);
+    padding: 12px 0;
+    border-bottom: 1px rgba(85, 85, 85, 0.828) solid;
 }
+
+.logo {
+    border-radius: 10px;
+}
+
+@media (max-width: 576px) {
+    .container-fluid{
+        justify-content: center;
+    }
+
+    .logo {
+        height: 28px;
+    }
+
+    .custom-bg h1 {
+        font-size: 1.25rem;
+        line-height: 1.1;
+    }
+}
+
+h1 {
+    font-size: 1.6rem;
+}
+
+.text-secondary{
+    color: #d1d1d1 !important;
+}
+
 main {
-    margin-top: 70px;
     flex: 1;
     min-height: 100vh;
+    padding-left: 25px;
+    padding-right: 25px;
+    box-sizing: border-box;
     align-items: center;
 }
