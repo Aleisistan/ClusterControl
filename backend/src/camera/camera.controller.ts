@@ -1,11 +1,5 @@
-import {
-    Controller,
-    Get,
-    Res
-} from '@nestjs/common';
-
+import { Controller, Get, Res } from '@nestjs/common';
 import type { Response } from 'express';
-
 import axios from 'axios';
 
 @Controller('camera')

@@ -48,6 +48,9 @@ services:
   backend:
     build: ./backend
 
+    env_file:
+      - ./backend/.env
+
     container_name: backend
 
     depends_on:

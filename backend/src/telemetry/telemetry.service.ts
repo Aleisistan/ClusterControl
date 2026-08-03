@@ -9,16 +9,16 @@ import * as mqtt from 'mqtt';
 import { Telemetry } from './telemetry.entity';
 import { TelemetryGateway } from './telemetry.gateway';
 import { Cluster } from '../cluster/entities/cluster.entity';
+import { CameraService } from 'src/camera/camera.service';
 
 @Injectable()
 export class TelemetryService implements OnModuleInit {
-  public cameraIp = '';
   constructor(
     @InjectRepository(Telemetry)
     private telemetryRepository: Repository<Telemetry>,
     @InjectRepository(Cluster)
     private clusterRepository: Repository<Cluster>,
-
+    private readonly cameraService: CameraService,
     private telemetryGateway: TelemetryGateway,
     
   ) {}
@@ -33,69 +33,64 @@ export class TelemetryService implements OnModuleInit {
       client.subscribe('datacenter/camera/ip');
     });
 
-   client.on('message', async (topic, message) => {
-  try {
+    client.on('message', async (topic, message) => {
+      try {
+      
+        const data = JSON.parse(message.toString());
+      
+        if (topic === 'datacenter/camera/ip') {
 
-    const data = JSON.parse(message.toString());
-    if (topic === 'datacenter/camera/ip') {
+          this.cameraService.setCameraIp(data.ip);
+          return;
+}
 
-  this.cameraIp = data.ip;
+        await this.saveTelemetry(data);
+        } catch (error) {
+         console.log(error);
+  }
+});
+}
 
-  console.log(
-    'CAMARA IP GUARDADA:',
-    this.cameraIp
-  );
-
-  return;
-}   
+  async saveTelemetry(data: any) {
 
     const cluster = await this.clusterRepository.findOne({
       where: {
-        id: data.clusterId
-      }
-    });
-    if (!cluster) {
-  throw new Error(`Cluster ${data.clusterId} no encontrado`);
+        id: data.clusterId,
+      },
+  });
+
+  if (!cluster) {
+    throw new Error(`Cluster ${data.clusterId} no encontrado`);
+  }
+
+  const telemetry = this.telemetryRepository.create({
+
+    temperature1: data.temp1,
+
+    temperature2: data.temp2,
+
+    humidity1: data.hum1,
+
+    humidity2: data.hum2,
+
+    extractor: data.extractor,
+
+    aire: data.aire,
+
+    puerta: data.puerta,
+
+    cluster,
+
+  });
+
+  await this.telemetryRepository.save(telemetry);
+
+  this.telemetryGateway.sendTelemetry(telemetry);
+
+  console.log("Guardado PostgreSQL");
+
+  return telemetry;
 }
-  console.log('MQTT DATA:', data);
-    console.log(JSON.stringify(data, null, 2));
-    const telemetry = this.telemetryRepository.create({
-      temperature1: data.temp1,
-      temperature2: data.temp2,
-      humidity1: data.hum1,
-      humidity2: data.hum2, 
-      extractor: data.extractor,
-
-      aire: data.aire,
-
-      puerta: data.puerta,
-
-      cluster,
-    });
-
-    await this.telemetryRepository.save(telemetry);
-   console.log(
-  'ANTES WS',
-  telemetry.cluster.id
-);
-
-this.telemetryGateway.sendTelemetry(
-  telemetry
-);
-
-console.log(
-  'DESPUES WS',
-  telemetry.cluster.id
-);
-
-console.log('Guardado PostgreSQL');
-
-  } catch (error) {
-    console.log(error);
-  }
-});
-  }
-
   async getLatest(clusterId: number) {
     return this.telemetryRepository.find({
       where: {
