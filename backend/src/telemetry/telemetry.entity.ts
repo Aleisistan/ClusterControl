@@ -1,4 +1,5 @@
-import { Column,
+import {
+  Column,
   CreateDateColumn,
   Entity,
   PrimaryGeneratedColumn,
@@ -32,15 +33,12 @@ export class Telemetry {
 
   @Column()
   puerta: boolean;
-  
-  @ManyToOne(
-  () => Cluster,
-  cluster => cluster.telemetries,
-  { nullable: false }
-  )
 
+  @ManyToOne(() => Cluster, (cluster) => cluster.telemetries, {
+    nullable: false,
+  })
   @JoinColumn({
-  name: 'cluster_id'
+    name: 'cluster_id',
   })
   cluster: Cluster;
 

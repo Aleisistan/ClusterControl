@@ -7,7 +7,6 @@ import {
 
 @Entity('users')
 export class User {
-
   @PrimaryGeneratedColumn()
   id: number;
 

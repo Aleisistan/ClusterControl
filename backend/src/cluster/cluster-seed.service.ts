@@ -1,29 +1,38 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
 
-import { Cluster } from './entities/cluster.entity';
+import { ClusterRepository } from './repositories/cluster.repository';
+import { LoggerService } from '../common/logger/logger.service';
+
 import { DEFAULT_CLUSTERS } from './clusters.seed';
 
 @Injectable()
 export class ClusterSeedService implements OnModuleInit {
-
   constructor(
-    @InjectRepository(Cluster)
-    private readonly clusterRepository: Repository<Cluster>,
+    private readonly clusterRepository: ClusterRepository,
+    private readonly logger: LoggerService,
   ) {}
 
-  async onModuleInit() {
+  async onModuleInit(): Promise<void> {
+    let created = 0;
 
-    const cantidad = await this.clusterRepository.count();
+    for (const data of DEFAULT_CLUSTERS) {
+      const existing = await this.clusterRepository.findByName(data.name);
 
-    if (cantidad > 0) {
-      console.log('Los clusters ya existen.');
-      return;
+      if (existing) {
+        continue;
+      }
+
+      const cluster = this.clusterRepository.create(data);
+
+      await this.clusterRepository.save(cluster);
+
+      created++;
     }
 
-    await this.clusterRepository.save(DEFAULT_CLUSTERS);
-
-    console.log('Clusters inicializados correctamente.');
+    if (created > 0) {
+      this.logger.log(`${created} cluster(s) inicializado(s) correctamente`);
+    } else {
+      this.logger.log('Los clusters por defecto ya existen');
+    }
   }
 }

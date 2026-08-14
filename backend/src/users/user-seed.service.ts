@@ -7,14 +7,12 @@ import { User } from './entities/user.entity';
 
 @Injectable()
 export class UserSeedService implements OnModuleInit {
-
   constructor(
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
   ) {}
 
   async onModuleInit() {
-
     const cantidad = await this.userRepository.count();
 
     if (cantidad > 0) {

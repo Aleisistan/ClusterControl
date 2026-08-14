@@ -1,3 +1,7 @@
+version: "3.9"
+
+name: clustercontrol
+
 services:
 
   mosquitto:
@@ -16,17 +20,15 @@ services:
 
     restart: unless-stopped
 
-    environment:
-      POSTGRES_DB: datacenter
-      POSTGRES_USER: dcuser
-      POSTGRES_PASSWORD: dcpass
+    env_file:
+      - .env
 
     ports:
       - "5432:5432"
 
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./backend/database/init.sql:/docker-entrypoint-initdb.d
+      - ./backend/database:/docker-entrypoint-initdb.d
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U dcuser -d datacenter"]
       interval: 5s
@@ -38,40 +40,40 @@ services:
 
     container_name: pgadmin
 
+    env_file:
+      - .env
+
     environment:
-      PGADMIN_DEFAULT_EMAIL: admin@admin.com
-      PGADMIN_DEFAULT_PASSWORD: admin
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD}
 
     ports:
       - "5050:80"
 
   backend:
     build: ./backend
+    
+    container_name: backend
 
     env_file:
       - ./backend/.env
 
-    container_name: backend
-
+    
     depends_on:
       postgres:
-
         condition: service_healthy
+
       mosquitto:
-
         condition: service_started  
-
 
     ports:
       - "3000:3000"
     volumes:
     - ./backend:/app
-    - /app/node_modules
+    - backend_node_modules:/app/node_modules
     
     command: npm run start:dev  
-    environment:
-    - CAMERA_URL=http://192.168.2.66/capture
-
+    
   simulator:
     build: ./simulator
 
@@ -106,3 +108,4 @@ services:
 
 volumes:
   postgres_data:
+  backend_node_modules:

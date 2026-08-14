@@ -1,123 +1,73 @@
-import { Injectable, OnModuleInit } from '@nestjs/common';
-
-import { InjectRepository } from '@nestjs/typeorm';
-
-import { Repository } from 'typeorm';
-
-import * as mqtt from 'mqtt';
-
-import { Telemetry } from './telemetry.entity';
+import { Injectable } from '@nestjs/common';
+import { TelemetryPayload } from './dto/telemetry.payload';
 import { TelemetryGateway } from './telemetry.gateway';
-import { Cluster } from '../cluster/entities/cluster.entity';
-import { CameraService } from 'src/camera/camera.service';
+import { TelemetryRepository } from './repositories/telemetry.repository';
+import { ClusterRepository } from '../cluster/repositories/cluster.repository';
+import { NotFoundException } from '@nestjs/common';
+import { LoggerService } from 'src/common/logger/logger.service';
+import { TelemetryResponseDto } from './dto/telemetry-response.dto';
 
 @Injectable()
-export class TelemetryService implements OnModuleInit {
+export class TelemetryService {
   constructor(
-    @InjectRepository(Telemetry)
-    private telemetryRepository: Repository<Telemetry>,
-    @InjectRepository(Cluster)
-    private clusterRepository: Repository<Cluster>,
-    private readonly cameraService: CameraService,
-    private telemetryGateway: TelemetryGateway,
-    
+    private readonly telemetryRepository: TelemetryRepository,
+    private readonly clusterRepository: ClusterRepository,
+    private readonly telemetryGateway: TelemetryGateway,
+    private readonly logger: LoggerService,
   ) {}
 
-  onModuleInit() {
-    const client = mqtt.connect('mqtt://mosquitto:1883');
+  async saveTelemetry(data: TelemetryPayload) {
+    const cluster = await this.clusterRepository.findByDeviceId(
+      data.deviceId.toString(),
+    );
 
-    client.on('connect', () => {
-      console.log('MQTT conectado');
+    if (!cluster) {
+      throw new NotFoundException(`Cluster ${data.deviceId} no encontrado`);
+    }
 
-      client.subscribe('datacenter/ambiente');
-      client.subscribe('datacenter/camera/ip');
+    const telemetry = this.telemetryRepository.create({
+      temperature1: data.temp1,
+
+      temperature2: data.temp2,
+
+      humidity1: data.hum1,
+
+      humidity2: data.hum2,
+
+      extractor: data.extractor,
+
+      aire: data.aire,
+
+      puerta: data.puerta,
+
+      cluster,
     });
 
-    client.on('message', async (topic, message) => {
-      try {
-      
-        const data = JSON.parse(message.toString());
-      
-        if (topic === 'datacenter/camera/ip') {
+    await this.telemetryRepository.save(telemetry);
 
-          this.cameraService.setCameraIp(data.ip);
-          return;
-}
+    const response = new TelemetryResponseDto(telemetry);
 
-        await this.saveTelemetry(data);
-        } catch (error) {
-         console.log(error);
+    this.telemetryGateway.sendTelemetry(response);
+
+    this.logger.log('Guardado PostgreSQL');
+
+    return telemetry;
   }
-});
-}
+  async getLatest(clusterId: number): Promise<TelemetryResponseDto> {
+    const telemetry = await this.telemetryRepository.findLatest(clusterId);
 
-  async saveTelemetry(data: any) {
+    if (!telemetry) {
+      throw new NotFoundException(
+        `Telemetry for cluster ${clusterId} not found`,
+      );
+    }
 
-    const cluster = await this.clusterRepository.findOne({
-      where: {
-        id: data.clusterId,
-      },
-  });
-
-  if (!cluster) {
-    throw new Error(`Cluster ${data.clusterId} no encontrado`);
+    return new TelemetryResponseDto(telemetry);
   }
 
-  const telemetry = this.telemetryRepository.create({
+  async getHistory(clusterId: number): Promise<TelemetryResponseDto[]> {
+    const telemetry = await this.telemetryRepository.findHistory(clusterId);
 
-    temperature1: data.temp1,
-
-    temperature2: data.temp2,
-
-    humidity1: data.hum1,
-
-    humidity2: data.hum2,
-
-    extractor: data.extractor,
-
-    aire: data.aire,
-
-    puerta: data.puerta,
-
-    cluster,
-
-  });
-
-  await this.telemetryRepository.save(telemetry);
-
-  this.telemetryGateway.sendTelemetry(telemetry);
-
-  console.log("Guardado PostgreSQL");
-
-  return telemetry;
-}
-  async getLatest(clusterId: number) {
-    return this.telemetryRepository.find({
-      where: {
-      cluster: {
-        id: clusterId,
-      },
-    },
-      order: {
-        created_at: 'DESC',
-      },
-
-      take: 1,
-    });
-  }
-
-  async getHistory(clusterId: number) {
-    return this.telemetryRepository.find({
-      where: {
-      cluster: {
-        id: clusterId,
-      },
-    },
-      order: {
-        created_at: 'DESC',
-      },
-
-      take: 100,
-    });
+    return telemetry.map((item) => new TelemetryResponseDto(item));
   }
 }

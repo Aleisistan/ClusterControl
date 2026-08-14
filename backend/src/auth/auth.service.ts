@@ -7,24 +7,19 @@ import { LoginDto } from './dto/login.dto';
 
 @Injectable()
 export class AuthService {
-
   constructor(
     private readonly usersService: UsersService,
     private readonly jwtService: JwtService,
   ) {}
 
   async login(loginDto: LoginDto) {
-
     const user = await this.usersService.findByUsername(loginDto.username);
 
     if (!user) {
       throw new UnauthorizedException('Usuario o contraseña incorrectos');
     }
 
-    const passwordOk = await bcrypt.compare(
-      loginDto.password,
-      user.password,
-    );
+    const passwordOk = await bcrypt.compare(loginDto.password, user.password);
 
     if (!passwordOk) {
       throw new UnauthorizedException('Usuario o contraseña incorrectos');
@@ -37,7 +32,6 @@ export class AuthService {
     };
 
     return {
-
       access_token: this.jwtService.sign(payload),
 
       user: {
@@ -45,7 +39,6 @@ export class AuthService {
         username: user.username,
         role: user.role,
       },
-
     };
   }
 }

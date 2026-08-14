@@ -9,7 +9,7 @@ client.on('connect', () => {
   setInterval(() => {
 
     const china = {
-      clusterId: 34,
+      deviceId: 34,
       temp1: 28 + Math.random() * 8,
       hum1: 35 + Math.random() * 10,
       temp2: 30 + Math.random() * 5,
@@ -29,7 +29,7 @@ client.on('connect', () => {
   setInterval(() => {
 
     const saopaulo = {
-      clusterId: 35,
+      deviceId: 35,
       temp1: 18 + Math.random() * 7,
       hum1: 65 + Math.random() * 15,
       temp2: 20 + Math.random() * 5,

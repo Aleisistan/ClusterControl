@@ -4,7 +4,6 @@ import { ConfigService } from '@nestjs/config';
 export const databaseConfig = (
   config: ConfigService,
 ): TypeOrmModuleOptions => ({
-
   type: 'postgres',
 
   host: config.get<string>('database.host'),
@@ -20,5 +19,4 @@ export const databaseConfig = (
   autoLoadEntities: true,
 
   synchronize: true,
-
 });
