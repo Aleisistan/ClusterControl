@@ -1,10 +1,49 @@
-import { Component } from '@angular/core';
-import { RouterOutlet } from '@angular/router';
+import { CommonModule } from '@angular/common';
+import { Component, OnDestroy, OnInit } from '@angular/core';
+import { Router, RouterOutlet } from '@angular/router';
+
+import { Subscription } from 'rxjs';
+
+import { AuthService, AuthUser } from './services/auth.service';
+
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet],
+  standalone: true,
+  imports: [CommonModule, RouterOutlet],
   templateUrl: './app.component.html',
-  styleUrl: './app.component.css'
+  styleUrl: './app.component.css',
 })
-export class AppComponent {
+export class AppComponent implements OnInit, OnDestroy {
+  currentUser: AuthUser | null = null;
+  private authSubscription?: Subscription;
+
+  constructor(
+    private authService: AuthService,
+    private router: Router,
+  ) {}
+
+  ngOnInit(): void {
+    this.currentUser = this.authService.loadSession();
+    this.authSubscription = this.authService.currentUser$.subscribe((user) => {
+      this.currentUser = user;
+    });
+  }
+
+  ngOnDestroy(): void {
+    this.authSubscription?.unsubscribe();
+  }
+
+  logout(): void {
+    this.authService.logout();
+    this.currentUser = null;
+    this.router.navigate(['/login']);
+  }
+
+  navigate(path: string): void {
+    this.router.navigate([path]);
+  }
+
+  isActive(path: string): boolean {
+    return this.router.url === path || this.router.url.startsWith(`${path}/`);
+  }
 }

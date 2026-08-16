@@ -1,42 +1,141 @@
+:host {
+  display: block;
+  min-height: 100vh;
+  background-color: #0b112360;
+  color: #f5f7fb;
+  font-family: 'Aptos', 'Segoe UI', sans-serif;
+}
+
+.app-shell {
+  min-height: 100vh;
+}
+
 .custom-bg {
-    background: rgba(19, 32, 36, 0.426);
-    backdrop-filter: blur(25px);
-    padding: 12px 0;
-    border-bottom: 1px rgba(85, 85, 85, 0.828) solid;
+  background: rgba(17, 26, 34, 0.504);
+  backdrop-filter: blur(25px);
+  padding: 12px 0;
+  border-bottom: 1px rgba(85, 85, 85, 0.828) solid;
+}
+
+.container-fluid {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.brand-block {
+  min-width: 0;
 }
 
 .logo {
-    border-radius: 10px;
-}
-
-@media (max-width: 576px) {
-    .container-fluid{
-        justify-content: center;
-    }
-
-    .logo {
-        height: 28px;
-    }
-
-    .custom-bg h1 {
-        font-size: 1.25rem;
-        line-height: 1.1;
-    }
+  border-radius: 10px;
 }
 
 h1 {
-    font-size: 1.6rem;
+  font-size: 1.6rem;
+  line-height: 1.1;
 }
 
-.text-secondary{
-    color: #d1d1d1 !important;
+.text-secondary {
+  color: #d1d1d1 !important;
 }
 
-main {
-    flex: 1;
-    min-height: 100vh;
-    padding-left: 25px;
-    padding-right: 25px;
-    box-sizing: border-box;
+.route-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.route-tab {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.04);
+  color: #f5f7fb;
+  padding: 10px 16px;
+  border-radius: 999px;
+  transition: transform 0.2s ease, background 0.2s ease, border-color 0.2s ease;
+}
+
+.route-tab:hover,
+.route-tab.active {
+  transform: translateY(-1px);
+  background: rgba(22, 163, 74, 0.22);
+  border-color: rgba(22, 163, 74, 0.45);
+}
+
+.session-pill {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.guest-pill {
+  min-width: 180px;
+  justify-content: space-between;
+}
+
+.session-pill strong,
+.session-pill small {
+  display: block;
+}
+
+.session-status {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: #22c55e;
+  box-shadow: 0 0 0 6px rgba(34, 197, 94, 0.12);
+}
+
+.session-guest {
+  color: rgba(232, 240, 249, 0.72);
+  font-size: 0.95rem;
+}
+
+.page-main {
+  padding-bottom: 40px;
+  min-height: 100vh;
+  padding-top: 15px;
+  padding-left: 35px;
+  padding-right: 35px;
+  box-sizing: border-box;
+  align-items: center;
+}
+
+@media (max-width: 992px) {
+  .container-fluid {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .route-tabs {
+    justify-content: center;
+  }
+}
+
+@media (max-width: 576px) {
+  .container-fluid {
+    justify-content: center;
     align-items: center;
+  }
+
+  .logo {
+    height: 28px;
+  }
+
+  h1 {
+    font-size: 1.25rem;
+    line-height: 1.1;
+  }
+
+  .session-pill {
+    width: 100%;
+    justify-content: space-between;
+  }
 }

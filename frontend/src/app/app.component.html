@@ -1,19 +1,48 @@
-<header class="navbar navbar-expand-lg custom-bg shadow sticky-top">
-  <div class="container-fluid px-4">
-
-    <div class="d-flex align-items-center gap-3">
-      <img src="logo.png" alt="Logo" height="50" class="logo">
-
-      <div>
-        <h1 class="m-0">Cluster Control</h1>
-        <small class="text-secondary">
-          Monitoreo de entornos
-        </small>
+<div class="app-shell">
+  <header class="navbar navbar-expand-lg custom-bg shadow sticky-top">
+    <div class="container-fluid px-4" style="user-select: none;">
+      <div class="d-flex align-items-center gap-3 brand-block">
+        <img src="logo.png" alt="Logo" height="50" class="logo">
+        <div>
+          <h1 class="m-0">Cluster Control</h1>
+          <small class="text-secondary">Monitoreo, usuarios y clusters</small>
+        </div>
       </div>
-    </div>
 
-  </div>
-</header>
-<main>
-        <router-outlet></router-outlet> 
-</main>
+      <nav class="route-tabs" *ngIf="currentUser; else guestState">
+        <button type="button" class="route-tab" [class.active]="isActive('/dashboard')" (click)="navigate('/dashboard')">
+          Dashboard
+        </button>
+        <button type="button" class="route-tab" [class.active]="isActive('/admin/users')" (click)="navigate('/admin/users')">
+          Usuarios
+        </button>
+        <button type="button" class="route-tab" [class.active]="isActive('/admin/clusters')" (click)="navigate('/admin/clusters')">
+          Clusters
+        </button>
+        <div class="session-pill">
+          <span class="session-status"></span>
+          <div>
+            <strong>{{ currentUser.username }}</strong>
+            <small>{{ currentUser.role }}</small>
+          </div>
+          <button class="btn btn-sm btn-outline-light" type="button" (click)="logout()">
+            Salir
+          </button>
+        </div>
+      </nav>
+
+      <ng-template #guestState>
+        <div class="session-pill guest-pill">
+          <span class="session-guest">Acceso restringido</span>
+          <button class="btn btn-sm btn-primary" type="button" (click)="navigate('/login')">
+            Login
+          </button>
+        </div>
+      </ng-template>
+    </div>
+  </header>
+
+  <main class="page-main">
+    <router-outlet></router-outlet>
+  </main>
+</div>

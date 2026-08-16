@@ -1,0 +1,87 @@
+<section class="view-card panel-card">
+  <div class="panel-header">
+    <div>
+      <p class="eyebrow">Administración</p>
+      <h2>Usuarios</h2>
+    </div>
+    <button class="btn btn-outline-light btn-sm" type="button" (click)="resetUserForm()">
+      Nuevo
+    </button>
+  </div>
+
+  <p class="section-note">El backend permite crear, editar y eliminar usuarios sólo para ADMIN.</p>
+
+  <div class="validation-hint" *ngIf="shouldShowUserValidationMessage">{{ userValidationMessage }}</div>
+  <div class="alert alert-info" *ngIf="userMessage">{{ userMessage }}</div>
+
+  <form class="stack-form" (ngSubmit)="saveUser()">
+    <input type="hidden" name="userId" [(ngModel)]="userForm.id" />
+
+    <label class="form-label">Usuario</label>
+    <input
+      class="form-control"
+      type="text"
+      name="userUsername"
+      [(ngModel)]="userForm.username"
+      minlength="3"
+      maxlength="30"
+      required
+    />
+
+    <label class="form-label mt-3">Contraseña</label>
+    <input
+      class="form-control"
+      type="password"
+      name="userPassword"
+      [(ngModel)]="userForm.password"
+      [placeholder]="userForm.id ? 'Dejar vacío para mantener' : ''"
+      [minlength]="userForm.id ? 0 : 6"
+      maxlength="100"
+      [required]="!userForm.id"
+    />
+
+    <label class="form-label mt-3">Rol</label>
+    <select class="form-select" name="userRole" [(ngModel)]="userForm.role" required>
+      <option value="USER">USER</option>
+      <option value="ADMIN">ADMIN</option>
+    </select>
+
+    <div class="action-row">
+      <button class="btn btn-primary" type="submit">
+        {{ userForm.id ? 'Actualizar usuario' : 'Crear usuario' }}
+      </button>
+      <button class="btn btn-outline-light" type="button" (click)="resetUserForm()">
+        Limpiar
+      </button>
+    </div>
+  </form>
+
+  <div class="table-wrap mt-4" *ngIf="!isLoadingUsers; else usersLoading">
+    <table class="table table-dark table-sm align-middle mb-0">
+      <thead>
+        <tr>
+          <th>Usuario</th>
+          <th>Rol</th>
+          <th class="text-end">Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let user of users">
+          <td>
+            <strong>{{ user.username }}</strong>
+            <div class="muted">#{{ user.id }}</div>
+          </td>
+          <td>{{ user.role }}</td>
+          <td class="text-end">
+            <button class="btn btn-sm btn-outline-info me-2" type="button" (click)="editUser(user)">Editar</button>
+            <button class="btn btn-sm btn-outline-danger" type="button" (click)="deleteUser(user)">Eliminar</button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <ng-template #usersLoading>
+    <div class="loading-state">Cargando usuarios...</div>
+  </ng-template>
+</section>
