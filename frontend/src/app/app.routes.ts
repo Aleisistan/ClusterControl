@@ -25,6 +25,11 @@ export const routes: Routes = [
     path: 'admin',
     children: [
       {
+        path: '',
+        redirectTo: '/login',
+        pathMatch: 'full',
+      },
+      {
         path: 'users',
         title: 'Cluster Control | Usuarios',
         component: AdminUsersPageComponent,
