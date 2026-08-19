@@ -1,0 +1,66 @@
+<section class="hero-card">
+  <div class="hero-copy">
+    <p class="eyebrow">Control central</p>
+    <h2>Ingresa para administrar usuarios y clusters</h2>
+    <p>
+      El backend protege las operaciones sensibles con JWT y rol <strong>ADMIN</strong>.
+      Desde este front podés iniciar sesión, crear usuarios y mantener clusters alineados con los
+      DTOs reales.
+    </p>
+
+    <div class="feature-grid">
+      <article>
+        <span>01</span>
+        <h3>Login seguro</h3>
+        <p>Consume /auth/login y guarda el token para llamadas autenticadas.</p>
+      </article>
+      <article>
+        <span>02</span>
+        <h3>Usuarios</h3>
+        <p>Alta, edición y baja sólo visibles para ADMIN.</p>
+      </article>
+      <article>
+        <span>03</span>
+        <h3>Clusters</h3>
+        <p>Formulario con name, location, lat, lon, deviceId y timezone.</p>
+      </article>
+    </div>
+  </div>
+
+  <form class="auth-card" (ngSubmit)="login()">
+    <h3>Iniciar sesión</h3>
+    <p>Usá las credenciales de un usuario existente.</p>
+
+    <label class="form-label">Usuario</label>
+    <input
+      class="form-control"
+      type="text"
+      name="loginUsername"
+      [(ngModel)]="loginForm.username"
+      autocomplete="username"
+      minlength="3"
+      maxlength="30"
+      required
+    />
+
+    <label class="form-label mt-3">Contraseña</label>
+    <input
+      class="form-control"
+      type="password"
+      name="loginPassword"
+      [(ngModel)]="loginForm.password"
+      autocomplete="current-password"
+      minlength="6"
+      maxlength="100"
+      required
+    />
+
+    <div class="validation-hint" *ngIf="shouldShowLoginValidationMessage">{{ loginValidationMessage }}</div>
+    <div class="alert alert-danger mt-3" *ngIf="loginError">{{ loginError }}</div>
+    <div class="alert alert-success mt-3" *ngIf="sessionMessage">{{ sessionMessage }}</div>
+
+    <button class="btn btn-primary w-100 mt-3" type="submit" [disabled]="isLoggingIn">
+      {{ isLoggingIn ? 'Ingresando...' : 'Entrar' }}
+    </button>
+  </form>
+</section>

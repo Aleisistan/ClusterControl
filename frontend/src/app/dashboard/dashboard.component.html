@@ -6,7 +6,11 @@
 
       <div class="mb-3">
 
-        <label>Cluster</label>
+        <label>Cluster activo</label>
+
+        <div class="cluster-route-hint">
+          Sincronizado con `?clusterId={{ selectedClusterId }}`
+        </div>
 
         <select class="form-select" [(ngModel)]="selectedClusterId" (change)="onClusterChange()">
 
@@ -37,29 +41,44 @@
     <!-- Derecha -->
     <div class="weather-card" [ngClass]="getWeatherClass()">
 
-      <h5>Hora Local</h5>
+  <h5>Hora Local</h5>
 
-      <h3>🕒 {{ clusterTime }}</h3>
-      <p>{{ clusterDate }}</p>
-      <p>{{ getTimezoneLabel() }}</p>
+  <h3>
+    <i class="bi bi-clock"></i>
+    {{ clusterTime }}
+  </h3>
 
-      <h3>📍 {{ weather?.name }}</h3>
+  <p>{{ clusterDate }}</p>
+  <p>{{ getTimezoneLabel() }}</p>
 
-      <h1>{{ weather?.main?.temp }} °C</h1>
+  <h3>
+    <i class="bi bi-geo-alt"></i>
+    {{ weather?.name }}
+  </h3>
 
-      <p>💧 {{ weather?.main?.humidity }} %</p>
+  <h3>
+    <i class="bi bi-thermometer-half"></i>
+    {{ weather?.main?.temp }} °C
+  </h3>
 
-      <div class="weather-info">
+  <h3>
+    <i class="bi bi-droplet"></i>
+    {{ weather?.main?.humidity }} %
+  </h3>
 
-        <img [src]="'https://openweathermap.org/img/wn/' +
-               weather?.weather[0]?.icon +
-               '@2x.png'" alt="weather icon">
+  <div class="weather-info">
 
-        <p>{{ weather?.weather[0]?.description }}</p>
+    <img
+      [src]="'https://openweathermap.org/img/wn/' +
+             weather?.weather[0]?.icon +
+             '@2x.png'"
+      alt="weather icon">
 
-      </div>
+    <p>{{ weather?.weather[0]?.description }}</p>
 
-    </div>
+  </div>
+
+</div>
 
 
   </div>

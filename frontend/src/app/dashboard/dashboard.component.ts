@@ -1,8 +1,10 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnDestroy, OnInit } from '@angular/core';
+import { ActivatedRoute, Router } from '@angular/router';
 import { ChartConfiguration } from 'chart.js';
 import { BaseChartDirective } from 'ng2-charts';
 
 import { CommonModule } from '@angular/common';
+import { Subscription } from 'rxjs';
 
 import { environment } from '../../environments/environment';
 import { SocketService } from '../services/socket.service';
@@ -24,7 +26,7 @@ import { CameraService } from '../services/camera.service';
 
 
 })
-export class DashboardComponent implements OnInit {
+export class DashboardComponent implements OnInit, OnDestroy {
 
   telemetry: any[] = [];
   latest: any;
@@ -44,6 +46,9 @@ export class DashboardComponent implements OnInit {
   
   clusterDate = '';
   lastWsTime: number = 0;
+  private routeSubscription?: Subscription;
+  private pendingClusterId: number | null = null;
+
   onClusterChange() {
 
   console.log('CAMBIO DE CLUSTER');
@@ -53,6 +58,8 @@ export class DashboardComponent implements OnInit {
     this.clusters.find(
       c => c.id == this.selectedClusterId
     );
+
+  this.navigateWithClusterId(Number(this.selectedClusterId));
 
   console.log('Cluster seleccionado', this.selectedCluster);
   console.log(
@@ -65,6 +72,26 @@ export class DashboardComponent implements OnInit {
   this.loadWeather();
   this.updateClusterTime();
 
+}
+
+ngOnDestroy() {
+  this.routeSubscription?.unsubscribe();
+}
+
+private applyClusterSelection(clusterId: number) {
+  this.selectedClusterId = Number(clusterId);
+  this.selectedCluster = this.clusters.find(
+    (cluster) => Number(cluster.id) === Number(this.selectedClusterId),
+  );
+}
+
+private navigateWithClusterId(clusterId: number) {
+  this.router.navigate([], {
+    relativeTo: this.route,
+    queryParams: { clusterId },
+    queryParamsHandling: 'merge',
+    replaceUrl: true,
+  });
 }
 get displayedTemperature(): number {
 
@@ -127,7 +154,9 @@ get displayedHumidity(): number {
     private socketService: SocketService,
     private weatherService: WeatherService,
     private clusterService: ClusterService,
-    private cameraService: CameraService
+    private cameraService: CameraService,
+    private route: ActivatedRoute,
+    private router: Router
   ) { }
   getTemperatureClass(): string {
 
@@ -248,6 +277,18 @@ get displayedHumidity(): number {
 
   }
   ngOnInit() {
+   const initialClusterId = this.route.snapshot.queryParamMap.get('clusterId');
+   this.pendingClusterId = initialClusterId ? Number(initialClusterId) : null;
+
+   this.routeSubscription = this.route.queryParamMap.subscribe((params) => {
+    const queryClusterId = params.get('clusterId');
+    this.pendingClusterId = queryClusterId ? Number(queryClusterId) : null;
+
+    if (this.clusters.length > 0) {
+      this.applyClusterSelection(this.pendingClusterId ?? this.selectedClusterId);
+    }
+   });
+
    this.clusterService.getClusters()
     .subscribe((clusters: any) => {
 
@@ -255,9 +296,14 @@ get displayedHumidity(): number {
 
   if (clusters.length > 0) {
 
-    this.selectedClusterId = clusters[0].id;
+    const initialSelectedId =
+      this.pendingClusterId && clusters.some((cluster: any) => Number(cluster.id) === Number(this.pendingClusterId))
+        ? this.pendingClusterId
+        : clusters[0].id;
 
-    this.selectedCluster = clusters[0];
+    this.applyClusterSelection(initialSelectedId);
+
+    this.navigateWithClusterId(this.selectedClusterId);
 
     this.loadTelemetry();
 

@@ -1,0 +1,83 @@
+:host {
+  display: block;
+  max-width: 1380px;
+  margin: 0 auto;
+}
+
+.panel-card,
+.view-card {
+  padding: 24px;
+  background: rgba(9, 16, 25, 0.78);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 28px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.28);
+  backdrop-filter: blur(18px);
+}
+
+.eyebrow {
+  text-transform: uppercase;
+  letter-spacing: 0.22em;
+  color: #93c5fd;
+  font-size: 0.74rem;
+  margin-bottom: 10px;
+}
+
+.section-note,
+.muted {
+  color: rgba(232, 240, 249, 0.72);
+}
+
+.validation-hint {
+  margin-top: 8px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: rgba(59, 130, 246, 0.12);
+  color: #bfdbfe;
+  border: 1px solid rgba(59, 130, 246, 0.2);
+}
+
+.stack-form {
+  margin-top: 18px;
+}
+
+.action-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.form-control,
+.form-select {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #f5f7fb;
+}
+
+.table-wrap {
+  overflow: auto;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.table-dark {
+  --bs-table-bg: rgba(6, 12, 18, 0.92);
+  --bs-table-border-color: rgba(255, 255, 255, 0.08);
+}
+
+.loading-state {
+  padding: 18px;
+  color: rgba(232, 240, 249, 0.72);
+}
+
+@media (max-width: 576px) {
+  .panel-card,
+  .view-card {
+    padding: 20px;
+  }
+
+  .action-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

@@ -5,6 +5,12 @@
   width: 100%;
 }
 
+.cluster-route-hint {
+  color: rgba(232, 240, 249, 0.72);
+  font-size: 0.85rem;
+  margin-bottom: 8px;
+}
+
 .dashboard-grid {
 
   display: grid;
