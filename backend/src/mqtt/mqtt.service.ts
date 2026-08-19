@@ -37,11 +37,25 @@ export class MqttService implements OnModuleInit {
 
     this.client.on('message', async (topic, message) => {
       try {
-        const data = JSON.parse(message.toString());
+        const rawMessage = message.toString();
+
+        let data: unknown;
+        try {
+          data = JSON.parse(rawMessage);
+        } catch {
+          this.logger.warn(
+            '[MQTT] JSON inválido en topic "${topic}"',
+          );
+          return;
+        }
 
         await this.dispatcher.dispatch(topic, data);
       } catch (error) {
-        console.error('Error procesando MQTT:', error);
+        this.logger.error(
+          `[MQTT] Error procesando mensaje en "${topic}": ${
+            error instanceof Error ? error.message : String(error)
+          }`,
+        );
       }
     });
   }

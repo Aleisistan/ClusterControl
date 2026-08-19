@@ -22,9 +22,13 @@ export class TelemetryService {
     );
 
     if (!cluster) {
-      throw new NotFoundException(`Cluster ${data.deviceId} no encontrado`);
-    }
 
+    this.logger.warn(
+      `[MQTT] deviceId desconocido: ${data.deviceId}`,
+    );
+
+    return null;
+  }
     const telemetry = this.telemetryRepository.create({
       temperature1: data.temp1,
 
@@ -44,6 +48,13 @@ export class TelemetryService {
     });
 
     await this.telemetryRepository.save(telemetry);
+
+    this.logger.log(
+    `[MQTT] Telemetría guardada: ` +
+    `deviceId=${data.deviceId}, ` +
+    `clusterId=${cluster.id}, ` +
+    `telemetryId=${telemetry.id}`,
+  );
 
     const response = new TelemetryResponseDto(telemetry);
 

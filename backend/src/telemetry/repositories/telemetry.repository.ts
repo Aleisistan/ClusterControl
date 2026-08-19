@@ -18,8 +18,8 @@ export class TelemetryRepository {
     return this.repository.save(telemetry);
   }
 
-  async findLatest(clusterId: number) {
-    return this.repository.find({
+  async findLatest(clusterId: number): Promise<Telemetry | null> {
+    return this.repository.findOne({
       where: {
         cluster: {
           id: clusterId,
@@ -30,7 +30,6 @@ export class TelemetryRepository {
         created_at: 'DESC',
       },
 
-      take: 1,
     });
   }
 
