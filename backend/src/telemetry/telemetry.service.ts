@@ -56,9 +56,16 @@ export class TelemetryService {
     `telemetryId=${telemetry.id}`,
   );
 
-    const response = new TelemetryResponseDto(telemetry);
-
-    this.telemetryGateway.sendTelemetry(response);
+    // IMPORTANTE: le pasamos la entidad CRUDA (con la relación
+    // 'cluster' todavía anidada como objeto) al gateway, NO un DTO
+    // ya aplanado. El gateway internamente arma su propio
+    // TelemetryResponseDto a partir de esto (lee data.cluster?.id).
+    // Antes se le pasaba acá un DTO ya convertido, que ya NO tenía
+    // 'cluster' anidado (solo 'clusterId' plano) — el gateway volvía
+    // a intentar leer data.cluster?.id sobre ese DTO, y como ya no
+    // existía, el clusterId se perdía (undefined) justo antes de
+    // emitir por WebSocket.
+    this.telemetryGateway.sendTelemetry(telemetry);
 
     this.logger.log('Guardado PostgreSQL');
 
