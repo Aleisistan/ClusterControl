@@ -105,6 +105,16 @@ services:
     environment:
     - CHOKIDAR_USEPOLLING=true
     command: npm start -- --host 0.0.0.0 --poll 2000
+  
+  corx:
+    image: ghcr.io/venipa/corx:latest
+    ports:
+      - "3001:3001"
+    environment:
+      PORT: "3001"
+      ORIGIN_HOST: "*"
+      ALLOWED_RESPONSE_CATEGORIES: "json,xml,html,yml,text"
+    restart: unless-stopped
 
 volumes:
   postgres_data:
