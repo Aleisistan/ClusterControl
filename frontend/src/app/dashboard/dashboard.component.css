@@ -1,8 +1,12 @@
 .containerdiv1 {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  justify-content: center;
+  flex-direction: row;
+  align-items: flex-start;
   width: 100%;
+  max-width: 100%;
+  gap: 20px;
+  flex-wrap: nowrap;
 }
 
 .cluster-route-hint {
@@ -212,11 +216,50 @@
 
 
 .clusterinfo {
- width: 49%;
+  min-width: 420px;
 }
 
 .cameradiv {
-  width: 49%;
+  display: flex;
+  flex-direction: row;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: nowrap;
+  width: auto;
+  max-width: 100%;
+  min-width: 0;
+  align-items: flex-start;
+}
+
+.camera-container {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  flex: 1 1 240px;
+  width: auto;
+  max-width: 480px;
+  margin-bottom: 0;
+  min-width: 0;
+}
+
+.camera-container2 {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  flex: 1 1 240px;
+  width: auto;
+  max-width: 480px;
+  margin-top: 0;
+  min-width: 0;
+}
+
+.camera-container h2,
+.camera-container2 h2 {
+  width: 100%;
+}
+
+.camera-capture-title {
+  margin: 0 0 8px;
 }
 
 .weather-card {
@@ -228,52 +271,6 @@
   margin: 15px 0;
 
   border-radius: 16px;
-
-  .camera-container {
-
-    width: 100%;
-
-  }
-
-  .camera-container img {
-
-    display: block;
-
-    max-width: 100%;
-
-    width: 100%;
-
-    height: auto;
-
-  }
-
-  @media (max-width: 576px) {
-
-    .card {
-
-      padding: 16px;
-
-    }
-
-    .weather-card {
-
-      width: 100%;
-
-    }
-
-    .camera-container {
-
-      overflow: hidden;
-
-    }
-
-    .camera-container img {
-
-      width: 100%;
-
-    }
-
-  }
 
   position: relative;
 
@@ -530,12 +527,33 @@
 }
 
 .camera-stream {
-
+  display: block;
   width: 100%;
-
+  height: auto;
   border-radius: 20px;
   object-fit: cover;
+}
 
+@media (max-width: 1300px) {
+
+  .cameradiv {
+    gap: 8px;
+  }
+
+}
+
+@media (max-width: 1300px) {
+
+  .containerdiv1 {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .cameradiv {
+    width: 100%;
+    justify-content: center;
+    margin-top: 16px;
+  }
 
 }
 
@@ -596,15 +614,47 @@
   .clusterinfo,
   .cameradiv,
   .weather-card {
+    width: 100%;
+    max-width: 100%;
+
+  }
+
+  .cameradiv {
+    flex-direction: column;
+    margin-top: 16px;
+    width: 100%;
+
+  }
+
+  .card {
+
+    padding: 16px;
+
+  }
+
+  .weather-card {
 
     width: 100%;
 
   }
 
-  .cameradiv {
+  .camera-container,
+  .camera-container2 {
+    width: 100%;
+    overflow: hidden;
+    min-width: 0;
+    flex-basis: auto;
+  }
 
-    margin-top: 16px;
+  .camera-container2 {
+    margin-top: 18px;
+  }
 
+  .camera-container img,
+  .camera-container2 img,
+  .camera-stream {
+    width: 100%;
+    max-width: 100%;
   }
 
 }
