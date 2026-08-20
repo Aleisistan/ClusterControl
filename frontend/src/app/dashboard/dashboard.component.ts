@@ -48,6 +48,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   lastWsTime: number = 0;
   private routeSubscription?: Subscription;
   private pendingClusterId: number | null = null;
+  private unsubscribeTelemetry?: () => void;
 
   onClusterChange() {
 
@@ -76,6 +77,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
 ngOnDestroy() {
   this.routeSubscription?.unsubscribe();
+  this.unsubscribeTelemetry?.();
 }
 
 private applyClusterSelection(clusterId: number) {
@@ -315,161 +317,34 @@ get displayedHumidity(): number {
     
   }
 });
-/*this.socketService.onTelemetry(
-  (data: any) => {
+this.unsubscribeTelemetry = this.socketService.onTelemetry((data: any) => {
 
-    console.log('WS', data);
-console.log(data);
-console.log(data.cluster);
-console.log('FECHA WS:', data.created_at);
-console.log('LATEST=', this.latest);
-console.log('CREATED_AT=', this.latest.created_at);
-console.log('PUERTA MQTT:', data.puerta);
-    console.log('TIPO:', typeof data.puerta);
+  // Log temporal para confirmar la forma real del payload.
+  // Sacar una vez que quede confirmado que todo matchea.
+  console.log('TELEMETRY RECIBIDA:', JSON.stringify(data, null, 2));
 
-    if (
-      data.cluster?.id !==
-    this.selectedClusterId
-    )  {
-  console.log(
-    'IGNORADO',
-    data.cluster?.id,
-    '!=',
-    this.selectedClusterId
-  );
-  return;
-}
-
-console.log(
-  'ACEPTADO',
-  data.cluster?.id
-);
-this.socketService.onTelemetry(
-  (data: any) => {
-
+  if (Number(data.clusterId) !== Number(this.selectedClusterId)) {
     console.log(
-      'RECIBIDO',
-      data.cluster?.id
-    );
-
-    if (
-      data.cluster?.id !==
+      'IGNORADO: cluster',
+      data.clusterId,
+      '!= seleccionado',
       this.selectedClusterId
-    ) {
-      console.log(
-        'IGNORADO',
-        data.cluster?.id,
-        '!=',
-        this.selectedClusterId
-      );
-      return;
-    }
-
-    console.log(
-      'ACEPTADO',
-      data.cluster?.id
     );
-
-    this.lastWsTime = Date.now();
-
-    console.log(
-      'lastWsTime actualizado:',
-      this.lastWsTime
-    );
-
-    this.latest = data;
+    return;
   }
-);
 
-this.lastWsTime = Date.now();
+  this.lastWsTime = Date.now();
+  this.latest = data;
 
-console.log(
-  'lastWsTime actualizado:',
-  this.lastWsTime
-);
+  this.avgTemperature = (data.temperature1 + data.temperature2) / 2;
+  this.avgHumidity = (data.humidity1 + data.humidity2) / 2;
 
-    this.latest = data;
-
-    this.avgTemperature =
-      (
-        data.temperature1 +
-        data.temperature2
-      ) / 2;
-
-    this.avgHumidity =
-      (
-        data.humidity1 +
-        data.humidity2
-      ) / 2;
-console.log(
-  'ACTUALIZADO',
-  this.avgTemperature,
-  this.avgHumidity
-);*/
-this.socketService.onTelemetry(
-  (data: any) => {
-
-    console.log(
-      'RECIBIDO',
-      data.cluster?.id
-    );
-
-    if (
-      Number(data.cluster?.id) !==
-      Number(this.selectedClusterId)
-    ) {
-
-      console.log(
-        'IGNORADO',
-        data.cluster?.id,
-        '!=',
-        this.selectedClusterId
-      );
-
-      return;
-    }
-
-    console.log(
-      'ACEPTADO',
-      data.cluster?.id
-    );
-console.log(
-  'PUERTA RECIBIDA:',
-  data.puerta
-);
-
-console.log(
-  'TIPO PUERTA:',
-  typeof data.puerta
-);
-    this.lastWsTime = Date.now();
-
-    console.log(
-      'lastWsTime actualizado:',
-      this.lastWsTime
-    );
-
-    this.latest = data;
-
-    this.avgTemperature =
-      (
-        data.temperature1 +
-        data.temperature2
-      ) / 2;
-
-    this.avgHumidity =
-      (
-        data.humidity1 +
-        data.humidity2
-      ) / 2;
-
-    console.log(
-      'ACTUALIZADO',
-      this.avgTemperature,
-      this.avgHumidity
-    );
-  }
-);
+  console.log(
+    'ACTUALIZADO — temp:', this.avgTemperature,
+    'humedad:', this.avgHumidity,
+    'lastWsTime:', this.lastWsTime
+  );
+});
 
 
 
