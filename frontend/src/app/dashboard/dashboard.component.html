@@ -25,15 +25,9 @@
       </div>
 
       <div class="status-badge" [class.online]="isClusterOnline()" [class.offline]="!isClusterOnline()">
-
         <div>
           ONLINE = {{ isClusterOnline() }}
         </div>
-
-        <div>
-          WS = {{ lastWsTime }}
-        </div>
-
       </div>
 
     </div>
