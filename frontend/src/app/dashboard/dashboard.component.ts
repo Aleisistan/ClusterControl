@@ -112,6 +112,9 @@ get displayedTemperature(): number {
   }
 }
 
+camera1Loaded = false;
+camera2Loaded = false;
+
 get displayedHumidity(): number {
 
   if (!this.latest) return 0;

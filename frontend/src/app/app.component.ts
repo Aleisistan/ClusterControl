@@ -46,4 +46,16 @@ export class AppComponent implements OnInit, OnDestroy {
   isActive(path: string): boolean {
     return this.router.url === path || this.router.url.startsWith(`${path}/`);
   }
+
+  onMouseMove(event: MouseEvent): void {
+  const main = event.currentTarget as HTMLElement;
+
+  const rect = main.getBoundingClientRect();
+
+  const x = event.clientX - rect.left;
+  const y = event.clientY - rect.top;
+
+  main.style.setProperty('--mouse-x', `${x}px`);
+  main.style.setProperty('--mouse-y', `${y}px`);
+}
 }

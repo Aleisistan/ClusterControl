@@ -1,11 +1,11 @@
 <div class="app-shell">
-  <header class="navbar navbar-expand-lg custom-bg shadow sticky-top">
+  <header class="navbar navbar-expand-lg custom-bg sticky-top">
     <div class="container-fluid px-4" style="user-select: none;">
       <div class="d-flex align-items-center gap-3 brand-block">
         <img src="logo.png" alt="Logo" height="50" class="logo">
         <div>
           <h1 class="m-0">Cluster Control</h1>
-          <small class="text-secondary">Monitoreo, usuarios y clusters</small>
+          <small class="text-secondary">Monitoreo de entornos</small>
         </div>
       </div>
 
@@ -23,7 +23,7 @@
           <span class="session-status"></span>
           <div>
             <strong>{{ currentUser.username }}</strong>
-            <small>{{ currentUser.role }}</small>
+            <small>Rol: {{ currentUser.role }}</small>
           </div>
           <button class="btn btn-sm btn-outline-light" type="button" (click)="logout()">
             Salir
