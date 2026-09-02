@@ -198,7 +198,13 @@
 
 }
 
+.light-on {
+  border: 2px solid #ffc107;
+}
 
+.light-off {
+  border: 2px solid #6c757d;
+}
 
 .clusterinfo {
   min-width: 420px;

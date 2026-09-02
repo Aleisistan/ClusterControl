@@ -12,9 +12,9 @@
           Sincronizado con clusterId={{ selectedClusterId }}
         </div>
 
-        <select class="form-select" [(ngModel)]="selectedClusterId" (change)="onClusterChange()">
+        <select class="form-select" [(ngModel)]="selectedClusterId" (change)="onClusterChange($event)">
 
-          <option *ngFor="let cluster of clusters" [value]="cluster.id">
+          <option *ngFor="let cluster of clusters" [ngValue]="cluster.id">
 
             {{ cluster.name }}
 
@@ -74,42 +74,40 @@
 
 
   </div>
-  <div class="cameradiv">
-    <div class="camera-container">
+ <div class="cameradiv">
+  <div class="camera-container">
+    <h2>Cámara Datacenter</h2>
 
-      <h2>Cámara Datacenter</h2>
-
-      <div class="camera-wrapper">
-
-        <div class="camera-inactive" *ngIf="!camera1Loaded">
-          Cámara inactiva
-        </div>
-
-        <img src="http://192.168.2.125:81/stream" class="camera-stream"
-          [class.hidden]="!camera1Loaded" (load)="camera1Loaded = true" />
-
+    <div class="camera-wrapper">
+      <div class="camera-inactive" *ngIf="!camera1Loaded">
+        Cámara inactiva
       </div>
 
+      <img *ngIf="camera1StreamUrl" 
+           [src]="camera1StreamUrl" 
+           class="camera-stream"
+           [class.hidden]="!camera1Loaded" 
+           (load)="camera1Loaded = true" 
+           (error)="camera1Loaded = false" 
+           alt="Cámara del Cluster"/>
     </div>
-    <div class="camera-container">
-
-      <h2 class="camera-capture-title">Última captura</h2>
-
-      <!-- PARA CAPTURAS USAR <img [src]="snapshotUrl"/>, pero ni idea como el backend guarda las fotos -->
-      <div class="camera-wrapper">
-
-        <div class="camera-inactive" *ngIf="!camera2Loaded">
-          Cámara inactiva
-        </div>
-
-        <img src="http://live1.tusten.no:8080/axis-cgi/mjpg/video.cgi" class="camera-stream"
-          [class.hidden]="!camera2Loaded" (load)="camera2Loaded = true" />
-
-      </div>
-
-    </div>
-
   </div>
+
+  <div class="camera-container">
+    <h2 class="camera-capture-title">Cámara Exterior</h2>
+
+    <div class="camera-wrapper">
+      <div class="camera-inactive" *ngIf="!camera2Loaded">
+        Cámara inactiva
+      </div>
+
+      <img src="http://live1.tusten.no:8080/axis-cgi/mjpg/video.cgi" 
+           class="camera-stream"
+           [class.hidden]="!camera2Loaded" 
+           (load)="camera2Loaded = true" />
+    </div>
+  </div>
+</div>
 </div>
 
 <!-- ========================= -->
@@ -210,24 +208,54 @@
 
   <div class="col-12 col-sm-6 col-md-4 col-lg-2">
 
-    <div class="card kpicard" [ngClass]="getDoorClass()">
-      <div class="card-content">
-        <div class="top">
-          <span class="name">🚪 Puerta</span>
-        </div>
-        <div class="bottom">
-          <h2>
-            {{ latest?.puerta
-            ? 'ABIERTA'
-            : 'CERRADA'
-            }}
-          </h2>
-        </div>
+  <div class="card kpicard" [ngClass]="getDoorClass()">
+
+    <div class="card-content">
+
+      <!-- PUERTA -->
+      <div class="top">
+        <span class="name">🚪 Puerta</span>
       </div>
+
+      <div class="bottom">
+
+        <h2>
+          {{ latest?.puerta ? 'ABIERTA' : 'CERRADA' }}
+        </h2>
+
+        <span class="date">
+          Estado de la puerta
+        </span>
+
+      </div>
+
+
+      <!-- SEPARADOR -->
+      <hr>
+
+
+      <!-- LUZ -->
+      <div class="top">
+        <span class="name">💡 Luz</span>
+      </div>
+
+      <div class="bottom">
+
+        <h2>
+          {{ latest?.luz ? 'ENCENDIDA' : 'APAGADA' }}
+        </h2>
+
+        <span class="date">
+          Se activa al abrir la puerta
+        </span>
+
+      </div>
+
     </div>
 
   </div>
 
+</div>
 </div>
 
 <!-- CHART -->

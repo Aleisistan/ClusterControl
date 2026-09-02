@@ -44,6 +44,15 @@ export class CameraRepository {
       },
     });
   }
+   async findByClusterId(clusterId: number): Promise<Camera | null> {
+    return this.repository.findOne({
+      where: {
+        cluster: {
+          id: clusterId,
+        },
+      },
+    });
+  }
 
   async remove(camera: Camera) {
     return this.repository.remove(camera);

@@ -72,7 +72,7 @@ export class SocketService {
    * Se suscribe al evento 'telemetry'.
    * Devuelve una función para desuscribirse (usar en ngOnDestroy).
    */
-  onTelemetry(callback: (data: any) => void): () => void {
+  onClusterTelemetry(callback: (data: any) => void): () => void {
     this.socket.on('telemetry', callback);
     return () => this.socket.off('telemetry', callback);
   }

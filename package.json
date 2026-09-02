@@ -1,13 +1,19 @@
 {
   "dependencies": {
+    "@angular/common": "^22.1.4",
+    "@angular/core": "^22.1.4",
+    "@angular/forms": "^22.1.4",
+    "@angular/router": "^22.1.4",
     "@nestjs/config": "^4.0.4",
     "@nestjs/jwt": "^11.0.2",
     "@nestjs/typeorm": "^11.0.1",
     "bcrypt": "^6.0.0",
     "bootstrap": "^5.3.8",
+    "chart.js": "^4.5.1",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.15.1",
     "mqtt": "^5.15.1",
+    "ng2-charts": "^10.0.0",
     "pg": "^8.20.0",
     "typeorm": "^0.3.29"
   },

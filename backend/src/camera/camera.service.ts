@@ -134,4 +134,31 @@ export class CameraService {
 
     this.logger.log(`Cámara ${id} eliminada`);
   }
+   // =====================================================
+  // STREAM DINÁMICO POR CLUSTER
+  // =====================================================
+
+  async getStreamUrl(clusterId: number): Promise<string> {
+    const camera =
+      await this.cameraRepository.findByClusterId(clusterId);
+
+    if (!camera) {
+      throw new NotFoundException(
+        `No existe cámara para el cluster ${clusterId}`,
+      );
+    }
+
+    if (!camera.ip) {
+      throw new NotFoundException(
+        `La cámara del cluster ${clusterId} no tiene IP`,
+      );
+    }
+
+    this.logger.log(
+      `[CAMERA] Cluster ${clusterId} -> cámara ${camera.id} -> IP ${camera.ip}`,
+    );
+
+    return `http://${camera.ip}:81/stream`;
+  }
 }
+
