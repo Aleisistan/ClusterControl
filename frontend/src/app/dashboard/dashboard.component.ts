@@ -103,7 +103,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
         
         this.loadTelemetry();
         this.loadWeather();
-        this.updateClusterTime();
+      this.updateClusterTime();
       }
     });
 
@@ -288,13 +288,13 @@ getLightClass(): string {
   this.snapshotUrl = `http://${cleanIp}:81/stream`;
   console.log('Stream URL activa:', this.snapshotUrl);
 }
-private updateCameraStream(): void {
-  const clusterId = Number(this.selectedClusterId);
-  this.camera1Loaded = false;
-  if (!clusterId) {
-    this.cameraStreamUrl = '';
-    return;
-  }
+  private updateCameraStream(): void {
+    const clusterId = Number(this.selectedClusterId);
+    this.camera1Loaded = false;
+    if (!clusterId) {
+      this.cameraStreamUrl = '';
+      return;
+    }
 
   this.cameraStreamUrl =
     `/camera/stream/${clusterId}?t=${Date.now()}`;
