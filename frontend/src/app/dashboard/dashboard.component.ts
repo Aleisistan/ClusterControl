@@ -160,32 +160,28 @@ getLightClass(): string {
     this.unsubscribeTelemetry?.();
   }
 
-  onClusterChange(event: Event): void {
-    const select = event.target as HTMLSelectElement;
-    const clusterId = Number(select.value);
+  onClusterChange(clusterId: number): void {
+  const id = Number(clusterId);
+  if (!id) return;
 
-    if (!clusterId) return;
+  this.selectedClusterId = id;
+  this.lastWsTime = 0;
 
-    this.selectedClusterId = clusterId;
-    this.lastWsTime = 0;
+  // Actualiza el cluster seleccionado en memoria
+  this.applyClusterSelection(id);
 
-    this.selectedCluster = this.clusters.find(
-      (cluster: any) => Number(cluster.id) === clusterId
-    );
+  // Navega y refresca
+  this.navigateWithClusterId(id);
+  this.latest = undefined;
+  this.avgTemperature = 0;
+  this.avgHumidity = 0;
 
-    if (!this.selectedCluster) return;
-
-    this.navigateWithClusterId(clusterId);
-    this.latest = undefined;
-    this.avgTemperature = 0;
-    this.avgHumidity = 0;
-    this.loadCamera();
-    this.loadTelemetry();
-    this.loadWeather();
-    this.updateClusterTime();
-    this.updateCameraStream();
-  }
-
+  this.loadCamera();
+  this.loadTelemetry();
+  this.loadWeather();
+  this.updateClusterTime(); // <--- Aquí ya calculará la hora con el nuevo timezone
+  this.updateCameraStream();
+}
   loadTelemetry(): void {
     // 1. Obtener telemetría inicial
     this.telemetryService
@@ -304,26 +300,34 @@ getLightClass(): string {
     this.cameraStreamUrl,
   );
 }
-  updateClusterTime(): void {
-    if (!this.selectedCluster?.timezone) return;
+updateClusterTime(): void {
+  console.log('[DEBUG] Cluster activo actual:', this.selectedCluster);
 
-    const now = new Date();
-    this.clusterTime = new Intl.DateTimeFormat('es-AR', {
-      timeZone: this.selectedCluster.timezone,
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-      hour12: false
-    }).format(now);
+  const tz = this.selectedCluster?.timezone 
+          || this.selectedCluster?.timeZone 
+          || this.selectedCluster?.time_zone;
 
-    this.clusterDate = new Intl.DateTimeFormat('es-AR', {
-      timeZone: this.selectedCluster.timezone,
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric'
-    }).format(now);
+  if (!tz) {
+    console.warn('[DEBUG] No hay timezone en el cluster seleccionado');
+    return;
   }
 
+  const now = new Date();
+  this.clusterTime = new Intl.DateTimeFormat('es-AR', {
+    timeZone: tz,
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false
+  }).format(now);
+
+  this.clusterDate = new Intl.DateTimeFormat('es-AR', {
+    timeZone: tz,
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric'
+  }).format(now);
+}
   get displayedTemperature(): number {
     if (!this.latest) return 0;
     switch (this.temperatureView) {
@@ -356,16 +360,26 @@ getLightClass(): string {
     return 'warning';
   }
 
-  getTimezoneLabel(): string {
-    if (!this.selectedCluster?.timezone) return '';
+ getTimezoneLabel(): string {
+  const tz = this.selectedCluster?.timezone 
+          || this.selectedCluster?.timeZone 
+          || this.selectedCluster?.time_zone;
 
+  if (!tz) return '';
+
+  try {
     const now = new Date();
-    const utc = new Date(now.toLocaleString('en-US', { timeZone: 'UTC' }));
-    const local = new Date(now.toLocaleString('en-US', { timeZone: this.selectedCluster.timezone }));
-
-    const offset = (local.getTime() - utc.getTime()) / (1000 * 60 * 60);
-    return `UTC${offset >= 0 ? '+' : ''}${offset}`;
+    const formatter = new Intl.DateTimeFormat('es-AR', {
+      timeZone: tz,
+      timeZoneName: 'shortOffset'
+    });
+    const parts = formatter.formatToParts(now);
+    const tzPart = parts.find(p => p.type === 'timeZoneName');
+    return tzPart ? tzPart.value : tz;
+  } catch (error) {
+    return tz;
   }
+}
 
   getDoorClass(): string {
     if (!this.latest) return 'normal';

@@ -12,15 +12,11 @@
           Sincronizado con clusterId={{ selectedClusterId }} SACAR ESTO DESPUES DE PROBAR
         </div>
 
-        <select class="form-select" [(ngModel)]="selectedClusterId" (change)="onClusterChange($event)">
-
-          <option *ngFor="let cluster of clusters" [ngValue]="cluster.id">
-
-            {{ cluster.name }}
-
-          </option>
-
-        </select>
+       <select class="form-select" [(ngModel)]="selectedClusterId" (ngModelChange)="onClusterChange($event)">
+  <option *ngFor="let cluster of clusters" [value]="cluster.id">
+    {{ cluster.name }}
+  </option>
+</select>
 
       </div>
 
