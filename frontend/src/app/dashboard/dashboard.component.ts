@@ -109,10 +109,11 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
     this.clusterService.getClusters().subscribe(
       (clusters: any[]) => {
-        if (!Array.isArray(clusters) || clusters.length === 0) {
-          console.warn('No hay clusters para mostrar');
-          return;
-        }
+        // Llama a la selección una vez que los clusters YA están en memoria
+  if (this.clusters.length > 0) {
+    const clusterId = this.pendingClusterId ?? this.selectedClusterId;
+    this.applyClusterSelection(clusterId);
+  }
 
         this.clusters = clusters;
 
@@ -239,12 +240,22 @@ getLightClass(): string {
     return diff < 12;
   }
 
-  private applyClusterSelection(clusterId: number): void {
-    this.selectedClusterId = Number(clusterId);
-    this.selectedCluster = this.clusters.find(
-      (cluster: any) => Number(cluster.id) === this.selectedClusterId
-    );
+ applyClusterSelection(clusterId: number | null): void {
+  if (!this.clusters || this.clusters.length === 0) return;
+
+  // 1. Asignar el cluster activo por ID o el primero por defecto
+  const found = this.clusters.find(c => Number(c.id) === Number(clusterId));
+  this.selectedCluster = found || this.clusters[0];
+  this.selectedClusterId = this.selectedCluster?.id ?? null;
+
+  // 2. Disparar todas las cargas con la información actualizada
+  if (this.selectedCluster) {
+    this.loadWeather();
+    this.loadTelemetry();
+    this.updateClusterTime();
+    this.updateCameraStream();
   }
+}
 
   private navigateWithClusterId(clusterId: number): void {
     this.router.navigate([], {
@@ -254,23 +265,22 @@ getLightClass(): string {
       replaceUrl: true,
     });
   }
-
-  loadWeather(): void {
-    if (!this.selectedCluster) return;
-
-    const { lat, lon } = this.selectedCluster;
-
-    this.weatherService.getWeather(lat, lon).subscribe((data: any) => {
-      this.weather = data;
-    });
-
-    this.weatherService.getForecast(lat, lon).subscribe((data: any) => {
-      if (data?.list) {
-        this.forecast = data.list.slice(0, 5);
-      }
-    });
+loadWeather(): void {
+  if (!this.selectedCluster?.lat || !this.selectedCluster?.lon) {
+    console.warn('[WEATHER] El cluster no tiene lat/lon válidos:', this.selectedCluster);
+    return;
   }
 
+  const { lat, lon } = this.selectedCluster;
+
+  this.weatherService.getWeather(lat, lon).subscribe({
+    next: (data) => {
+      console.log('[WEATHER] Datos recibidos del backend:', data); // <-- Revisa este log en F12
+      this.weather = data;
+    },
+    error: (err) => console.error('[WEATHER] Error al llamar al backend:', err)
+  });
+}
  updateSnapshot(): void {
   if (!this.cameraIp) return;
 
@@ -285,34 +295,40 @@ getLightClass(): string {
   console.log('Stream URL activa:', this.snapshotUrl);
 }
   private updateCameraStream(): void {
-    const clusterId = Number(this.selectedClusterId);
-    this.camera1Loaded = false;
-    if (!clusterId) {
-      this.cameraStreamUrl = '';
-      return;
-    }
+  const clusterId = Number(this.selectedClusterId);
+  this.camera1Loaded = false;
 
-  this.cameraStreamUrl =
-    `/camera/stream/${clusterId}?t=${Date.now()}`;
-
-  console.log(
-    '[CAMERA] Stream seleccionado:',
-    this.cameraStreamUrl,
-  );
-}
-updateClusterTime(): void {
-  console.log('[DEBUG] Cluster activo actual:', this.selectedCluster);
-
-  const tz = this.selectedCluster?.timezone 
-          || this.selectedCluster?.timeZone 
-          || this.selectedCluster?.time_zone;
-
-  if (!tz) {
-    console.warn('[DEBUG] No hay timezone en el cluster seleccionado');
+  if (!clusterId) {
+    this.cameraStreamUrl = '';
     return;
   }
 
+  this.cameraStreamUrl = `/camera/stream/${clusterId}?t=${Date.now()}`;
+
+  console.log('[CAMERA] Stream seleccionado:', this.cameraStreamUrl);
+}
+
+updateClusterTime(): void {
+  // 1. Guard Clause: Si no hay cluster seleccionado, ignoramos la ejecución silenciosamente
+  if (!this.selectedCluster) {
+    return;
+  }
+
+  // 2. Extraer zona horaria
+  const tz = this.selectedCluster.timezone 
+          || this.selectedCluster.timeZone 
+          || this.selectedCluster.time_zone;
+
+  if (!tz) {
+    console.warn('[DEBUG] El cluster está cargado pero no define un campo timezone:', this.selectedCluster);
+    return;
+  }
+
+  // 3. Loguear solo cuando el objeto es válido
+  console.log('[DEBUG] Cluster activo actual:', this.selectedCluster);
+
   const now = new Date();
+
   this.clusterTime = new Intl.DateTimeFormat('es-AR', {
     timeZone: tz,
     hour: '2-digit',
