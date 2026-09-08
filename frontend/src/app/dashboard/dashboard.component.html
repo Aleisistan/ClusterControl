@@ -28,47 +28,47 @@
 
     </div>
 
-    <!-- Derecha -->
-    <div class="weather-card" [ngClass]="getWeatherClass()">
+   <!-- Derecha -->
+<div class="weather-card" [ngClass]="getWeatherClass()">
 
-      <h5>Hora Local</h5>
+  <h5>Hora Local</h5>
 
-      <h3>
-        <i class="bi bi-clock"></i>
-        {{ clusterTime }}
-      </h3>
+  <h3>
+    <i class="bi bi-clock"></i>
+    {{ clusterTime || '--:--:--' }}
+  </h3>
 
-      <p>{{ clusterDate }}</p>
-      <p>{{ getTimezoneLabel() }}</p>
+  <p>{{ clusterDate }}</p>
+  <p>{{ getTimezoneLabel() }}</p>
 
-      <h3>
-        <i class="bi bi-geo-alt"></i>
-        {{ weather?.name }}
-      </h3>
+  <h3>
+    <i class="bi bi-geo-alt"></i>
+    {{ weather?.name || selectedCluster?.location || 'Cargando...' }}
+  </h3>
 
-      <h3>
-        <i class="bi bi-thermometer-half"></i>
-        {{ weather?.main?.temp }} °C
-      </h3>
+  <h3>
+    <i class="bi bi-thermometer-half"></i>
+    {{ (weather?.main?.temp | number:'1.0-0') ?? '--' }} °C
+  </h3>
 
-      <h3>
-        <i class="bi bi-droplet"></i>
-        {{ weather?.main?.humidity }} %
-      </h3>
+  <h3>
+    <i class="bi bi-droplet"></i>
+    {{ weather?.main?.humidity ?? '--' }} %
+  </h3>
 
-      <div class="weather-info">
+  <!-- Renderizar el ícono solo cuando la API haya respondido -->
+  <div class="weather-info" *ngIf="weather?.weather?.[0]">
 
-        <img [src]="'https://corsproxy.io/?key=583d49a6&url=https://openweathermap.org/img/wn/' +
-             weather?.weather[0]?.icon +
-             '@2x.png'" alt="weather icon">
+    <img 
+      [src]="'https://openweathermap.org/img/wn/' + weather.weather[0].icon + '@2x.png'" 
+      [alt]="weather.weather[0].description" 
+    />
 
-        <p>{{ weather?.weather[0]?.description }}</p>
+    <p>{{ weather.weather[0].description }}</p>
 
-      </div>
+  </div>
 
-    </div>
-
-
+</div>
   </div>
  <div class="cameradiv">
   <div class="camera-container">
