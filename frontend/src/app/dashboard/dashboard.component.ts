@@ -38,6 +38,11 @@ export class DashboardComponent implements OnInit, OnDestroy {
   selectedClusterId = 1;
   temperatureView = 'avg';
   humidityView = 'avg';
+  historyFilter = '24h';
+  historyDate = this.toDateInputValue(new Date());
+  historyFromDate = this.toDateInputValue(new Date());
+  historyToDate = this.toDateInputValue(new Date());
+  historyFilterError = '';
   
   lastWsTime: number = 0;
   camera1Loaded = false;
@@ -183,7 +188,23 @@ getLightClass(): string {
   this.updateClusterTime(); // <--- Aquí ya calculará la hora con el nuevo timezone
   this.updateCameraStream();
 }
+
+  onHistoryFilterChange(): void {
+    this.historyFilterError = '';
+    if (this.historyFilter !== 'custom') {
+      this.loadTelemetry();
+    }
+  }
+
+  applyHistoryFilter(): void {
+    this.historyFilterError = '';
+    this.loadTelemetry();
+  }
+
   loadTelemetry(): void {
+    const range = this.getHistoryRange();
+    if (!range) return;
+
     // 1. Obtener telemetría inicial
     this.telemetryService
       .getLatest(this.selectedClusterId)
@@ -197,7 +218,11 @@ getLightClass(): string {
 
     // 2. Obtener historial para el gráfico
     this.telemetryService
-      .getHistory(this.selectedClusterId)
+      .getHistory(this.selectedClusterId, {
+        from: range.from.toISOString(),
+        to: range.to.toISOString(),
+        limit: 2000,
+      })
       .subscribe((data: any) => {
         this.telemetry = Array.isArray(data) ? data : [];
         this.lineChartData = {
@@ -222,7 +247,8 @@ getLightClass(): string {
       });
 
     // 3. Suscribirse a WebSocket pasando la función callback
-    this.socketService.onClusterTelemetry((data: any) => {
+    this.unsubscribeTelemetry?.();
+    this.unsubscribeTelemetry = this.socketService.onClusterTelemetry((data: any) => {
       const payloadClusterId = data?.clusterId ?? data?.cluster_id;
       
       if (data && Number(payloadClusterId) === Number(this.selectedClusterId)) {
@@ -232,6 +258,69 @@ getLightClass(): string {
         this.avgHumidity = (data.humidity1 + data.humidity2) / 2;
       }
     });
+  }
+
+  private getHistoryRange(): { from: Date; to: Date } | null {
+    const now = new Date();
+    let from: Date;
+    let to = now;
+
+    switch (this.historyFilter) {
+      case '24h':
+        from = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+        break;
+      case '7d':
+        from = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        break;
+      case '30d':
+        from = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        break;
+      case 'day': {
+        const selectedDay = this.parseDateInput(this.historyDate);
+        if (!selectedDay) {
+          this.historyFilterError = 'Selecciona un día válido.';
+          return null;
+        }
+        from = selectedDay;
+        to = new Date(selectedDay);
+        to.setDate(to.getDate() + 1);
+        break;
+      }
+      case 'custom': {
+        const selectedFrom = this.parseDateInput(this.historyFromDate);
+        const selectedTo = this.parseDateInput(this.historyToDate);
+        if (!selectedFrom || !selectedTo) {
+          this.historyFilterError = 'Selecciona un rango válido.';
+          return null;
+        }
+        from = selectedFrom;
+        to = new Date(selectedTo);
+        to.setDate(to.getDate() + 1);
+        break;
+      }
+      default:
+        from = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    }
+
+    if (from > to) {
+      this.historyFilterError = 'La fecha inicial no puede superar la fecha final.';
+      return null;
+    }
+
+    return { from, to };
+  }
+
+  private parseDateInput(value: string): Date | null {
+    if (!value) return null;
+    const date = new Date(`${value}T00:00:00`);
+    return Number.isNaN(date.getTime()) ? null : date;
+  }
+
+  private toDateInputValue(date: Date): string {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   }
 
   isClusterOnline(): boolean {

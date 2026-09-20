@@ -72,6 +72,56 @@
 
 }
 
+.telemetry-filter {
+  margin: 30px 0 14px;
+  padding: 16px 20px;
+  text-align: left;
+}
+
+.telemetry-filter-header,
+.telemetry-filter-fields {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.telemetry-filter-header {
+  justify-content: space-between;
+}
+
+.telemetry-filter h3 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.telemetry-filter-header span {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.85rem;
+}
+
+.telemetry-filter .form-select {
+  max-width: 240px;
+}
+
+.telemetry-filter-fields {
+  margin-top: 14px;
+}
+
+.telemetry-filter-fields label {
+  font-weight: 600;
+}
+
+.telemetry-filter-fields .form-control {
+  width: auto;
+  min-width: 165px;
+}
+
+.telemetry-filter-error {
+  margin-top: 10px;
+  color: #fecaca;
+}
+
 .forecast-card {
 
   grid-column: 8 / 13;

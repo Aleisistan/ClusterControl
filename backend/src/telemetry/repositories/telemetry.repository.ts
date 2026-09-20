@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Between, LessThan, Repository } from 'typeorm';
 
 import { Telemetry } from '../telemetry.entity';
 
@@ -10,6 +10,7 @@ export class TelemetryRepository {
     @InjectRepository(Telemetry)
     private repository: Repository<Telemetry>,
   ) {}
+
   create(data: Partial<Telemetry>) {
     return this.repository.create(data);
   }
@@ -20,32 +21,32 @@ export class TelemetryRepository {
 
   async findLatest(clusterId: number): Promise<Telemetry | null> {
     return this.repository.findOne({
-      where: {
-        cluster: {
-          id: clusterId,
-        },
-      },
-
-      order: {
-        created_at: 'DESC',
-      },
-
+      where: { cluster: { id: clusterId } },
+      order: { created_at: 'DESC' },
     });
   }
 
-  async findHistory(clusterId: number) {
+  async findHistory(
+    clusterId: number,
+    from: Date,
+    to: Date,
+    limit: number,
+  ) {
     return this.repository.find({
       where: {
-        cluster: {
-          id: clusterId,
-        },
+        cluster: { id: clusterId },
+        created_at: Between(from, to),
       },
-
-      order: {
-        created_at: 'DESC',
-      },
-
-      take: 100,
+      order: { created_at: 'ASC' },
+      take: limit,
     });
+  }
+
+  async deleteOlderThan(cutoff: Date): Promise<number> {
+    const result = await this.repository.delete({
+      created_at: LessThan(cutoff),
+    });
+
+    return result.affected ?? 0;
   }
 }

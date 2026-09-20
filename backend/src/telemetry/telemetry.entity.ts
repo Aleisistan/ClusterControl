@@ -5,10 +5,12 @@ import {
   PrimaryGeneratedColumn,
   ManyToOne,
   JoinColumn,
+  Index,
 } from 'typeorm';
 import { Cluster } from '../cluster/entities/cluster.entity';
 
 @Entity()
+@Index('idx_telemetry_cluster_created_at', ['cluster', 'created_at'])
 export class Telemetry {
   @PrimaryGeneratedColumn()
   id: number;

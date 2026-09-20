@@ -256,6 +256,45 @@
 
 <!-- CHART -->
 
+<div class="telemetry-filter card">
+  <div class="telemetry-filter-header">
+    <div>
+      <h3>Historial de telemetría</h3>
+      <span>Máximo disponible: últimos 30 días</span>
+    </div>
+
+    <select class="form-select" [(ngModel)]="historyFilter" (ngModelChange)="onHistoryFilterChange()">
+      <option value="24h">Últimas 24 horas</option>
+      <option value="7d">Últimos 7 días</option>
+      <option value="30d">Últimos 30 días</option>
+      <option value="day">Día específico</option>
+      <option value="custom">Rango personalizado</option>
+    </select>
+  </div>
+
+  <div class="telemetry-filter-fields" *ngIf="historyFilter === 'day'">
+    <label for="history-date">Día</label>
+    <input id="history-date" class="form-control" type="date" [(ngModel)]="historyDate"
+      (change)="applyHistoryFilter()" />
+  </div>
+
+  <div class="telemetry-filter-fields" *ngIf="historyFilter === 'custom'">
+    <label for="history-from">Desde</label>
+    <input id="history-from" class="form-control" type="date" [(ngModel)]="historyFromDate" />
+
+    <label for="history-to">Hasta</label>
+    <input id="history-to" class="form-control" type="date" [(ngModel)]="historyToDate" />
+
+    <button type="button" class="btn btn-primary" (click)="applyHistoryFilter()">
+      Aplicar filtro
+    </button>
+  </div>
+
+  <div class="telemetry-filter-error" *ngIf="historyFilterError">
+    {{ historyFilterError }}
+  </div>
+</div>
+
 <div class="card chart-card">
 
   <canvas baseChart [data]="lineChartData" [options]="lineChartOptions" [type]="'line'">
