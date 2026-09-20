@@ -202,7 +202,7 @@ getLightClass(): string {
         this.telemetry = Array.isArray(data) ? data : [];
         this.lineChartData = {
           labels: this.telemetry.map((item: any) =>
-            new Date(item.created_at).toLocaleTimeString()
+            new Date(item.createdAt).toLocaleTimeString()
           ),
           datasets: [
             {
