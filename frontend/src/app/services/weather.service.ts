@@ -1,35 +1,33 @@
 import { Injectable } from '@angular/core';
 
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
+import { environment } from '../../environments/environment';
 
 @Injectable({
   providedIn: 'root'
 })
 export class WeatherService {
 
-  private apiKey = '7fc00f7fb26ceaf9f7c803831589bf9e';
+  private readonly apiUrl = `${environment.apiUrl}/weather`;
 
   constructor(
     private http: HttpClient
   ) {}
 
   getWeather(lat: number, lon: number) {
+    const params = new HttpParams()
+      .set('lat', lat)
+      .set('lon', lon);
 
-    return this.http.get(
-
-      `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${this.apiKey}&units=metric&lang=es`
-
-    );
-
+    return this.http.get(this.apiUrl, { params });
   }
 
   getForecast(lat: number, lon: number) {
+    const params = new HttpParams()
+      .set('lat', lat)
+      .set('lon', lon);
 
-    return this.http.get(
-
-      `https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&appid=${this.apiKey}&units=metric&lang=es`
-
-    );
+    return this.http.get(`${this.apiUrl}/forecast`, { params });
 
   }
 
