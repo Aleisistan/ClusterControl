@@ -57,19 +57,23 @@ export class TelemetryHandler implements EventHandler {
 
     const payload = { ...(data as Record<string, unknown>) };
     const lightValue = payload.luzEncendida ?? payload.luz;
-
-    if (lightValue !== undefined) {
-      payload.luzEncendida = this.toBoolean(lightValue);
-    }
+    payload.luzEncendida = this.toBoolean(lightValue);
 
     delete payload.luz;
     return payload;
   }
 
-  private toBoolean(value: unknown): unknown {
+  private toBoolean(value: unknown): boolean {
     if (typeof value === 'boolean') return value;
     if (value === 1 || value === '1' || value === 'true') return true;
     if (value === 0 || value === '0' || value === 'false') return false;
-    return value;
+    if (typeof value === 'string') {
+      const normalized = value.trim().toLowerCase();
+      if (['on', 'high', 'encendida', 'encendido', 'si', 'sí'].includes(normalized)) {
+        return true;
+      }
+    }
+
+    return false;
   }
 }

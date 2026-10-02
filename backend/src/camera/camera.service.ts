@@ -37,7 +37,24 @@ export class CameraService {
     const camera = await this.cameraRepository.findByDeviceId(data.deviceId);
 
     if (!camera) {
-      this.logger.warn(`No existe cámara para el cluster ${data.deviceId}`);
+      const cluster = await this.clusterRepository.findByDeviceId(data.deviceId);
+
+      if (!cluster) {
+        this.logger.warn(`No existe cluster para la cámara ${data.deviceId}`);
+        return;
+      }
+
+      const newCamera = this.cameraRepository.create({
+        name: `Cámara ${cluster.name}`,
+        ip: data.ip,
+        cluster,
+        lastSeen: new Date(),
+        status: true,
+      });
+
+      await this.cameraRepository.save(newCamera);
+      this.cameraIp = data.ip;
+      this.logger.log(`Cámara creada para el cluster ${cluster.id}`);
 
       return;
     }
