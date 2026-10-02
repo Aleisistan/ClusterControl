@@ -72,6 +72,30 @@
 
 }
 
+.chart-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 0.85rem;
+}
+
+.chart-date-range {
+  margin: 12px 0 0;
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 0.85rem;
+  text-align: center;
+}
+
+@media (max-width: 576px) {
+  .chart-toolbar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+
 .telemetry-filter {
   margin: 30px 0 14px;
   padding: 16px 20px;

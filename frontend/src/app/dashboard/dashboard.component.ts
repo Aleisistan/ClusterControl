@@ -1,7 +1,8 @@
-import { Component, OnDestroy, OnInit } from '@angular/core';
+import { Component, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
-import { ChartConfiguration } from 'chart.js';
+import { Chart, ChartConfiguration } from 'chart.js';
 import { BaseChartDirective } from 'ng2-charts';
+import zoomPlugin from 'chartjs-plugin-zoom';
 import { CommonModule } from '@angular/common';
 import { Subscription } from 'rxjs';
 import { FormsModule } from '@angular/forms';
@@ -13,6 +14,8 @@ import { ClusterService } from '../services/cluster.service';
 import { CameraService } from '../services/camera.service';
 import { environment } from '../../environments/environment';
 
+Chart.register(zoomPlugin);
+
 @Component({
   selector: 'app-dashboard',
   standalone: true,
@@ -21,6 +24,8 @@ import { environment } from '../../environments/environment';
   styleUrls: ['./dashboard.component.css'],
 })
 export class DashboardComponent implements OnInit, OnDestroy {
+  @ViewChild(BaseChartDirective) telemetryChart?: BaseChartDirective;
+
   telemetry: any[] = [];
   latest: any;
   avgTemperature: number = 0;
@@ -62,7 +67,49 @@ export class DashboardComponent implements OnInit, OnDestroy {
   };
 
   lineChartOptions: ChartConfiguration<'line'>['options'] = {
-    responsive: true
+    responsive: true,
+    interaction: {
+      mode: 'index',
+      intersect: false,
+    },
+    scales: {
+      x: {
+        title: {
+          display: true,
+          text: 'Fecha y hora',
+        },
+        ticks: {
+          autoSkip: true,
+          maxRotation: 45,
+          minRotation: 0,
+        },
+      },
+    },
+    plugins: {
+      zoom: {
+        pan: {
+          enabled: true,
+          mode: 'x',
+        },
+        zoom: {
+          wheel: {
+            enabled: true,
+          },
+          pinch: {
+            enabled: true,
+          },
+          drag: {
+            enabled: true,
+          },
+          mode: 'x',
+        },
+      },
+      tooltip: {
+        callbacks: {
+          title: (items) => items[0]?.label ?? '',
+        },
+      },
+    },
   };
 
   constructor(
@@ -218,7 +265,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
         this.telemetry = Array.isArray(data) ? data : [];
         this.lineChartData = {
           labels: this.telemetry.map((item: any) =>
-            new Date(item.createdAt).toLocaleTimeString()
+            this.formatTelemetryDate(item.createdAt)
           ),
           datasets: [
             {
@@ -250,6 +297,22 @@ console.log('ESTADO LUZ:', data.luzEncendida);
         this.avgTemperature = (data.temperature1 + data.temperature2) / 2;
         this.avgHumidity = (data.humidity1 + data.humidity2) / 2;
       }
+    });
+  }
+
+  resetChartZoom(): void {
+    this.telemetryChart?.chart?.resetZoom();
+  }
+
+  private formatTelemetryDate(value: string): string {
+    return new Date(value).toLocaleString('es-AR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false,
     });
   }
 

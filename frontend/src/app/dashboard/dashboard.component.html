@@ -291,8 +291,19 @@
 </div>
 
 <div class="card chart-card">
+  <div class="chart-toolbar">
+    <span>Arrastra para desplazarte y usa la rueda o pellizca para ampliar</span>
+    <button type="button" class="btn btn-outline-light btn-sm" (click)="resetChartZoom()">
+      Restablecer zoom
+    </button>
+  </div>
 
   <canvas baseChart [data]="lineChartData" [options]="lineChartOptions" [type]="'line'">
   </canvas>
+
+  <p class="chart-date-range" *ngIf="telemetry.length">
+    Mostrando desde {{ telemetry[0].createdAt | date:'dd/MM/yyyy HH:mm:ss' }}
+    hasta {{ telemetry[telemetry.length - 1].createdAt | date:'dd/MM/yyyy HH:mm:ss' }}
+  </p>
 
 </div>
