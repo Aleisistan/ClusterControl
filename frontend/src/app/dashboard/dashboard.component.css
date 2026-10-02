@@ -322,6 +322,15 @@
   backdrop-filter: blur(10px);
 
 }
+.luz-on {
+  border-left: 4px solid #f59e0b;
+  background-color: rgba(245, 158, 11, 0.05);
+}
+
+.luz-off {
+  border-left: 4px solid #6b7280;
+  background-color: transparent;
+}
 
 .status-badge {
   padding: 8px 12px;

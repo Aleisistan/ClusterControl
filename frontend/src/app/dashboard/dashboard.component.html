@@ -8,9 +8,7 @@
 
         <label>Cluster activo</label>
 
-        <div class="cluster-route-hint">
-          Sincronizado con clusterId={{ selectedClusterId }} SACAR ESTO DESPUES DE PROBAR
-        </div>
+        
 
        <select class="form-select" [(ngModel)]="selectedClusterId" (ngModelChange)="onClusterChange($event)">
   <option *ngFor="let cluster of clusters" [value]="cluster.id">
@@ -231,24 +229,21 @@
 
 
       <!-- LUZ -->
-      <div class="top">
-        <span class="name">💡 Luz</span>
-      </div>
+     <div class="card-content" [ngClass]="getLightClass()">
+  <div class="top">
+    <span class="name">💡 Luz</span>
+  </div>
 
-      <div class="bottom">
+  <div class="bottom">
+    <h2>
+      {{ latest?.luzEncendida ? 'ENCENDIDA' : 'APAGADA' }}
+    </h2>
 
-        <h2>
-          {{ latest?.luz ? 'ENCENDIDA' : 'APAGADA' }}
-        </h2>
-
-        <span class="date">
-          Se activa al abrir la puerta
-        </span>
-
-      </div>
-
-    </div>
-
+    <span class="date">
+      Estado de la luz
+    </span>
+  </div>
+</div>
   </div>
 
 </div>

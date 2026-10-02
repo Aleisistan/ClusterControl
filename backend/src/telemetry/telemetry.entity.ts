@@ -36,6 +36,10 @@ export class Telemetry {
   @Column()
   puerta: boolean;
 
+  @Column()
+  luzEncendida: boolean;
+
+
   @ManyToOne(() => Cluster, (cluster) => cluster.telemetries, {
     nullable: false,
   })

@@ -13,6 +13,7 @@ export class TelemetryWsDto {
   extractor: boolean;
   aire: boolean;
   puerta: boolean;
+  luz: boolean;
 
   createdAt: Date;
 }

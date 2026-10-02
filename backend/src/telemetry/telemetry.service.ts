@@ -67,6 +67,8 @@ export class TelemetryService implements OnModuleInit, OnModuleDestroy {
 
       puerta: data.puerta,
 
+      luzEncendida: data.luzEncendida,
+
       cluster,
     });
 

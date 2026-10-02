@@ -13,6 +13,7 @@ export class TelemetryResponseDto {
   extractor: boolean;
   aire: boolean;
   puerta: boolean;
+  luzEncendida: boolean;
 
   createdAt: Date;
 
@@ -31,6 +32,7 @@ export class TelemetryResponseDto {
     this.extractor = data.extractor;
     this.aire = data.aire;
     this.puerta = data.puerta;
+    this.luzEncendida = data.luzEncendida;
 
     this.createdAt = data.created_at;
   }

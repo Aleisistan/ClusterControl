@@ -152,15 +152,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
     this.updateSnapshot();
   };
-getLightClass(): string {
-  if (!this.latest) {
-    return '';
-  }
-
-  return this.latest.puerta
-    ? 'light-on'
-    : 'light-off';
-};
   ngOnDestroy(): void {
     this.routeSubscription?.unsubscribe();
     this.unsubscribeTelemetry?.();
@@ -254,6 +245,8 @@ getLightClass(): string {
       if (data && Number(payloadClusterId) === Number(this.selectedClusterId)) {
         this.lastWsTime = Date.now();
         this.latest = data;
+      
+console.log('ESTADO LUZ:', data.luzEncendida);
         this.avgTemperature = (data.temperature1 + data.temperature2) / 2;
         this.avgHumidity = (data.humidity1 + data.humidity2) / 2;
       }
@@ -491,6 +484,13 @@ updateClusterTime(): void {
     return this.latest.puerta ? 'critical' : 'normal';
   }
 
+  getLightClass(): string {
+  if (!this.latest) {
+    return 'off';
+  }
+
+  return this.latest.luz ? 'on' : 'off';
+}
   getAirClass(): string {
     if (!this.latest) return 'air-off';
     return this.latest.aire ? 'air-on' : 'air-off';

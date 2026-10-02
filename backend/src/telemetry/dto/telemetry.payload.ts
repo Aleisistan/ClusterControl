@@ -1,4 +1,5 @@
-import { IsBoolean, IsNumber, IsInt, Min, Max } from 'class-validator';
+import { IsBoolean, IsNumber, IsInt, Min, Max, IsOptional } from 'class-validator';
+import { Transform } from 'class-transformer';
 
 export class TelemetryPayload {
   @IsNumber()
@@ -32,4 +33,9 @@ export class TelemetryPayload {
 
   @IsBoolean()
   puerta: boolean;
+
+
+  @IsBoolean({ message: 'luz must be a boolean value' })
+  luzEncendida: boolean;
 }
+
