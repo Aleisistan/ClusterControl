@@ -34,13 +34,23 @@ export class CameraService {
   }
 
   async updateFromMqtt(data: CameraPayload): Promise<void> {
-    const camera = await this.cameraRepository.findByDeviceId(data.deviceId);
+    const deviceId = String(data.deviceId).trim();
+    const numericId = Number(deviceId);
+    const cluster = await this.clusterRepository.findByDeviceId(deviceId)
+      ?? (Number.isInteger(numericId)
+        ? await this.clusterRepository.findById(numericId)
+        : null);
+    const camera = await this.cameraRepository.findByDeviceId(deviceId)
+      ?? (cluster
+        ? await this.cameraRepository.findByClusterId(cluster.id)
+        : null);
 
     if (!camera) {
-      const cluster = await this.clusterRepository.findByDeviceId(data.deviceId);
-
       if (!cluster) {
-        this.logger.warn(`No existe cluster para la cámara ${data.deviceId}`);
+        this.logger.warn(
+          `No existe cluster para la cámara ${deviceId} ` +
+          `(se esperaba deviceId MQTT o ID interno del cluster)`,
+        );
         return;
       }
 

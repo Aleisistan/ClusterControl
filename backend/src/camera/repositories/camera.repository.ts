@@ -44,7 +44,8 @@ export class CameraRepository {
       },
     });
   }
-   async findByClusterId(clusterId: number): Promise<Camera | null> {
+
+  async findByClusterId(clusterId: number) {
     return this.repository.findOne({
       where: {
         cluster: {
