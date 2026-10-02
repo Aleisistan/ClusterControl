@@ -22,6 +22,7 @@ export class TelemetryRepository {
   async findLatest(clusterId: number): Promise<Telemetry | null> {
     return this.repository.findOne({
       where: { cluster: { id: clusterId } },
+      relations: { cluster: true },
       order: { created_at: 'DESC' },
     });
   }
@@ -37,6 +38,7 @@ export class TelemetryRepository {
         cluster: { id: clusterId },
         created_at: Between(from, to),
       },
+      relations: { cluster: true },
       order: { created_at: 'ASC' },
       take: limit,
     });

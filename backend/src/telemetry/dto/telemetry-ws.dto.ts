@@ -2,7 +2,7 @@ export class TelemetryWsDto {
   id: number;
 
   clusterId: number;
-  deviceId: number;
+  deviceId: string;
 
   temperature1: number;
   temperature2: number;
@@ -13,7 +13,7 @@ export class TelemetryWsDto {
   extractor: boolean;
   aire: boolean;
   puerta: boolean;
-  luz: boolean;
+  luzEncendida: boolean;
 
   createdAt: Date;
 }

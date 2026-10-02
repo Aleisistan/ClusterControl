@@ -2,7 +2,7 @@ export class TelemetryResponseDto {
   id: number;
 
   clusterId: number;
-  deviceId: number;
+  deviceId: string;
 
   temperature1: number;
   temperature2: number;
@@ -21,7 +21,7 @@ export class TelemetryResponseDto {
     this.id = data.id;
 
     this.clusterId = data.cluster?.id;
-    this.deviceId = data.device?.id;
+    this.deviceId = data.cluster?.deviceId;
 
     this.temperature1 = data.temperature1;
     this.temperature2 = data.temperature2;

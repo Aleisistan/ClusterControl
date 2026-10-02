@@ -65,12 +65,9 @@ export class TelemetryGateway implements OnGatewayConnection {
     try {
       // Si usas 'Bearer tu_token', limpia la palabra 'Bearer '
       const cleanToken = token.startsWith('Bearer ') ? token.slice(7) : token;
+      this.jwtService.verify(cleanToken);
 
       this.logger.debug('✅ Cliente autenticado correctamente');
-      // Aquí validas tu token (ejemplo con JwtService)
-      // const payload = this.jwtService.verify(cleanToken);
-
-      //console.log('✅ Cliente autenticado correctamente');
     } catch (error) {
       //console.error('❌ Token inválido:', error.message);
       this.logger.warn('❌ Conexión rechazada: Token inválido');

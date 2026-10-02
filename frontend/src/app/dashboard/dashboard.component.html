@@ -77,8 +77,8 @@
         Cámara inactiva
       </div>
 
-      <img *ngIf="camera1StreamUrl" 
-           [src]="camera1StreamUrl" 
+       <img *ngIf="cameraStreamUrl"
+         [src]="cameraStreamUrl"
            class="camera-stream"
            [class.hidden]="!camera1Loaded" 
            (load)="camera1Loaded = true" 

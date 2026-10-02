@@ -12,6 +12,7 @@ import { TelemetryService } from '../services/telemetry.service';
 import { WeatherService } from '../services/weather.service';
 import { ClusterService } from '../services/cluster.service';
 import { CameraService } from '../services/camera.service';
+import { AuthService } from '../services/auth.service';
 import { environment } from '../../environments/environment';
 
 Chart.register(zoomPlugin);
@@ -52,7 +53,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
   lastWsTime: number = 0;
   camera1Loaded = false;
   camera2Loaded = false;
-  camera1StreamUrl = environment.camera1Url;
   camera2StreamUrl = environment.camera2Url;
   private routeSubscription?: Subscription;
   private pendingClusterId: number | null = null;
@@ -119,7 +119,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
     private clusterService: ClusterService,
     private cameraService: CameraService,
     private route: ActivatedRoute,
-    private router: Router
+    private router: Router,
+    private authService: AuthService,
   ) {}
 
   loadCamera(): void {
@@ -448,7 +449,14 @@ loadWeather(): void {
     return;
   }
 
-  this.cameraStreamUrl = `/camera/stream/${clusterId}?t=${Date.now()}`;
+    const token = this.authService.getToken();
+    const query = new URLSearchParams({ t: Date.now().toString() });
+
+    if (token) {
+      query.set('token', token);
+    }
+
+    this.cameraStreamUrl = `${environment.apiUrl}/camera/stream/${clusterId}?${query.toString()}`;
 
   console.log('[CAMERA] Stream seleccionado:', this.cameraStreamUrl);
 }
@@ -552,7 +560,7 @@ updateClusterTime(): void {
     return 'off';
   }
 
-  return this.latest.luz ? 'on' : 'off';
+  return this.latest.luzEncendida ? 'on' : 'off';
 }
   getAirClass(): string {
     if (!this.latest) return 'air-off';

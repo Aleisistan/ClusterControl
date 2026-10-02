@@ -16,7 +16,8 @@ client.on('connect', () => {
       hum2: 40 + Math.random() * 10,
       extractor: false,
       aire: true,
-      puerta: false
+      puerta: false,
+      luzEncendida: false
     };
 
     client.publish(
@@ -36,7 +37,8 @@ client.on('connect', () => {
       hum2: 70 + Math.random() * 10,
       extractor: true,
       aire: false,
-      puerta: false
+      puerta: false,
+      luzEncendida: true
     };
 
     client.publish(

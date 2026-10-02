@@ -22,7 +22,7 @@ export class TelemetryHandler implements EventHandler {
 
     const payload = plainToInstance(
       TelemetryPayload,
-      data,
+      this.normalizePayload(data),
     );
 
     const errors = await validate(payload, {
@@ -48,5 +48,28 @@ export class TelemetryHandler implements EventHandler {
       `[MQTT] Payload válido: deviceId=${payload.deviceId}`);
 
     await this.telemetryService.saveTelemetry(payload);
+  }
+
+  private normalizePayload(data: unknown): unknown {
+    if (!data || typeof data !== 'object' || Array.isArray(data)) {
+      return data;
+    }
+
+    const payload = { ...(data as Record<string, unknown>) };
+    const lightValue = payload.luzEncendida ?? payload.luz;
+
+    if (lightValue !== undefined) {
+      payload.luzEncendida = this.toBoolean(lightValue);
+    }
+
+    delete payload.luz;
+    return payload;
+  }
+
+  private toBoolean(value: unknown): unknown {
+    if (typeof value === 'boolean') return value;
+    if (value === 1 || value === '1' || value === 'true') return true;
+    if (value === 0 || value === '0' || value === 'false') return false;
+    return value;
   }
 }

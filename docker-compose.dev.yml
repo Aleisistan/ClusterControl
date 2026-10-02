@@ -78,7 +78,7 @@ services:
       - ./backend:/app
       - backend_node_modules:/app/node_modules
 
-    command: sh -c "npm install --no-audit --no-fund && npm run start:dev"
+    command: sh -c "npm ci --no-audit --no-fund && npm run start:dev"
 
 
   simulator:
@@ -117,7 +117,7 @@ services:
     environment:
       CHOKIDAR_USEPOLLING: "true"
 
-    command: sh -c "npm install --no-audit --no-fund && npm start -- --host 0.0.0.0 --poll 2000"
+    command: sh -c "npm ci --no-audit --no-fund && npm start -- --host 0.0.0.0 --poll 2000"
 
 
   corx:
