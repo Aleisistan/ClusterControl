@@ -4,6 +4,7 @@ import { AdminClustersPageComponent } from './pages/admin-clusters-page.componen
 import { AdminUsersPageComponent } from './pages/admin-users-page.component';
 import { DashboardComponent } from './dashboard/dashboard.component';
 import { LoginPageComponent } from './pages/login-page.component';
+import { authGuard } from './guards/auth.guard';
 
 export const routes: Routes = [
   {
@@ -20,6 +21,7 @@ export const routes: Routes = [
     path: 'dashboard',
     title: 'Cluster Control | Dashboard',
     component: DashboardComponent,
+    canActivate: [authGuard],
   },
   {
     path: 'admin',
