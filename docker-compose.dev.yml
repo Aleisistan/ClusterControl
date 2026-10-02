@@ -91,6 +91,8 @@ services:
       mosquitto:
         condition: service_started
 
+    command: sh -c "npm install --no-audit --no-fund && node simulator.js"
+
 
   frontend:
     build: ./frontend
@@ -115,7 +117,7 @@ services:
     environment:
       CHOKIDAR_USEPOLLING: "true"
 
-    command: npm start -- --host 0.0.0.0 --poll 2000
+    command: sh -c "npm install --no-audit --no-fund && npm start -- --host 0.0.0.0 --poll 2000"
 
 
   corx:
