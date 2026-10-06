@@ -62,6 +62,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   private routeSubscription?: Subscription;
   private pendingClusterId: number | null = null;
   private unsubscribeTelemetry?: () => void;
+  private telemetryHistoryRequestId = 0;
 
   lineChartData: ChartConfiguration<'line'>['data'] = {
     labels: [],
@@ -251,14 +252,18 @@ export class DashboardComponent implements OnInit, OnDestroy {
     const range = this.getHistoryRange();
     if (!range) return;
 
+    const clusterId = Number(this.selectedClusterId);
+    const requestId = ++this.telemetryHistoryRequestId;
+    this.telemetry = [];
+    this.refreshTelemetryChart();
     this.stateHistory = [];
     this.stateHistoryError = '';
 
     // 1. Obtener telemetría inicial
     this.telemetryService
-      .getLatest(this.selectedClusterId)
+      .getLatest(clusterId)
       .subscribe((data: any) => {
-        if (data) {
+        if (data && Number(this.selectedClusterId) === clusterId) {
           this.latest = data;
           this.avgTemperature = (this.latest.temperature1 + this.latest.temperature2) / 2;
           this.avgHumidity = (this.latest.humidity1 + this.latest.humidity2) / 2;
@@ -267,32 +272,40 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
     // 2. Obtener historial para el gráfico
     this.telemetryService
-      .getHistory(this.selectedClusterId, {
+      .getHistory(clusterId, {
         from: range.from.toISOString(),
         to: range.to.toISOString(),
         limit: 2000,
       })
       .subscribe((data: any) => {
-        this.telemetry = Array.isArray(data) ? data : [];
-        this.lineChartData = {
-          labels: this.telemetry.map((item: any) =>
-            this.formatTelemetryDate(item.createdAt)
-          ),
-          datasets: [
-            {
-              data: this.telemetry.map(
-                (item: any) => (item.temperature1 + item.temperature2) / 2
-              ),
-              label: 'Temperatura Promedio °C'
-            },
-            {
-              data: this.telemetry.map(
-                (item: any) => (item.humidity1 + item.humidity2) / 2
-              ),
-              label: 'Humedad Promedio %'
-            }
-          ]
-        };
+        if (
+          requestId !== this.telemetryHistoryRequestId ||
+          Number(this.selectedClusterId) !== clusterId
+        ) {
+          return;
+        }
+
+        const loadedHistory = Array.isArray(data) ? data : [];
+        const samples = new Map<number, any>();
+        for (const item of [...loadedHistory, ...this.telemetry]) {
+          samples.set(Number(item.id), item);
+        }
+        this.telemetry = [...samples.values()]
+          .filter((item) => {
+            const createdAt = new Date(item.createdAt);
+            return (
+              !Number.isNaN(createdAt.getTime()) &&
+              createdAt >= range.from &&
+              createdAt <= range.to
+            );
+          })
+          .sort(
+            (first, second) =>
+              new Date(first.createdAt).getTime() -
+              new Date(second.createdAt).getTime(),
+          )
+          .slice(-2000);
+        this.refreshTelemetryChart();
       });
 
     this.stateHistoryError = '';
@@ -326,9 +339,11 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.unsubscribeTelemetry?.();
     this.unsubscribeTelemetry = this.socketService.onClusterTelemetry((data: any) => {
       const payloadClusterId = data?.clusterId ?? data?.cluster_id;
-      
-      if (data && Number(payloadClusterId) === Number(this.selectedClusterId)) {
+
+      if (data && Number(payloadClusterId) === clusterId &&
+          Number(this.selectedClusterId) === clusterId) {
         this.lastWsTime = Date.now();
+        this.addTelemetrySample(data);
         const previous = this.latest;
         if (
           previous &&
@@ -348,6 +363,54 @@ export class DashboardComponent implements OnInit, OnDestroy {
         this.avgHumidity = (data.humidity1 + data.humidity2) / 2;
       }
     });
+  }
+
+  private addTelemetrySample(item: any): void {
+    const range = this.getHistoryRange();
+    const createdAt = new Date(item.createdAt);
+    if (
+      !range ||
+      Number.isNaN(createdAt.getTime()) ||
+      createdAt < range.from ||
+      createdAt > range.to
+    ) {
+      return;
+    }
+
+    const samples = new Map<number, any>();
+    for (const sample of [...this.telemetry, item]) {
+      samples.set(Number(sample.id), sample);
+    }
+    this.telemetry = [...samples.values()]
+      .sort(
+        (first, second) =>
+          new Date(first.createdAt).getTime() -
+          new Date(second.createdAt).getTime(),
+      )
+      .slice(-2000);
+    this.refreshTelemetryChart();
+  }
+
+  private refreshTelemetryChart(): void {
+    this.lineChartData = {
+      labels: this.telemetry.map((item: any) =>
+        this.formatTelemetryDate(item.createdAt)
+      ),
+      datasets: [
+        {
+          data: this.telemetry.map(
+            (item: any) => (item.temperature1 + item.temperature2) / 2
+          ),
+          label: 'Temperatura Promedio °C'
+        },
+        {
+          data: this.telemetry.map(
+            (item: any) => (item.humidity1 + item.humidity2) / 2
+          ),
+          label: 'Humedad Promedio %'
+        }
+      ]
+    };
   }
 
   resetChartZoom(): void {

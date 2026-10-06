@@ -33,15 +33,17 @@ export class TelemetryRepository {
     to: Date,
     limit: number,
   ) {
-    return this.repository.find({
+    const history = await this.repository.find({
       where: {
         cluster: { id: clusterId },
         created_at: Between(from, to),
       },
       relations: { cluster: true },
-      order: { created_at: 'ASC' },
+      order: { created_at: 'DESC', id: 'DESC' },
       take: limit,
     });
+
+    return history.reverse();
   }
 
   async findStateChanges(
