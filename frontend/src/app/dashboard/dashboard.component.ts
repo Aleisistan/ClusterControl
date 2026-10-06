@@ -327,10 +327,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
           this.stateHistory = [...loadedHistory, ...liveEntries]
             .sort(
               (first, second) =>
-                new Date(first.createdAt).getTime() -
-                new Date(second.createdAt).getTime(),
+                new Date(second.createdAt).getTime() -
+                new Date(first.createdAt).getTime(),
             )
-            .slice(-2000);
+            .slice(0, 2000);
         },
         error: () => {
           this.stateHistory = [];
@@ -358,7 +358,13 @@ export class DashboardComponent implements OnInit, OnDestroy {
           this.stateHistory = [
             ...this.stateHistory,
             this.toStateHistoryEntry(previous, data),
-          ].slice(-2000);
+          ]
+            .sort(
+              (first, second) =>
+                new Date(second.createdAt).getTime() -
+                new Date(first.createdAt).getTime(),
+            )
+            .slice(0, 2000);
         }
         this.latest = data;
       

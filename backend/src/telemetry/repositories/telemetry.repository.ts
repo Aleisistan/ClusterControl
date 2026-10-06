@@ -139,7 +139,7 @@ export class TelemetryRepository {
             OR puerta IS DISTINCT FROM previous_puerta
             OR "luzEncendida" IS DISTINCT FROM previous_light
           )
-        ORDER BY created_at, id
+        ORDER BY created_at DESC, id DESC
         LIMIT $4
       `,
       [clusterId, from, to, limit],
