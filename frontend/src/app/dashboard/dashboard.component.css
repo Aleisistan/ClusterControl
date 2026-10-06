@@ -146,6 +146,30 @@
   color: #fecaca;
 }
 
+.state-history-card {
+  margin: 14px 0 30px;
+  text-align: left;
+}
+
+.state-history-header {
+  margin-bottom: 14px;
+}
+
+.state-history-header h3 {
+  margin: 0 0 4px;
+  font-size: 1.1rem;
+}
+
+.state-history-header span,
+.state-history-empty {
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.state-history-table {
+  margin-bottom: 0;
+  min-width: 760px;
+}
+
 .forecast-card {
 
   grid-column: 8 / 13;

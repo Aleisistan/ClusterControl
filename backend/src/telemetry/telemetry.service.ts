@@ -9,7 +9,7 @@ import { TelemetryGateway } from './telemetry.gateway';
 import { TelemetryRepository } from './repositories/telemetry.repository';
 import { ClusterRepository } from '../cluster/repositories/cluster.repository';
 import { NotFoundException } from '@nestjs/common';
-import { LoggerService } from 'src/common/logger/logger.service';
+import { LoggerService } from '../common/logger/logger.service';
 import { TelemetryResponseDto } from './dto/telemetry-response.dto';
 
 @Injectable()
@@ -115,29 +115,56 @@ export class TelemetryService implements OnModuleInit, OnModuleDestroy {
     limitParam?: string,
   ): Promise<TelemetryResponseDto[]> {
     const now = new Date();
+    const range = this.getEffectiveRange(fromParam, toParam, now);
+    const limit = this.parseLimit(limitParam);
+
+    if (!range) return [];
+
+    const telemetry = await this.telemetryRepository.findHistory(
+      clusterId,
+      range.from,
+      range.to,
+      limit,
+    );
+
+    return telemetry.map((item) => new TelemetryResponseDto(item));
+  }
+
+  async getStateHistory(
+    clusterId: number,
+    fromParam?: string,
+    toParam?: string,
+    limitParam?: string,
+  ) {
+    const range = this.getEffectiveRange(fromParam, toParam, new Date());
+    const limit = this.parseLimit(limitParam);
+
+    if (!range) return [];
+
+    return this.telemetryRepository.findStateChanges(
+      clusterId,
+      range.from,
+      range.to,
+      limit,
+    );
+  }
+
+  private getEffectiveRange(
+    fromParam: string | undefined,
+    toParam: string | undefined,
+    now: Date,
+  ): { from: Date; to: Date } | null {
     const retentionStart = this.getRetentionStart(now);
     const from = this.parseDate(fromParam, 'from') ?? retentionStart;
     const requestedTo = this.parseDate(toParam, 'to') ?? now;
     const to = requestedTo > now ? now : requestedTo;
-    const limit = this.parseLimit(limitParam);
 
     if (from > to) {
       throw new BadRequestException('El rango de fechas no es válido');
     }
 
     const effectiveFrom = from < retentionStart ? retentionStart : from;
-    if (effectiveFrom > to) {
-      return [];
-    }
-
-    const telemetry = await this.telemetryRepository.findHistory(
-      clusterId,
-      effectiveFrom,
-      to,
-      limit,
-    );
-
-    return telemetry.map((item) => new TelemetryResponseDto(item));
+    return effectiveFrom > to ? null : { from: effectiveFrom, to };
   }
 
   private getRetentionStart(now: Date): Date {

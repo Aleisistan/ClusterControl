@@ -115,6 +115,12 @@ Compose monta `backend/database` como directorio de inicialización de PostgreSQ
 
 Si el volumen ya fue inicializado, cambiar ese script no vuelve a ejecutarlo. Para aplicar cambios posteriores, utilizar una migración o una operación explícita sobre la base existente. Para recrear una base vacía en desarrollo, se puede borrar el volumen con el comando `down -v` indicado arriba.
 
+## Historial de telemetría y cambios de estado
+
+El dashboard permite consultar el historial de temperatura y humedad, y el historial de cambios del extractor, el aire, la puerta y la luz usando el mismo filtro de fechas. Cada cambio muestra la fecha y hora, el estado anterior y el nuevo, junto con las mediciones de ambos sensores de temperatura y humedad registradas en esa lectura.
+
+El historial de estados se obtiene de las muestras de telemetría ya guardadas, comparando cada muestra con la anterior; no requiere una tabla adicional. La API expone este historial en `GET /telemetry/state-history` y conserva el límite existente de 30 días y hasta 2000 resultados por consulta.
+
 ## Servicios y código fuente
 
 - Compose de desarrollo: [docker-compose.dev.yml](./docker-compose.dev.yml)

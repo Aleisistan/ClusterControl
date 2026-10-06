@@ -8,7 +8,10 @@ import { Subscription } from 'rxjs';
 import { FormsModule } from '@angular/forms';
 
 import { SocketService } from '../services/socket.service';
-import { TelemetryService } from '../services/telemetry.service';
+import {
+  TelemetryService,
+  TelemetryStateHistoryEntry,
+} from '../services/telemetry.service';
 import { WeatherService } from '../services/weather.service';
 import { ClusterService } from '../services/cluster.service';
 import { CameraService } from '../services/camera.service';
@@ -49,6 +52,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
   historyFromDate = this.toDateInputValue(new Date());
   historyToDate = this.toDateInputValue(new Date());
   historyFilterError = '';
+  stateHistory: TelemetryStateHistoryEntry[] = [];
+  stateHistoryError = '';
   
   lastWsTime: number = 0;
   camera1Loaded = false;
@@ -211,6 +216,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   this.selectedClusterId = id;
   this.lastWsTime = 0;
+  this.stateHistory = [];
+  this.stateHistoryError = '';
 
   // Actualiza el cluster seleccionado en memoria
   this.applyClusterSelection(id);
@@ -243,6 +250,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
   loadTelemetry(): void {
     const range = this.getHistoryRange();
     if (!range) return;
+
+    this.stateHistory = [];
+    this.stateHistoryError = '';
 
     // 1. Obtener telemetría inicial
     this.telemetryService
@@ -285,6 +295,33 @@ export class DashboardComponent implements OnInit, OnDestroy {
         };
       });
 
+    this.stateHistoryError = '';
+    this.telemetryService
+      .getStateHistory(this.selectedClusterId, {
+        from: range.from.toISOString(),
+        to: range.to.toISOString(),
+        limit: 2000,
+      })
+      .subscribe({
+        next: (data) => {
+          const loadedHistory = Array.isArray(data) ? data : [];
+          const liveEntries = this.stateHistory.filter(
+            (entry) => !loadedHistory.some((loaded: TelemetryStateHistoryEntry) => loaded.id === entry.id),
+          );
+          this.stateHistory = [...loadedHistory, ...liveEntries]
+            .sort(
+              (first, second) =>
+                new Date(first.createdAt).getTime() -
+                new Date(second.createdAt).getTime(),
+            )
+            .slice(-2000);
+        },
+        error: () => {
+          this.stateHistory = [];
+          this.stateHistoryError = 'No se pudo cargar el historial de cambios de estado.';
+        },
+      });
+
     // 3. Suscribirse a WebSocket pasando la función callback
     this.unsubscribeTelemetry?.();
     this.unsubscribeTelemetry = this.socketService.onClusterTelemetry((data: any) => {
@@ -292,9 +329,21 @@ export class DashboardComponent implements OnInit, OnDestroy {
       
       if (data && Number(payloadClusterId) === Number(this.selectedClusterId)) {
         this.lastWsTime = Date.now();
+        const previous = this.latest;
+        if (
+          previous &&
+          Number(previous.id) !== Number(data.id) &&
+          this.hasStateChanges(previous, data) &&
+          this.isWithinHistoryRange(data.createdAt) &&
+          !this.stateHistory.some((entry) => entry.id === Number(data.id))
+        ) {
+          this.stateHistory = [
+            ...this.stateHistory,
+            this.toStateHistoryEntry(previous, data),
+          ].slice(-2000);
+        }
         this.latest = data;
       
-console.log('ESTADO LUZ:', data.luzEncendida);
         this.avgTemperature = (data.temperature1 + data.temperature2) / 2;
         this.avgHumidity = (data.humidity1 + data.humidity2) / 2;
       }
@@ -315,6 +364,85 @@ console.log('ESTADO LUZ:', data.luzEncendida);
       second: '2-digit',
       hour12: false,
     });
+  }
+
+  getStateChanges(
+    entry: TelemetryStateHistoryEntry,
+  ): Array<{ label: string; from: string; to: string }> {
+    const changes: Array<{ label: string; from: string; to: string }> = [];
+
+    if (entry.previousExtractor !== entry.extractor) {
+      changes.push({
+        label: 'Extractor',
+        from: entry.previousExtractor ? 'Encendido' : 'Apagado',
+        to: entry.extractor ? 'Encendido' : 'Apagado',
+      });
+    }
+    if (entry.previousAire !== entry.aire) {
+      changes.push({
+        label: 'Aire',
+        from: entry.previousAire ? 'Encendido' : 'Apagado',
+        to: entry.aire ? 'Encendido' : 'Apagado',
+      });
+    }
+    if (entry.previousPuerta !== entry.puerta) {
+      changes.push({
+        label: 'Puerta',
+        from: entry.previousPuerta ? 'Abierta' : 'Cerrada',
+        to: entry.puerta ? 'Abierta' : 'Cerrada',
+      });
+    }
+    if (entry.previousLuzEncendida !== entry.luzEncendida) {
+      changes.push({
+        label: 'Luz',
+        from: entry.previousLuzEncendida ? 'Encendida' : 'Apagada',
+        to: entry.luzEncendida ? 'Encendida' : 'Apagada',
+      });
+    }
+
+    return changes;
+  }
+
+  private hasStateChanges(previous: any, current: any): boolean {
+    return (
+      previous.extractor !== current.extractor ||
+      previous.aire !== current.aire ||
+      previous.puerta !== current.puerta ||
+      previous.luzEncendida !== current.luzEncendida
+    );
+  }
+
+  private toStateHistoryEntry(
+    previous: any,
+    current: any,
+  ): TelemetryStateHistoryEntry {
+    return {
+      id: Number(current.id),
+      createdAt: new Date(current.createdAt).toISOString(),
+      temperature1: current.temperature1,
+      temperature2: current.temperature2,
+      humidity1: current.humidity1,
+      humidity2: current.humidity2,
+      extractor: current.extractor,
+      aire: current.aire,
+      puerta: current.puerta,
+      luzEncendida: current.luzEncendida,
+      previousExtractor: previous.extractor,
+      previousAire: previous.aire,
+      previousPuerta: previous.puerta,
+      previousLuzEncendida: previous.luzEncendida,
+    };
+  }
+
+  private isWithinHistoryRange(value: string | Date): boolean {
+    const range = this.getHistoryRange();
+    const timestamp = new Date(value);
+    return (
+      !!range &&
+      !Number.isNaN(timestamp.getTime()) &&
+      timestamp >= range.from &&
+      timestamp <= range.to
+    );
   }
 
   private getHistoryRange(): { from: Date; to: Date } | null {

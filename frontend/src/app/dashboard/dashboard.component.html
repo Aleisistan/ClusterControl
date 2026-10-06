@@ -307,3 +307,51 @@
   </p>
 
 </div>
+
+<div class="card state-history-card">
+  <div class="state-history-header">
+    <div>
+      <h3>Historial de cambios de estado</h3>
+      <span>Extractor, aire, puerta y luz; incluye las lecturas ambientales del momento del cambio.</span>
+    </div>
+  </div>
+
+  <div class="telemetry-filter-error" *ngIf="stateHistoryError">
+    {{ stateHistoryError }}
+  </div>
+
+  <div class="table-responsive" *ngIf="!stateHistoryError">
+    <table class="table table-dark table-striped table-hover align-middle state-history-table">
+      <thead>
+        <tr>
+          <th scope="col">Fecha y hora</th>
+          <th scope="col">Cambio de estado</th>
+          <th scope="col">Temperatura S1</th>
+          <th scope="col">Temperatura S2</th>
+          <th scope="col">Humedad S1</th>
+          <th scope="col">Humedad S2</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let entry of stateHistory">
+          <td>{{ entry.createdAt | date:'dd/MM/yyyy HH:mm:ss' }}</td>
+          <td>
+            <div *ngFor="let change of getStateChanges(entry)">
+              <strong>{{ change.label }}:</strong>
+              {{ change.from }} → {{ change.to }}
+            </div>
+          </td>
+          <td>{{ entry.temperature1 | number:'1.1-1' }} °C</td>
+          <td>{{ entry.temperature2 | number:'1.1-1' }} °C</td>
+          <td>{{ entry.humidity1 | number:'1.1-1' }} %</td>
+          <td>{{ entry.humidity2 | number:'1.1-1' }} %</td>
+        </tr>
+        <tr *ngIf="stateHistory.length === 0">
+          <td colspan="6" class="state-history-empty">
+            No se registraron cambios de estado en el período seleccionado.
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>

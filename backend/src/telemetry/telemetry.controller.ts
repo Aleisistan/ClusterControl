@@ -27,4 +27,14 @@ export class TelemetryController {
   ) {
     return this.telemetryService.getHistory(clusterId, from, to, limit);
   }
+
+  @Get('state-history')
+  getStateHistory(
+    @Query('clusterId', ParseIntPipe) clusterId: number,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.telemetryService.getStateHistory(clusterId, from, to, limit);
+  }
 }
