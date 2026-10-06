@@ -124,6 +124,9 @@ services:
     image: ghcr.io/venipa/corx:latest
     container_name: corx
     restart: unless-stopped
+    depends_on:
+      redis:
+        condition: service_healthy
 
     ports:
       - "3001:3001"
@@ -132,6 +135,20 @@ services:
       PORT: "3001"
       ORIGIN_HOST: "*"
       ALLOWED_RESPONSE_CATEGORIES: "json,xml,html,yml,text"
+      RATE_LIMIT_ENABLED: "true"
+      REDIS_URL: "redis://redis:6379"
+
+
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    restart: unless-stopped
+
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
 
 
 volumes:

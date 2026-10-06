@@ -93,6 +93,12 @@ Accesos locales:
 - PostgreSQL: `localhost:5432` desde el host; dentro de la red Docker, `postgres:5432`
 - Servicio `corx`: <http://localhost:3001>
 
+### Acceso externo y rate limiting de `corx`
+
+En el Compose de desarrollo, `corx` tiene habilitado el rate limiting (`RATE_LIMIT_ENABLED=true`) y usa el servicio `redis` mediante `REDIS_URL=redis://redis:6379`. Compose inicia `corx` cuando Redis pasa su comprobación de salud. Redis no publica ningún puerto al host y solo es accesible dentro de la red privada de Compose.
+
+Si se expone `corx` fuera de la máquina, el rate limiting seguirá activo. Redis debe permanecer en la red privada y no exponerse directamente a Internet. La exposición pública también requiere configurar la red, el firewall y, preferentemente, un proxy con HTTPS; este Compose es solo para desarrollo y no está preparado como configuración de producción.
+
 El simulador publica cada 15 segundos mensajes de ejemplo en el tópico `datacenter/ambiente`. La API se suscribe a los tópicos definidos en [backend/src/config/topics.ts](./backend/src/config/topics.ts).
 
 Para seguir los registros:
