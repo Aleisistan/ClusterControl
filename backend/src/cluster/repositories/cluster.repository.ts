@@ -14,11 +14,14 @@ export class ClusterRepository {
   async findById(id: number) {
     return this.repository.findOne({
       where: { id },
+      relations: ['camera'],
     });
   }
 
   async findAll() {
-    return this.repository.find();
+    return this.repository.find({
+      relations: ['camera'],
+    });
   }
   async findByName(name: string): Promise<Cluster | null> {
     return this.repository.findOne({

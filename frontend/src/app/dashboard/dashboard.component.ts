@@ -440,14 +440,21 @@ loadWeather(): void {
   this.snapshotUrl = `http://${cleanIp}:81/stream`;
   console.log('Stream URL activa:', this.snapshotUrl);
 }
-  private updateCameraStream(): void {
-  const clusterId = Number(this.selectedClusterId);
-  this.camera1Loaded = false;
+  buildCameraStreamUrl(cameraIp: string = '', clusterId: number | null = this.selectedClusterId): string {
+    const directIp = (cameraIp || this.selectedCluster?.camera?.ip || '').trim();
+    const cleanIp = directIp
+      .replace(/^https?:\/\//, '')
+      .split('/')[0]
+      .split('?')[0]
+      .trim();
 
-  if (!clusterId) {
-    this.cameraStreamUrl = '';
-    return;
-  }
+    if (cleanIp) {
+      return `http://${cleanIp}:81/stream`;
+    }
+
+    if (!clusterId) {
+      return '';
+    }
 
     const token = this.authService.getToken();
     const query = new URLSearchParams({ t: Date.now().toString() });
@@ -456,10 +463,17 @@ loadWeather(): void {
       query.set('token', token);
     }
 
-    this.cameraStreamUrl = `${environment.apiUrl}/camera/stream/${clusterId}?${query.toString()}`;
+    return `${environment.apiUrl}/camera/stream/${clusterId}?${query.toString()}`;
+  }
 
-  console.log('[CAMERA] Stream seleccionado:', this.cameraStreamUrl);
-}
+  private updateCameraStream(): void {
+    const clusterId = Number(this.selectedClusterId);
+    this.camera1Loaded = false;
+
+    this.cameraStreamUrl = this.buildCameraStreamUrl(this.selectedCluster?.camera?.ip ?? '', clusterId || null);
+
+    console.log('[CAMERA] Stream seleccionado:', this.cameraStreamUrl);
+  }
 
 updateClusterTime(): void {
   // 1. Guard Clause: Si no hay cluster seleccionado, ignoramos la ejecución silenciosamente
@@ -555,13 +569,17 @@ updateClusterTime(): void {
     return this.latest.puerta ? 'critical' : 'normal';
   }
 
-  getLightClass(): string {
-  if (!this.latest) {
-    return 'off';
+  isLightOn(): boolean {
+    if (!this.latest) {
+      return false;
+    }
+
+    return Boolean(this.latest.puerta) || Boolean(this.latest.luzEncendida);
   }
 
-  return this.latest.luzEncendida ? 'on' : 'off';
-}
+  getLightClass(): string {
+    return this.isLightOn() ? 'on' : 'off';
+  }
   getAirClass(): string {
     if (!this.latest) return 'air-off';
     return this.latest.aire ? 'air-on' : 'air-off';

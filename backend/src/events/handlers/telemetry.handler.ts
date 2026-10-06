@@ -56,8 +56,11 @@ export class TelemetryHandler implements EventHandler {
     }
 
     const payload = { ...(data as Record<string, unknown>) };
+    const doorValue = payload.puerta;
     const lightValue = payload.luzEncendida ?? payload.luz;
-    payload.luzEncendida = this.toBoolean(lightValue);
+
+    payload.puerta = this.toBoolean(doorValue);
+    payload.luzEncendida = this.toBoolean(lightValue) || payload.puerta;
 
     delete payload.luz;
     return payload;
