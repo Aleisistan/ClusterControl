@@ -260,7 +260,7 @@
 
     <select class="form-select" [(ngModel)]="historyFilter" (ngModelChange)="onHistoryFilterChange()">
       <option value="24h">Últimas 24 horas</option>
-      <option value="7d">Últimos 7 días</option>
+      <option value="7d">Últimos 7 días completos (sin hoy)</option>
       <option value="30d">Últimos 30 días</option>
       <option value="day">Día específico</option>
       <option value="custom">Rango personalizado</option>
@@ -301,10 +301,31 @@
   <canvas baseChart [data]="lineChartData" [options]="lineChartOptions" [type]="'line'">
   </canvas>
 
+  <div class="chart-selection" *ngIf="selectedHistoryBucket">
+    <span>
+      Mostrando: {{ selectedHistoryBucket.label }}
+      <ng-container *ngIf="!selectedHistoryBucket.hasRecords"> — Sin registros</ng-container>
+    </span>
+    <button type="button" class="btn btn-outline-light btn-sm" (click)="showFullHistory()">
+      Volver al período completo
+    </button>
+  </div>
+
   <p class="chart-date-range" *ngIf="telemetry.length">
     Mostrando desde {{ telemetry[0].createdAt | date:'dd/MM/yyyy HH:mm:ss' }}
     hasta {{ telemetry[telemetry.length - 1].createdAt | date:'dd/MM/yyyy HH:mm:ss' }}
   </p>
+
+  <div class="history-days" *ngIf="historyBuckets.length">
+    <button type="button" class="history-day" *ngFor="let bucket of historyBuckets"
+      [class.history-day-empty]="!bucket.hasRecords"
+      [class.history-day-selected]="selectedHistoryBucket?.start?.getTime() === bucket.start.getTime()"
+      [attr.aria-pressed]="selectedHistoryBucket?.start?.getTime() === bucket.start.getTime()"
+      (click)="selectHistoryBucket(bucket)">
+      <strong>{{ bucket.label }}</strong>
+      <span>{{ bucket.hasRecords ? 'Con registros' : 'Sin registros' }}</span>
+    </button>
+  </div>
 
 </div>
 

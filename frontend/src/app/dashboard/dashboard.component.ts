@@ -52,6 +52,18 @@ export class DashboardComponent implements OnInit, OnDestroy {
   historyFromDate = this.toDateInputValue(new Date());
   historyToDate = this.toDateInputValue(new Date());
   historyFilterError = '';
+  historyBuckets: Array<{
+    label: string;
+    start: Date;
+    end: Date;
+    hasRecords: boolean;
+  }> = [];
+  selectedHistoryBucket: {
+    label: string;
+    start: Date;
+    end: Date;
+    hasRecords: boolean;
+  } | null = null;
   stateHistory: TelemetryStateHistoryEntry[] = [];
   stateHistoryError = '';
   
@@ -63,6 +75,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   private pendingClusterId: number | null = null;
   private unsubscribeTelemetry?: () => void;
   private telemetryHistoryRequestId = 0;
+  private periodTelemetry: any[] = [];
 
   lineChartData: ChartConfiguration<'line'>['data'] = {
     labels: [],
@@ -254,7 +267,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
     const clusterId = Number(this.selectedClusterId);
     const requestId = ++this.telemetryHistoryRequestId;
+    this.selectedHistoryBucket = null;
+    this.periodTelemetry = [];
     this.telemetry = [];
+    this.historyBuckets = [];
     this.refreshTelemetryChart();
     this.stateHistory = [];
     this.stateHistoryError = '';
@@ -286,26 +302,13 @@ export class DashboardComponent implements OnInit, OnDestroy {
         }
 
         const loadedHistory = Array.isArray(data) ? data : [];
-        const samples = new Map<number, any>();
-        for (const item of [...loadedHistory, ...this.telemetry]) {
-          samples.set(Number(item.id), item);
-        }
-        this.telemetry = [...samples.values()]
-          .filter((item) => {
-            const createdAt = new Date(item.createdAt);
-            return (
-              !Number.isNaN(createdAt.getTime()) &&
-              createdAt >= range.from &&
-              createdAt <= range.to
-            );
-          })
-          .sort(
-            (first, second) =>
-              new Date(first.createdAt).getTime() -
-              new Date(second.createdAt).getTime(),
-          )
-          .slice(-2000);
+        this.periodTelemetry = this.mergeTelemetrySamples(
+          [loadedHistory, this.periodTelemetry],
+          range,
+        );
+        this.telemetry = this.periodTelemetry;
         this.refreshTelemetryChart();
+        this.refreshHistoryBuckets(range);
       });
 
     this.stateHistoryError = '';
@@ -377,17 +380,174 @@ export class DashboardComponent implements OnInit, OnDestroy {
       return;
     }
 
-    const samples = new Map<number, any>();
-    for (const sample of [...this.telemetry, item]) {
-      samples.set(Number(sample.id), sample);
+    this.periodTelemetry = this.mergeTelemetrySamples(
+      [[...this.periodTelemetry, item]],
+      range,
+    );
+    this.refreshHistoryBuckets(range);
+
+    if (this.selectedHistoryBucket) {
+      if (
+        createdAt < this.selectedHistoryBucket.start ||
+        createdAt > this.selectedHistoryBucket.end
+      ) {
+        return;
+      }
+    } else {
+      this.telemetry = this.periodTelemetry;
     }
-    this.telemetry = [...samples.values()]
+
+    this.telemetry = this.mergeTelemetrySamples(
+      [[...this.telemetry, item]],
+      this.selectedHistoryBucket
+        ? { from: this.selectedHistoryBucket.start, to: this.selectedHistoryBucket.end }
+        : range,
+    );
+    this.refreshTelemetryChart();
+  }
+
+  private mergeTelemetrySamples(
+    groups: any[][],
+    range?: { from: Date; to: Date },
+  ): any[] {
+    const samples = new Map<number, any>();
+    for (const group of groups) {
+      for (const sample of group) {
+        const createdAt = new Date(sample.createdAt);
+        if (
+          range &&
+          (Number.isNaN(createdAt.getTime()) ||
+            createdAt < range.from ||
+            createdAt > range.to)
+        ) {
+          continue;
+        }
+        samples.set(Number(sample.id), sample);
+      }
+    }
+
+    return [...samples.values()]
       .sort(
         (first, second) =>
           new Date(first.createdAt).getTime() -
           new Date(second.createdAt).getTime(),
       )
       .slice(-2000);
+  }
+
+  private refreshHistoryBuckets(
+    range = this.getHistoryRange(),
+  ): void {
+    if (!range) {
+      this.historyBuckets = [];
+      return;
+    }
+
+    const buckets: Array<{
+      label: string;
+      start: Date;
+      end: Date;
+      hasRecords: boolean;
+    }> = [];
+    const isHourly = this.historyFilter === '24h';
+    const cursor = new Date(range.from);
+
+    while (cursor <= range.to) {
+      const start = new Date(cursor);
+      const next = new Date(start);
+      if (isHourly) {
+        next.setTime(next.getTime() + 3 * 60 * 60 * 1000);
+      } else {
+        next.setDate(next.getDate() + 1);
+        next.setHours(0, 0, 0, 0);
+      }
+      const end = new Date(Math.min(next.getTime() - 1, range.to.getTime()));
+      const hasRecords = this.periodTelemetry.some((item: any) => {
+        const createdAt = new Date(item.createdAt);
+        return createdAt >= start && createdAt <= end;
+      });
+      buckets.push({
+        label: isHourly
+          ? `${start.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' })} ${this.formatHour(start)}–${this.formatHour(next)}`
+          : start.toLocaleDateString('es-AR', {
+              weekday: 'short',
+              day: '2-digit',
+              month: '2-digit',
+            }),
+        start,
+        end,
+        hasRecords,
+      });
+      cursor.setTime(next.getTime());
+    }
+
+    this.historyBuckets = buckets;
+    if (this.selectedHistoryBucket) {
+      this.selectedHistoryBucket =
+        buckets.find(
+          (bucket) =>
+            bucket.start.getTime() === this.selectedHistoryBucket?.start.getTime(),
+        ) ?? this.selectedHistoryBucket;
+    }
+  }
+
+  private formatHour(date: Date): string {
+    return date.toLocaleTimeString('es-AR', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    });
+  }
+
+  selectHistoryBucket(bucket: {
+    label: string;
+    start: Date;
+    end: Date;
+    hasRecords: boolean;
+  }): void {
+    this.selectedHistoryBucket = bucket;
+    this.historyFilterError = '';
+    const requestId = ++this.telemetryHistoryRequestId;
+    this.telemetry = [];
+    this.refreshTelemetryChart();
+
+    if (!bucket.hasRecords) return;
+
+    this.telemetryService
+      .getHistory(Number(this.selectedClusterId), {
+        from: bucket.start.toISOString(),
+        to: bucket.end.toISOString(),
+        limit: 2000,
+      })
+      .subscribe({
+        next: (data: any) => {
+          if (
+            requestId !== this.telemetryHistoryRequestId ||
+            !this.selectedHistoryBucket ||
+            this.selectedHistoryBucket.start.getTime() !== bucket.start.getTime()
+          ) {
+            return;
+          }
+
+          this.telemetry = this.mergeTelemetrySamples(
+            [Array.isArray(data) ? data : [], this.periodTelemetry],
+            { from: bucket.start, to: bucket.end },
+          );
+          this.refreshTelemetryChart();
+        },
+        error: () => {
+          if (requestId === this.telemetryHistoryRequestId) {
+            this.historyFilterError = 'No se pudieron cargar las lecturas de este período.';
+          }
+        },
+      });
+  }
+
+  showFullHistory(): void {
+    this.selectedHistoryBucket = null;
+    this.telemetry = this.periodTelemetry;
+    this.historyFilterError = '';
+    this.telemetryHistoryRequestId++;
     this.refreshTelemetryChart();
   }
 
@@ -518,7 +678,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
         from = new Date(now.getTime() - 24 * 60 * 60 * 1000);
         break;
       case '7d':
-        from = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        to = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        from = new Date(to);
+        from.setDate(from.getDate() - 7);
+        to = new Date(to.getTime() - 1);
         break;
       case '30d':
         from = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
@@ -532,6 +695,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
         from = selectedDay;
         to = new Date(selectedDay);
         to.setDate(to.getDate() + 1);
+        to.setMilliseconds(to.getMilliseconds() - 1);
         break;
       }
       case 'custom': {
@@ -544,6 +708,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
         from = selectedFrom;
         to = new Date(selectedTo);
         to.setDate(to.getDate() + 1);
+        to.setMilliseconds(to.getMilliseconds() - 1);
         break;
       }
       default:

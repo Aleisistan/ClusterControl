@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Between, LessThan, Repository } from 'typeorm';
+import { In, LessThan, Repository } from 'typeorm';
 
 import { Telemetry } from '../telemetry.entity';
 
@@ -33,17 +33,32 @@ export class TelemetryRepository {
     to: Date,
     limit: number,
   ) {
-    const history = await this.repository.find({
-      where: {
-        cluster: { id: clusterId },
-        created_at: Between(from, to),
-      },
-      relations: { cluster: true },
-      order: { created_at: 'DESC', id: 'DESC' },
-      take: limit,
-    });
+    const sampledIds: Array<{ id: number }> = await this.repository.query(
+      `
+        WITH buckets AS (
+          SELECT
+            id,
+            created_at,
+            NTILE($4::int) OVER (ORDER BY created_at, id) AS bucket
+          FROM telemetry
+          WHERE cluster_id = $1
+            AND created_at >= $2
+            AND created_at <= $3
+        )
+        SELECT DISTINCT ON (bucket) id
+        FROM buckets
+        ORDER BY bucket, created_at, id
+      `,
+      [clusterId, from, to, limit],
+    );
 
-    return history.reverse();
+    if (sampledIds.length === 0) return [];
+
+    return this.repository.find({
+      where: { id: In(sampledIds.map(({ id }) => id)) },
+      relations: { cluster: true },
+      order: { created_at: 'ASC', id: 'ASC' },
+    });
   }
 
   async findStateChanges(
