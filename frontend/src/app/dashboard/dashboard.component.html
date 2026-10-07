@@ -333,7 +333,7 @@
   <div class="state-history-header">
     <div>
       <h3>Historial de cambios de estado</h3>
-      <span>Extractor, aire, puerta y luz; incluye las lecturas ambientales del momento del cambio.</span>
+      <span>Extractor, aire, puerta y luz; también registra cortes si pasan más de 30 segundos entre lecturas.</span>
     </div>
   </div>
 
@@ -355,17 +355,26 @@
       </thead>
       <tbody>
         <tr *ngFor="let entry of stateHistory">
-          <td>{{ entry.createdAt | date:'dd/MM/yyyy HH:mm:ss' }}</td>
-          <td>
-            <div *ngFor="let change of getStateChanges(entry)">
-              <strong>{{ change.label }}:</strong>
-              {{ change.from }} → {{ change.to }}
-            </div>
-          </td>
-          <td>{{ entry.temperature1 | number:'1.1-1' }} °C</td>
-          <td>{{ entry.temperature2 | number:'1.1-1' }} °C</td>
-          <td>{{ entry.humidity1 | number:'1.1-1' }} %</td>
-          <td>{{ entry.humidity2 | number:'1.1-1' }} %</td>
+          @if (entry.eventType === 'disconnect') {
+            <td>{{ entry.startedAt | date:'dd/MM/yyyy HH:mm:ss' }}</td>
+            <td colspan="5">
+              <strong>Conexión perdida</strong>;
+              restablecida {{ entry.endedAt | date:'dd/MM/yyyy HH:mm:ss' }}.
+              Tiempo sin conexión: {{ formatOutageDuration(entry.startedAt, entry.endedAt) }}.
+            </td>
+          } @else {
+            <td>{{ entry.createdAt | date:'dd/MM/yyyy HH:mm:ss' }}</td>
+            <td>
+              <div *ngFor="let change of getStateChanges(entry)">
+                <strong>{{ change.label }}:</strong>
+                {{ change.from }} → {{ change.to }}
+              </div>
+            </td>
+            <td>{{ entry.temperature1 | number:'1.1-1' }} °C</td>
+            <td>{{ entry.temperature2 | number:'1.1-1' }} °C</td>
+            <td>{{ entry.humidity1 | number:'1.1-1' }} %</td>
+            <td>{{ entry.humidity2 | number:'1.1-1' }} %</td>
+          }
         </tr>
         <tr *ngIf="stateHistory.length === 0">
           <td colspan="6" class="state-history-empty">

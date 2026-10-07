@@ -10,12 +10,14 @@ describe('TelemetryService', () => {
   let service: TelemetryService;
   let telemetryRepository: {
     findStateChanges: jest.Mock;
+    findOutages: jest.Mock;
     deleteOlderThan: jest.Mock;
   };
 
   beforeEach(async () => {
     telemetryRepository = {
       findStateChanges: jest.fn().mockResolvedValue([]),
+      findOutages: jest.fn().mockResolvedValue([]),
       deleteOlderThan: jest.fn().mockResolvedValue(0),
     };
 
@@ -50,7 +52,7 @@ describe('TelemetryService', () => {
         to.toISOString(),
         '25',
       ),
-    ).resolves.toBe(rows);
+    ).resolves.toEqual(rows);
 
     expect(telemetryRepository.findStateChanges).toHaveBeenCalledWith(
       12,
@@ -58,6 +60,32 @@ describe('TelemetryService', () => {
       to,
       25,
     );
+    expect(telemetryRepository.findOutages).toHaveBeenCalledWith(
+      12,
+      from,
+      to,
+      25,
+    );
+  });
+
+  it('includes recovered outages in chronological history order', async () => {
+    const stateChange = {
+      id: 5,
+      createdAt: new Date('2026-10-06T12:01:00.000Z'),
+    };
+    const outage = {
+      id: 'outage-3-4',
+      eventType: 'disconnect',
+      createdAt: new Date('2026-10-06T12:00:30.000Z'),
+      startedAt: new Date('2026-10-06T12:00:15.000Z'),
+      endedAt: new Date('2026-10-06T12:00:30.000Z'),
+    };
+    telemetryRepository.findStateChanges.mockResolvedValue([stateChange]);
+    telemetryRepository.findOutages.mockResolvedValue([outage]);
+
+    await expect(
+      service.getStateHistory(12, '2026-10-06T12:00:00.000Z', '2026-10-06T12:02:00.000Z'),
+    ).resolves.toEqual([stateChange, outage]);
   });
 
   it('rejects invalid state-history date ranges', async () => {

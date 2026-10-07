@@ -10,6 +10,8 @@ import { FormsModule } from '@angular/forms';
 import { SocketService } from '../services/socket.service';
 import {
   TelemetryService,
+  TelemetryHistoryEntry,
+  TelemetryOutageHistoryEntry,
   TelemetryStateHistoryEntry,
 } from '../services/telemetry.service';
 import { WeatherService } from '../services/weather.service';
@@ -28,6 +30,9 @@ Chart.register(zoomPlugin);
   styleUrls: ['./dashboard.component.css'],
 })
 export class DashboardComponent implements OnInit, OnDestroy {
+  private static readonly TELEMETRY_INTERVAL_MS = 15_000;
+  private static readonly OUTAGE_GAP_MS = 30_000;
+
   @ViewChild(BaseChartDirective) telemetryChart?: BaseChartDirective;
 
   telemetry: any[] = [];
@@ -64,7 +69,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     end: Date;
     hasRecords: boolean;
   } | null = null;
-  stateHistory: TelemetryStateHistoryEntry[] = [];
+  stateHistory: TelemetryHistoryEntry[] = [];
   stateHistoryError = '';
   
   lastWsTime: number = 0;
@@ -320,9 +325,16 @@ export class DashboardComponent implements OnInit, OnDestroy {
       })
       .subscribe({
         next: (data) => {
+          if (
+            requestId !== this.telemetryHistoryRequestId ||
+            Number(this.selectedClusterId) !== clusterId
+          ) {
+            return;
+          }
+
           const loadedHistory = Array.isArray(data) ? data : [];
           const liveEntries = this.stateHistory.filter(
-            (entry) => !loadedHistory.some((loaded: TelemetryStateHistoryEntry) => loaded.id === entry.id),
+            (entry) => !loadedHistory.some((loaded) => loaded.id === entry.id),
           );
           this.stateHistory = [...loadedHistory, ...liveEntries]
             .sort(
@@ -333,6 +345,13 @@ export class DashboardComponent implements OnInit, OnDestroy {
             .slice(0, 2000);
         },
         error: () => {
+          if (
+            requestId !== this.telemetryHistoryRequestId ||
+            Number(this.selectedClusterId) !== clusterId
+          ) {
+            return;
+          }
+
           this.stateHistory = [];
           this.stateHistoryError = 'No se pudo cargar el historial de cambios de estado.';
         },
@@ -348,23 +367,39 @@ export class DashboardComponent implements OnInit, OnDestroy {
         this.lastWsTime = Date.now();
         this.addTelemetrySample(data);
         const previous = this.latest;
-        if (
-          previous &&
-          Number(previous.id) !== Number(data.id) &&
-          this.hasStateChanges(previous, data) &&
-          this.isWithinHistoryRange(data.createdAt) &&
-          !this.stateHistory.some((entry) => entry.id === Number(data.id))
-        ) {
-          this.stateHistory = [
-            ...this.stateHistory,
-            this.toStateHistoryEntry(previous, data),
-          ]
-            .sort(
-              (first, second) =>
-                new Date(second.createdAt).getTime() -
-                new Date(first.createdAt).getTime(),
-            )
-            .slice(0, 2000);
+        if (previous && Number(previous.id) !== Number(data.id)) {
+          if (
+            this.hasTelemetryGap(previous, data) &&
+            this.isWithinHistoryRange(data.createdAt)
+          ) {
+            const outage = this.toOutageHistoryEntry(previous, data);
+            if (!this.stateHistory.some((entry) => entry.id === outage.id)) {
+              this.stateHistory = [...this.stateHistory, outage]
+                .sort(
+                  (first, second) =>
+                    new Date(second.createdAt).getTime() -
+                    new Date(first.createdAt).getTime(),
+                )
+                .slice(0, 2000);
+            }
+          }
+
+          if (
+            this.hasStateChanges(previous, data) &&
+            this.isWithinHistoryRange(data.createdAt) &&
+            !this.stateHistory.some((entry) => entry.id === Number(data.id))
+          ) {
+            this.stateHistory = [
+              ...this.stateHistory,
+              this.toStateHistoryEntry(previous, data),
+            ]
+              .sort(
+                (first, second) =>
+                  new Date(second.createdAt).getTime() -
+                  new Date(first.createdAt).getTime(),
+              )
+              .slice(0, 2000);
+          }
         }
         this.latest = data;
       
@@ -596,9 +631,11 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   getStateChanges(
-    entry: TelemetryStateHistoryEntry,
+    entry: TelemetryHistoryEntry,
   ): Array<{ label: string; from: string; to: string }> {
     const changes: Array<{ label: string; from: string; to: string }> = [];
+
+    if (this.isOutage(entry)) return changes;
 
     if (entry.previousExtractor !== entry.extractor) {
       changes.push({
@@ -632,6 +669,26 @@ export class DashboardComponent implements OnInit, OnDestroy {
     return changes;
   }
 
+  isOutage(entry: TelemetryHistoryEntry): entry is TelemetryOutageHistoryEntry {
+    return 'eventType' in entry && entry.eventType === 'disconnect';
+  }
+
+  formatOutageDuration(startedAt: string, endedAt: string): string {
+    const totalSeconds = Math.max(
+      0,
+      Math.floor((new Date(endedAt).getTime() - new Date(startedAt).getTime()) / 1000),
+    );
+    const days = Math.floor(totalSeconds / 86400);
+    const hours = Math.floor((totalSeconds % 86400) / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+
+    if (days > 0) return `${days} d ${hours} h ${minutes} min ${seconds} s`;
+    if (hours > 0) return `${hours} h ${minutes} min ${seconds} s`;
+    if (minutes > 0) return `${minutes} min ${seconds} s`;
+    return `${seconds} s`;
+  }
+
   private hasStateChanges(previous: any, current: any): boolean {
     return (
       previous.extractor !== current.extractor ||
@@ -641,12 +698,43 @@ export class DashboardComponent implements OnInit, OnDestroy {
     );
   }
 
+  private hasTelemetryGap(previous: any, current: any): boolean {
+    const previousTime = new Date(previous.createdAt).getTime();
+    const currentTime = new Date(current.createdAt).getTime();
+
+    return (
+      !Number.isNaN(previousTime) &&
+      !Number.isNaN(currentTime) &&
+      currentTime - previousTime > DashboardComponent.OUTAGE_GAP_MS
+    );
+  }
+
+  private toOutageHistoryEntry(
+    previous: any,
+    current: any,
+  ): TelemetryOutageHistoryEntry {
+    const startedAt = new Date(
+      new Date(previous.createdAt).getTime() +
+        DashboardComponent.TELEMETRY_INTERVAL_MS,
+    );
+    const endedAt = new Date(current.createdAt);
+
+    return {
+      id: `outage-${previous.id}-${current.id}`,
+      eventType: 'disconnect',
+      createdAt: endedAt.toISOString(),
+      startedAt: startedAt.toISOString(),
+      endedAt: endedAt.toISOString(),
+    };
+  }
+
   private toStateHistoryEntry(
     previous: any,
     current: any,
   ): TelemetryStateHistoryEntry {
     return {
       id: Number(current.id),
+      eventType: 'state-change',
       createdAt: new Date(current.createdAt).toISOString(),
       temperature1: current.temperature1,
       temperature2: current.temperature2,

@@ -141,12 +141,28 @@ export class TelemetryService implements OnModuleInit, OnModuleDestroy {
 
     if (!range) return [];
 
-    return this.telemetryRepository.findStateChanges(
-      clusterId,
-      range.from,
-      range.to,
-      limit,
-    );
+    const [stateChanges, outages] = await Promise.all([
+      this.telemetryRepository.findStateChanges(
+        clusterId,
+        range.from,
+        range.to,
+        limit,
+      ),
+      this.telemetryRepository.findOutages(
+        clusterId,
+        range.from,
+        range.to,
+        limit,
+      ),
+    ]);
+
+    return [...stateChanges, ...outages]
+      .sort(
+        (first, second) =>
+          new Date(second.createdAt).getTime() -
+          new Date(first.createdAt).getTime(),
+      )
+      .slice(0, limit);
   }
 
   private getEffectiveRange(

@@ -45,6 +45,30 @@ describe('DashboardComponent', () => {
     jasmine.clock().uninstall();
   });
 
+  it('should format a recovered outage duration', () => {
+    expect(
+      component.formatOutageDuration(
+        '2026-10-06T12:00:00.000Z',
+        '2026-10-06T13:02:05.000Z',
+      ),
+    ).toBe('1 h 2 min 5 s');
+  });
+
+  it('should estimate an outage from the last expected telemetry interval to recovery', () => {
+    const outage = component['toOutageHistoryEntry'](
+      { id: 10, createdAt: '2026-10-06T12:00:00.000Z' },
+      { id: 14, createdAt: '2026-10-06T12:01:00.000Z' },
+    );
+
+    expect(outage).toEqual({
+      id: 'outage-10-14',
+      eventType: 'disconnect',
+      createdAt: '2026-10-06T12:01:00.000Z',
+      startedAt: '2026-10-06T12:00:15.000Z',
+      endedAt: '2026-10-06T12:01:00.000Z',
+    });
+  });
+
   it('should mark days without telemetry records', () => {
     jasmine.clock().install();
     jasmine.clock().mockDate(new Date(2026, 9, 6, 14, 30));

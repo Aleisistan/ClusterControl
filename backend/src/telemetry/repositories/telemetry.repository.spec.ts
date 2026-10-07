@@ -32,4 +32,29 @@ describe('TelemetryRepository', () => {
       chronological[1].created_at,
     ]);
   });
+
+  it('detects telemetry gaps exceeding the expected reporting interval', async () => {
+    const outage = {
+      id: 'outage-2-3',
+      eventType: 'disconnect',
+      createdAt: new Date('2026-10-06T12:01:00Z'),
+      startedAt: new Date('2026-10-06T12:00:45Z'),
+      endedAt: new Date('2026-10-06T12:01:00Z'),
+    };
+    const repository = {
+      query: jest.fn().mockResolvedValue([outage]),
+    } as unknown as Repository<Telemetry>;
+    const telemetryRepository = new TelemetryRepository(repository);
+    const from = new Date('2026-10-06T12:00:00Z');
+    const to = new Date('2026-10-06T12:02:00Z');
+
+    await expect(
+      telemetryRepository.findOutages(1, from, to, 10),
+    ).resolves.toEqual([outage]);
+
+    expect(repository.query).toHaveBeenCalledWith(
+      expect.stringContaining("created_at - previous_created_at > INTERVAL '30 seconds'"),
+      [1, from, to, 10],
+    );
+  });
 });

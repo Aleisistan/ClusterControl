@@ -69,6 +69,7 @@ export class TelemetryRepository {
   ): Promise<
     Array<{
       id: number;
+      eventType: 'state-change';
       createdAt: Date;
       temperature1: number;
       temperature2: number;
@@ -118,6 +119,7 @@ export class TelemetryRepository {
         )
         SELECT
           id,
+          'state-change' AS "eventType",
           created_at AS "createdAt",
           temperature1,
           temperature2,
@@ -139,6 +141,60 @@ export class TelemetryRepository {
             OR puerta IS DISTINCT FROM previous_puerta
             OR "luzEncendida" IS DISTINCT FROM previous_light
           )
+        ORDER BY created_at DESC, id DESC
+        LIMIT $4
+      `,
+      [clusterId, from, to, limit],
+    );
+  }
+
+  async findOutages(
+    clusterId: number,
+    from: Date,
+    to: Date,
+    limit: number,
+  ): Promise<
+    Array<{
+      id: string;
+      eventType: 'disconnect';
+      createdAt: Date;
+      startedAt: Date;
+      endedAt: Date;
+    }>
+  > {
+    return this.repository.query(
+      `
+        WITH previous_sample AS (
+          SELECT id, cluster_id, created_at
+          FROM telemetry
+          WHERE cluster_id = $1 AND created_at < $2
+          ORDER BY created_at DESC, id DESC
+          LIMIT 1
+        ),
+        samples AS (
+          SELECT id, cluster_id, created_at
+          FROM telemetry
+          WHERE cluster_id = $1 AND created_at >= $2 AND created_at <= $3
+          UNION ALL
+          SELECT id, cluster_id, created_at
+          FROM previous_sample
+        ),
+        compared AS (
+          SELECT
+            samples.*,
+            LAG(id) OVER (ORDER BY created_at, id) AS previous_id,
+            LAG(created_at) OVER (ORDER BY created_at, id) AS previous_created_at
+          FROM samples
+        )
+        SELECT
+          'outage-' || previous_id::text || '-' || id::text AS id,
+          'disconnect' AS "eventType",
+          created_at AS "createdAt",
+          previous_created_at + INTERVAL '15 seconds' AS "startedAt",
+          created_at AS "endedAt"
+        FROM compared
+        WHERE previous_created_at IS NOT NULL
+          AND created_at - previous_created_at > INTERVAL '30 seconds'
         ORDER BY created_at DESC, id DESC
         LIMIT $4
       `,

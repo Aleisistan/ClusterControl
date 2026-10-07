@@ -5,6 +5,7 @@ import { environment } from '../../environments/environment';
 
 export interface TelemetryStateHistoryEntry {
   id: number;
+  eventType: 'state-change';
   createdAt: string;
   temperature1: number;
   temperature2: number;
@@ -19,6 +20,18 @@ export interface TelemetryStateHistoryEntry {
   previousPuerta: boolean;
   previousLuzEncendida: boolean;
 }
+
+export interface TelemetryOutageHistoryEntry {
+  id: string;
+  eventType: 'disconnect';
+  createdAt: string;
+  startedAt: string;
+  endedAt: string;
+}
+
+export type TelemetryHistoryEntry =
+  | TelemetryStateHistoryEntry
+  | TelemetryOutageHistoryEntry;
 
 @Injectable({
   providedIn: 'root'
@@ -44,7 +57,7 @@ export class TelemetryService {
     clusterId: number,
     options?: { from?: string; to?: string; limit?: number },
   ) {
-    return this.http.get<TelemetryStateHistoryEntry[]>(
+    return this.http.get<TelemetryHistoryEntry[]>(
       `${this.apiUrl}/state-history`,
       { params: this.createHistoryParams(clusterId, options) },
     );
