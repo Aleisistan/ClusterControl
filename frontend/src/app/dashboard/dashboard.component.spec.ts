@@ -21,16 +21,11 @@ describe('DashboardComponent', () => {
     expect(component).toBeTruthy();
   });
 
-  it('should prefer the direct camera IP stream when the camera is configured', () => {
-    const url = component.buildCameraStreamUrl('192.168.2.54');
+  it('should use the backend stream route so camera access can be shared', () => {
+    const url = component.buildCameraStreamUrl(7);
 
-    expect(url).toBe('http://192.168.2.54:81/stream');
-  });
-
-  it('should fall back to the backend stream route when no direct camera IP exists', () => {
-    const url = component.buildCameraStreamUrl('');
-
-    expect(url).toContain('/camera/stream/');
+    expect(url).toContain('/camera/stream/7');
+    expect(url).not.toContain(':81/stream');
   });
 
   it('should use the seven complete calendar days before today', () => {

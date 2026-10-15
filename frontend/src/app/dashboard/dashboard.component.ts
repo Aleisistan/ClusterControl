@@ -16,7 +16,6 @@ import {
 } from '../services/telemetry.service';
 import { WeatherService } from '../services/weather.service';
 import { ClusterService } from '../services/cluster.service';
-import { CameraService } from '../services/camera.service';
 import { AuthService } from '../services/auth.service';
 import { environment } from '../../environments/environment';
 
@@ -44,8 +43,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
   currentTime = new Date();
   clusterTime = '';
   clusterDate = '';
-  cameraIp = '';
-  snapshotUrl: string = '';
   cameraStreamUrl: string = '';
   selectedCluster: any;
   clusters: any[] = [];
@@ -141,32 +138,12 @@ export class DashboardComponent implements OnInit, OnDestroy {
     private socketService: SocketService,
     private weatherService: WeatherService,
     private clusterService: ClusterService,
-    private cameraService: CameraService,
     private route: ActivatedRoute,
     private router: Router,
     private authService: AuthService,
   ) {}
 
-  loadCamera(): void {
-   // 1. Obtener el clusterId activo (soporta si selectedCluster es un objeto o un ID)
-  const clusterId = this.selectedClusterId || this.selectedCluster?.id;
-
-  if (!clusterId) {
-    console.warn('No hay un cluster seleccionado para cargar la cámara');
-    return;
-  }
-
-  // 2. Apuntar directamente al endpoint Proxy de NestJS
-  // Si tu backend soporta parámetro por cluster: `${environment.apiUrl}/camera/stream/${clusterId}`
-  // Si tu backend usa la URL global del .env: `${environment.apiUrl}/camera/stream`
-  this.snapshotUrl = `${environment.apiUrl}/camera/stream`;
-
-  console.log('Stream de cámara vinculado a:', this.snapshotUrl);
-
-  }
-
   ngOnInit(): void {
-    this.loadCamera();
     const initialClusterId = this.route.snapshot.queryParamMap.get('clusterId');
     this.pendingClusterId = initialClusterId ? Number(initialClusterId) : null;
 
@@ -210,19 +187,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
     );
 
     setInterval(() => {
-      //this.cameraService.getCameraIp().subscribe((data: any) => {
-        //this.cameraIp = data.ip;
-        //this.updateSnapshot();
-      //});
-      this.loadCamera();
-    }, 30000);
-
-    setInterval(() => {
       this.currentTime = new Date();
       this.updateClusterTime();
     }, 1000);
-
-    this.updateSnapshot();
   };
   ngOnDestroy(): void {
     this.routeSubscription?.unsubscribe();
@@ -247,7 +214,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
   this.avgTemperature = 0;
   this.avgHumidity = 0;
 
-  this.loadCamera();
   this.loadTelemetry();
   this.loadWeather();
   this.updateClusterTime(); // <--- Aquí ya calculará la hora con el nuevo timezone
@@ -877,31 +843,7 @@ loadWeather(): void {
     error: (err) => console.error('[WEATHER] Error al llamar al backend:', err)
   });
 }
- updateSnapshot(): void {
-  if (!this.cameraIp) return;
-
-  // Limpia cualquier protocolo o parámetro previo en la IP
-  const cleanIp = this.cameraIp
-    .replace(/^https?:\/\//, '')
-    .split('/')[0]
-    .split('?')[0];
-
-  // Construye la URL exacta del stream
-  this.snapshotUrl = `http://${cleanIp}:81/stream`;
-  console.log('Stream URL activa:', this.snapshotUrl);
-}
-  buildCameraStreamUrl(cameraIp: string = '', clusterId: number | null = this.selectedClusterId): string {
-    const directIp = (cameraIp || this.selectedCluster?.camera?.ip || '').trim();
-    const cleanIp = directIp
-      .replace(/^https?:\/\//, '')
-      .split('/')[0]
-      .split('?')[0]
-      .trim();
-
-    if (cleanIp) {
-      return `http://${cleanIp}:81/stream`;
-    }
-
+  buildCameraStreamUrl(clusterId: number | null = this.selectedClusterId): string {
     if (!clusterId) {
       return '';
     }
@@ -920,9 +862,7 @@ loadWeather(): void {
     const clusterId = Number(this.selectedClusterId);
     this.camera1Loaded = false;
 
-    this.cameraStreamUrl = this.buildCameraStreamUrl(this.selectedCluster?.camera?.ip ?? '', clusterId || null);
-
-    console.log('[CAMERA] Stream seleccionado:', this.cameraStreamUrl);
+    this.cameraStreamUrl = this.buildCameraStreamUrl(clusterId || null);
   }
 
 updateClusterTime(): void {

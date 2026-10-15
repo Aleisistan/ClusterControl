@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { CameraController } from './camera.controller';
+import { CameraStreamService } from './camera-stream.service';
 import { CameraService } from './camera.service';
 
 import { Camera } from './entities/camera.entity';
@@ -11,7 +12,7 @@ import { ClusterModule } from '../cluster/cluster.module';
 @Module({
   imports: [TypeOrmModule.forFeature([Camera]), ClusterModule],
   controllers: [CameraController],
-  providers: [CameraService, CameraRepository],
+  providers: [CameraService, CameraStreamService, CameraRepository],
   exports: [CameraService, CameraRepository],
 })
 export class CameraModule {}

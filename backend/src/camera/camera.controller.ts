@@ -15,6 +15,7 @@ import type { Response } from 'express';
 import axios from 'axios';
 
 import { CameraService } from './camera.service';
+import { CameraStreamService } from './camera-stream.service';
 import { CreateCameraDto } from './dto/create-camera.dto';
 import { UpdateCameraDto } from './dto/update-camera.dto';
 
@@ -29,6 +30,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 export class CameraController {
   constructor(
     private readonly cameraService: CameraService,
+    private readonly cameraStreamService: CameraStreamService,
     private readonly logger: LoggerService,
   ) {}
 
@@ -126,44 +128,7 @@ export class CameraController {
         `[CAMERA] Cluster ${clusterId} → ${streamUrl}`,
       );
 
-      // Conectar con ESP32-CAM
-      const cameraStream = await axios({
-        method: 'GET',
-        url: streamUrl,
-        responseType: 'stream',
-        timeout: 10000,
-      });
-
-      // Headers del stream
-      res.setHeader(
-        'Content-Type',
-        'multipart/x-mixed-replace; boundary=frame',
-      );
-
-      res.setHeader(
-        'Cache-Control',
-        'no-cache',
-      );
-
-      res.setHeader(
-        'Connection',
-        'keep-alive',
-      );
-
-      res.setHeader(
-        'Access-Control-Allow-Origin',
-        '*',
-      );
-
-      // Si el navegador cierra la conexión,
-      // cerrar también la conexión con la cámara
-      res.on('close', () => {
-        cameraStream.data.destroy();
-      });
-
-      // Pasar el stream de la cámara directamente
-      // al navegador
-      cameraStream.data.pipe(res);
+      await this.cameraStreamService.stream(camera.id, streamUrl, res);
 
     } catch (error) {
 
