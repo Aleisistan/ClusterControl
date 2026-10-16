@@ -31,6 +31,7 @@ Chart.register(zoomPlugin);
 export class DashboardComponent implements OnInit, OnDestroy {
   private static readonly TELEMETRY_INTERVAL_MS = 15_000;
   private static readonly OUTAGE_GAP_MS = 60_000;
+  private static readonly CHART_MIN_RANGE_MS = 60_000;
   private static readonly CHART_HISTORY_LIMIT = 10_000;
   private static readonly CHART_SAMPLE_INTERVAL_MS = 20_000;
 
@@ -132,6 +133,11 @@ export class DashboardComponent implements OnInit, OnDestroy {
             enabled: true,
           },
           mode: 'x',
+        },
+        limits: {
+          x: {
+            minRange: DashboardComponent.CHART_MIN_RANGE_MS,
+          },
         },
       },
       tooltip: {
