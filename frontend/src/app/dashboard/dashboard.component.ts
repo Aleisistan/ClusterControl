@@ -30,8 +30,9 @@ Chart.register(zoomPlugin);
 })
 export class DashboardComponent implements OnInit, OnDestroy {
   private static readonly TELEMETRY_INTERVAL_MS = 15_000;
-  private static readonly OUTAGE_GAP_MS = 30_000;
+  private static readonly OUTAGE_GAP_MS = 60_000;
   private static readonly CHART_HISTORY_LIMIT = 10_000;
+  private static readonly CHART_SAMPLE_INTERVAL_MS = 20_000;
 
   @ViewChild(BaseChartDirective) telemetryChart?: BaseChartDirective;
 
@@ -105,6 +106,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
         },
         ticks: {
           autoSkip: true,
+          maxTicksLimit: 100,
+          stepSize: DashboardComponent.CHART_SAMPLE_INTERVAL_MS,
           maxRotation: 45,
           minRotation: 0,
           callback: (value) =>
@@ -146,6 +149,22 @@ export class DashboardComponent implements OnInit, OnDestroy {
               'id' in point
               ? `Lectura ID: ${point.id}`
               : '';
+          },
+          afterBody: (items) => {
+            const point = items.find((item) => item.datasetIndex === 1)
+              ?.raw as { humidity1?: unknown; humidity2?: unknown } | undefined;
+            if (
+              !point ||
+              typeof point.humidity1 !== 'number' ||
+              typeof point.humidity2 !== 'number'
+            ) {
+              return [];
+            }
+
+            return [
+              `Sensor 1: ${point.humidity1}%`,
+              `Sensor 2: ${point.humidity2}%`,
+            ];
           },
         },
       },
@@ -578,11 +597,12 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   private refreshTelemetryChart(): void {
+    const chartSamples = this.getChartSamples();
     this.lineChartData = {
       labels: [],
       datasets: [
         {
-          data: this.telemetry.map((item: any) => ({
+          data: chartSamples.map((item: any) => ({
             id: item.id,
             x: new Date(item.createdAt).getTime(),
             y: this.chartTemperatureView === 's1'
@@ -598,9 +618,11 @@ export class DashboardComponent implements OnInit, OnDestroy {
               : 'Temperatura Promedio °C'
         },
         {
-          data: this.telemetry.map((item: any) => ({
+          data: chartSamples.map((item: any) => ({
             id: item.id,
             x: new Date(item.createdAt).getTime(),
+            humidity1: item.humidity1,
+            humidity2: item.humidity2,
             y: this.chartHumidityView === 's1'
               ? item.humidity1
               : this.chartHumidityView === 's2'
@@ -617,8 +639,50 @@ export class DashboardComponent implements OnInit, OnDestroy {
     };
   }
 
+  private getChartSamples(): any[] {
+    const samplesByInterval = new Map<number, any>();
+
+    for (const sample of this.telemetry) {
+      const timestamp = new Date(sample.createdAt).getTime();
+      if (!Number.isFinite(timestamp)) continue;
+
+      const interval =
+        Math.floor(timestamp / DashboardComponent.CHART_SAMPLE_INTERVAL_MS);
+      samplesByInterval.set(interval, sample);
+    }
+
+    return [...samplesByInterval.entries()]
+      .sort(([first], [second]) => first - second)
+      .map(([, sample]) => sample);
+  }
+
   onSensorViewChange(): void {
     this.refreshTelemetryChart();
+  }
+
+  getLatestTelemetryStatus(): string {
+    if (!this.latest) return 'Sin lecturas disponibles';
+
+    const timestamp = new Date(this.latest.createdAt).getTime();
+    if (!Number.isFinite(timestamp)) return 'Hora de lectura no disponible';
+
+    const ageMs = Math.max(0, Date.now() - timestamp);
+    if (ageMs <= DashboardComponent.OUTAGE_GAP_MS) {
+      return 'Lectura reciente';
+    }
+
+    const ageSeconds = Math.floor(ageMs / 1000);
+    if (ageSeconds < 60) return `Sin actualización hace ${ageSeconds} s`;
+
+    const ageMinutes = Math.floor(ageSeconds / 60);
+    if (ageMinutes < 60) return `Sin actualización hace ${ageMinutes} min`;
+
+    const ageHours = Math.floor(ageMinutes / 60);
+    if (ageHours < 24) {
+      return `Sin actualización hace ${ageHours} h ${ageMinutes % 60} min`;
+    }
+
+    return `Sin actualización hace ${Math.floor(ageHours / 24)} días`;
   }
 
   resetChartZoom(): void {

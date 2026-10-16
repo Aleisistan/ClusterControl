@@ -267,6 +267,33 @@
     </select>
   </div>
 
+  <div class="mt-3 p-3 rounded border border-secondary">
+    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+      <strong>Último estado recibido de los sensores</strong>
+      <span class="badge"
+        [ngClass]="latest && getLatestTelemetryStatus() === 'Lectura reciente'
+          ? 'bg-success'
+          : 'bg-warning text-dark'">
+        {{ getLatestTelemetryStatus() }}
+      </span>
+    </div>
+
+    <ng-container *ngIf="latest; else noLatestTelemetry">
+      <div class="d-flex flex-wrap gap-3 mt-2">
+        <span>Temperatura S1: {{ latest.temperature1 | number:'1.1-1' }} °C</span>
+        <span>Temperatura S2: {{ latest.temperature2 | number:'1.1-1' }} °C</span>
+        <span>Humedad S1: {{ latest.humidity1 | number:'1.1-1' }} %</span>
+        <span>Humedad S2: {{ latest.humidity2 | number:'1.1-1' }} %</span>
+      </div>
+      <small class="d-block mt-2 text-white-50">
+        Lectura registrada: {{ latest.createdAt | date:'dd/MM/yyyy HH:mm:ss' }}
+      </small>
+    </ng-container>
+    <ng-template #noLatestTelemetry>
+      <p class="mb-0 mt-2">Todavía no hay lecturas para este cluster.</p>
+    </ng-template>
+  </div>
+
   <div class="telemetry-filter-fields" *ngIf="historyFilter === 'day'">
     <label for="history-date">Día</label>
     <input id="history-date" class="form-control" type="date" [(ngModel)]="historyDate"
@@ -353,7 +380,7 @@
   <div class="state-history-header">
     <div>
       <h3>Historial de cambios de estado</h3>
-      <span>Extractor, aire, puerta y luz; también registra cortes si pasan más de 30 segundos entre lecturas.</span>
+      <span>Extractor, aire, puerta y luz; registra cortes si pasan más de 1 minuto entre lecturas.</span>
     </div>
   </div>
 

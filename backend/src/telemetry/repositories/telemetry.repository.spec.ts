@@ -53,7 +53,7 @@ describe('TelemetryRepository', () => {
     ).resolves.toEqual([outage]);
 
     expect(repository.query).toHaveBeenCalledWith(
-      expect.stringContaining("created_at - previous_created_at > INTERVAL '30 seconds'"),
+      expect.stringContaining("created_at - previous_created_at > INTERVAL '1 minute'"),
       [1, from, to, 10],
     );
   });

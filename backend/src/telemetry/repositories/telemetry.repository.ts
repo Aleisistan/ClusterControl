@@ -194,7 +194,7 @@ export class TelemetryRepository {
           created_at AS "endedAt"
         FROM compared
         WHERE previous_created_at IS NOT NULL
-          AND created_at - previous_created_at > INTERVAL '30 seconds'
+          AND created_at - previous_created_at > INTERVAL '1 minute'
         ORDER BY created_at DESC, id DESC
         LIMIT $4
       `,
