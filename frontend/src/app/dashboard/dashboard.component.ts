@@ -691,6 +691,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   private formatTelemetryDate(value: string): string {
     return new Date(value).toLocaleString('es-AR', {
+      timeZone: this.getClusterTimezone(),
       day: '2-digit',
       month: '2-digit',
       year: 'numeric',
@@ -1041,12 +1042,15 @@ updateClusterTime(): void {
     return 'warning';
   }
 
- getTimezoneLabel(): string {
-  const tz = this.selectedCluster?.timezone 
-          || this.selectedCluster?.timeZone 
-          || this.selectedCluster?.time_zone;
+  getClusterTimezone(): string {
+    return this.selectedCluster?.timezone
+      || this.selectedCluster?.timeZone
+      || this.selectedCluster?.time_zone
+      || 'UTC';
+  }
 
-  if (!tz) return '';
+  getTimezoneLabel(): string {
+  const tz = this.getClusterTimezone();
 
   try {
     const now = new Date();

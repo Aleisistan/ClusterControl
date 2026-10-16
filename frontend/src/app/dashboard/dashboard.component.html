@@ -287,7 +287,7 @@
         <span>Humedad S2: {{ latest.humidity2 | number:'1.1-1' }} %</span>
       </div>
       <small class="d-block mt-2 text-white-50">
-        Lectura registrada: {{ latest.createdAt | date:'dd/MM/yyyy HH:mm:ss' }}
+        Lectura registrada: {{ latest.createdAt | date:'dd/MM/yyyy HH:mm:ss':getClusterTimezone() }}
       </small>
     </ng-container>
     <ng-template #noLatestTelemetry>
@@ -360,8 +360,8 @@
   </div>
 
   <p class="chart-date-range" *ngIf="telemetry.length">
-    Mostrando desde {{ telemetry[0].createdAt | date:'dd/MM/yyyy HH:mm:ss' }}
-    hasta {{ telemetry[telemetry.length - 1].createdAt | date:'dd/MM/yyyy HH:mm:ss' }}
+    Mostrando desde {{ telemetry[0].createdAt | date:'dd/MM/yyyy HH:mm:ss':getClusterTimezone() }}
+    hasta {{ telemetry[telemetry.length - 1].createdAt | date:'dd/MM/yyyy HH:mm:ss':getClusterTimezone() }}
   </p>
 
   <div class="history-days" *ngIf="historyBuckets.length">
@@ -404,14 +404,14 @@
       <tbody>
         <tr *ngFor="let entry of stateHistory">
           @if (entry.eventType === 'disconnect') {
-            <td>{{ entry.startedAt | date:'dd/MM/yyyy HH:mm:ss' }}</td>
+            <td>{{ entry.startedAt | date:'dd/MM/yyyy HH:mm:ss':getClusterTimezone() }}</td>
             <td colspan="5">
               <strong>Conexión perdida</strong>;
-              restablecida {{ entry.endedAt | date:'dd/MM/yyyy HH:mm:ss' }}.
+              restablecida {{ entry.endedAt | date:'dd/MM/yyyy HH:mm:ss':getClusterTimezone() }}.
               Tiempo sin conexión: {{ formatOutageDuration(entry.startedAt, entry.endedAt) }}.
             </td>
           } @else {
-            <td>{{ entry.createdAt | date:'dd/MM/yyyy HH:mm:ss' }}</td>
+            <td>{{ entry.createdAt | date:'dd/MM/yyyy HH:mm:ss':getClusterTimezone() }}</td>
             <td>
               <div *ngFor="let change of getStateChanges(entry)">
                 <strong>{{ change.label }}:</strong>
