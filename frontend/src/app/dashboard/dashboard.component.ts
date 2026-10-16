@@ -31,6 +31,7 @@ Chart.register(zoomPlugin);
 export class DashboardComponent implements OnInit, OnDestroy {
   private static readonly TELEMETRY_INTERVAL_MS = 15_000;
   private static readonly OUTAGE_GAP_MS = 30_000;
+  private static readonly CHART_HISTORY_LIMIT = 10_000;
 
   @ViewChild(BaseChartDirective) telemetryChart?: BaseChartDirective;
 
@@ -49,6 +50,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
   selectedClusterId = 1;
   temperatureView = 'avg';
   humidityView = 'avg';
+  chartTemperatureView = 's1';
+  chartHumidityView = 's1';
   historyFilter = '24h';
   historyDate = this.toDateInputValue(new Date());
   historyFromDate = this.toDateInputValue(new Date());
@@ -95,6 +98,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     },
     scales: {
       x: {
+        type: 'linear',
         title: {
           display: true,
           text: 'Fecha y hora',
@@ -103,6 +107,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
           autoSkip: true,
           maxRotation: 45,
           minRotation: 0,
+          callback: (value) =>
+            this.formatTelemetryDate(new Date(Number(value)).toISOString()),
         },
       },
     },
@@ -127,7 +133,20 @@ export class DashboardComponent implements OnInit, OnDestroy {
       },
       tooltip: {
         callbacks: {
-          title: (items) => items[0]?.label ?? '',
+          title: (items) => {
+            const timestamp = items[0]?.parsed.x;
+            return typeof timestamp === 'number'
+              ? this.formatTelemetryDate(new Date(timestamp).toISOString())
+              : '';
+          },
+          afterTitle: (items) => {
+            const point = items[0]?.raw;
+            return typeof point === 'object' &&
+              point !== null &&
+              'id' in point
+              ? `Lectura ID: ${point.id}`
+              : '';
+          },
         },
       },
     },
@@ -262,7 +281,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
       .getHistory(clusterId, {
         from: range.from.toISOString(),
         to: range.to.toISOString(),
-        limit: 2000,
+        limit: DashboardComponent.CHART_HISTORY_LIMIT,
       })
       .subscribe((data: any) => {
         if (
@@ -439,7 +458,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
           new Date(first.createdAt).getTime() -
           new Date(second.createdAt).getTime(),
       )
-      .slice(-2000);
+      .slice(-DashboardComponent.CHART_HISTORY_LIMIT);
   }
 
   private refreshHistoryBuckets(
@@ -524,7 +543,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
       .getHistory(Number(this.selectedClusterId), {
         from: bucket.start.toISOString(),
         to: bucket.end.toISOString(),
-        limit: 2000,
+        limit: DashboardComponent.CHART_HISTORY_LIMIT,
       })
       .subscribe({
         next: (data: any) => {
@@ -560,24 +579,46 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   private refreshTelemetryChart(): void {
     this.lineChartData = {
-      labels: this.telemetry.map((item: any) =>
-        this.formatTelemetryDate(item.createdAt)
-      ),
+      labels: [],
       datasets: [
         {
-          data: this.telemetry.map(
-            (item: any) => (item.temperature1 + item.temperature2) / 2
-          ),
-          label: 'Temperatura Promedio °C'
+          data: this.telemetry.map((item: any) => ({
+            id: item.id,
+            x: new Date(item.createdAt).getTime(),
+            y: this.chartTemperatureView === 's1'
+              ? item.temperature1
+              : this.chartTemperatureView === 's2'
+                ? item.temperature2
+                : (item.temperature1 + item.temperature2) / 2,
+          })),
+          label: this.chartTemperatureView === 's1'
+            ? 'Temperatura Sensor 1 °C'
+            : this.chartTemperatureView === 's2'
+              ? 'Temperatura Sensor 2 °C'
+              : 'Temperatura Promedio °C'
         },
         {
-          data: this.telemetry.map(
-            (item: any) => (item.humidity1 + item.humidity2) / 2
-          ),
-          label: 'Humedad Promedio %'
+          data: this.telemetry.map((item: any) => ({
+            id: item.id,
+            x: new Date(item.createdAt).getTime(),
+            y: this.chartHumidityView === 's1'
+              ? item.humidity1
+              : this.chartHumidityView === 's2'
+                ? item.humidity2
+                : (item.humidity1 + item.humidity2) / 2,
+          })),
+          label: this.chartHumidityView === 's1'
+            ? 'Humedad Sensor 1 %'
+            : this.chartHumidityView === 's2'
+              ? 'Humedad Sensor 2 %'
+              : 'Humedad Promedio %'
         }
       ]
     };
+  }
+
+  onSensorViewChange(): void {
+    this.refreshTelemetryChart();
   }
 
   resetChartZoom(): void {

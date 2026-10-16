@@ -16,6 +16,7 @@ import { TelemetryResponseDto } from './dto/telemetry-response.dto';
 export class TelemetryService implements OnModuleInit, OnModuleDestroy {
   private static readonly RETENTION_DAYS = 30;
   private static readonly HISTORY_LIMIT = 2000;
+  private static readonly TELEMETRY_HISTORY_LIMIT = 10000;
   private retentionTimer?: NodeJS.Timeout;
 
   constructor(
@@ -116,7 +117,7 @@ export class TelemetryService implements OnModuleInit, OnModuleDestroy {
   ): Promise<TelemetryResponseDto[]> {
     const now = new Date();
     const range = this.getEffectiveRange(fromParam, toParam, now);
-    const limit = this.parseLimit(limitParam);
+    const limit = this.parseLimit(limitParam, TelemetryService.TELEMETRY_HISTORY_LIMIT);
 
     if (!range) return [];
 
@@ -202,15 +203,18 @@ export class TelemetryService implements OnModuleInit, OnModuleDestroy {
     return parsed;
   }
 
-  private parseLimit(value: string | undefined): number {
-    if (!value) return TelemetryService.HISTORY_LIMIT;
+  private parseLimit(
+    value: string | undefined,
+    maxLimit = TelemetryService.HISTORY_LIMIT,
+  ): number {
+    if (!value) return maxLimit;
 
     const limit = Number(value);
     if (!Number.isInteger(limit) || limit < 1) {
       throw new BadRequestException('El límite debe ser un entero positivo');
     }
 
-    return Math.min(limit, TelemetryService.HISTORY_LIMIT);
+    return Math.min(limit, maxLimit);
   }
 
   private async removeExpiredTelemetry(): Promise<void> {

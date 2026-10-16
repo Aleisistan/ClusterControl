@@ -292,6 +292,26 @@
 
 <div class="card chart-card">
   <div class="chart-toolbar">
+    <div class="d-flex align-items-center gap-3 flex-wrap">
+      <label class="d-flex align-items-center gap-2 mb-0">
+        Temperatura
+        <select class="form-select form-select-sm" [(ngModel)]="chartTemperatureView"
+          (ngModelChange)="onSensorViewChange()">
+          <option value="s1">Sensor 1</option>
+          <option value="s2">Sensor 2</option>
+          <option value="avg">Promedio</option>
+        </select>
+      </label>
+      <label class="d-flex align-items-center gap-2 mb-0">
+        Humedad
+        <select class="form-select form-select-sm" [(ngModel)]="chartHumidityView"
+          (ngModelChange)="onSensorViewChange()">
+          <option value="s1">Sensor 1</option>
+          <option value="s2">Sensor 2</option>
+          <option value="avg">Promedio</option>
+        </select>
+      </label>
+    </div>
     <span>Arrastra para desplazarte y usa la rueda o pellizca para ampliar</span>
     <button type="button" class="btn btn-outline-light btn-sm" (click)="resetChartZoom()">
       Restablecer zoom

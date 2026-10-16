@@ -64,6 +64,57 @@ describe('DashboardComponent', () => {
     });
   });
 
+  it('should plot the selected humidity sensor instead of the average', () => {
+    component.telemetry = [
+      {
+        id: 1,
+        createdAt: '2026-10-06T12:00:00.000Z',
+        temperature1: 20,
+        temperature2: 22,
+        humidity1: 34,
+        humidity2: 40,
+      },
+      {
+        id: 2,
+        createdAt: '2026-10-06T12:05:00.000Z',
+        temperature1: 20,
+        temperature2: 22,
+        humidity1: 24,
+        humidity2: 40,
+      },
+    ];
+    component.chartHumidityView = 's1';
+
+    component.onSensorViewChange();
+
+    expect(component.lineChartData.datasets[1].label).toBe('Humedad Sensor 1 %');
+    expect(component.lineChartData.datasets[1].data).toEqual([
+      { id: 1, x: new Date('2026-10-06T12:00:00.000Z').getTime(), y: 34 },
+      { id: 2, x: new Date('2026-10-06T12:05:00.000Z').getTime(), y: 24 },
+    ]);
+  });
+
+  it('should keep plotting the humidity average when average view is selected', () => {
+    component.telemetry = [
+      {
+        id: 1,
+        createdAt: '2026-10-06T12:00:00.000Z',
+        temperature1: 20,
+        temperature2: 22,
+        humidity1: 34,
+        humidity2: 40,
+      },
+    ];
+    component.chartHumidityView = 'avg';
+
+    component.onSensorViewChange();
+
+    expect(component.lineChartData.datasets[1].label).toBe('Humedad Promedio %');
+    expect(component.lineChartData.datasets[1].data).toEqual([
+      { id: 1, x: new Date('2026-10-06T12:00:00.000Z').getTime(), y: 37 },
+    ]);
+  });
+
   it('should mark days without telemetry records', () => {
     jasmine.clock().install();
     jasmine.clock().mockDate(new Date(2026, 9, 6, 14, 30));
