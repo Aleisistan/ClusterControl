@@ -48,6 +48,6 @@ export class Telemetry {
   })
   cluster: Cluster;
 
-  @CreateDateColumn()
+  @CreateDateColumn({ type: 'timestamptz' })
   created_at: Date;
 }

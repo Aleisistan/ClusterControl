@@ -18,5 +18,9 @@ export const databaseConfig = (
 
   autoLoadEntities: true,
 
+  extra: {
+    options: '-c timezone=America/Argentina/Buenos_Aires',
+  },
+
   synchronize: true,
 });
