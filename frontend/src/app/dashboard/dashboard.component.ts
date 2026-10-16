@@ -839,6 +839,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
     let to = now;
 
     switch (this.historyFilter) {
+      case '5m':
+        from = new Date(now.getTime() - 5 * 60 * 1000);
+        break;
       case '24h':
         from = new Date(now.getTime() - 24 * 60 * 60 * 1000);
         break;

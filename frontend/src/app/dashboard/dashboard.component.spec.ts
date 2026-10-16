@@ -40,6 +40,18 @@ describe('DashboardComponent', () => {
     jasmine.clock().uninstall();
   });
 
+  it('should use the last five minutes', () => {
+    jasmine.clock().install();
+    jasmine.clock().mockDate(new Date('2026-10-16T15:00:00.000Z'));
+    component.historyFilter = '5m';
+
+    const range = component['getHistoryRange']();
+
+    expect(range?.from).toEqual(new Date('2026-10-16T14:55:00.000Z'));
+    expect(range?.to).toEqual(new Date('2026-10-16T15:00:00.000Z'));
+    jasmine.clock().uninstall();
+  });
+
   it('should format a recovered outage duration', () => {
     expect(
       component.formatOutageDuration(
