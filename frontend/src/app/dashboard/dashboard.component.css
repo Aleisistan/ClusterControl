@@ -109,7 +109,7 @@
 
 .history-day {
   flex: 1 0 0;
-  min-width: 0;
+  min-width: 100px;
   color: inherit;
   text-align: left;
   cursor: pointer;
@@ -428,6 +428,7 @@
   backdrop-filter: blur(10px);
 
 }
+
 .luz-on {
   border-left: 4px solid #f59e0b;
   background-color: rgba(245, 158, 11, 0.05);
