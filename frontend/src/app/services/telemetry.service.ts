@@ -29,9 +29,19 @@ export interface TelemetryOutageHistoryEntry {
   endedAt: string;
 }
 
+export interface CameraStateHistoryEntry {
+  id: string;
+  eventType: 'camera-state-change';
+  createdAt: string;
+  cameraName: string;
+  from: 'Activa' | 'Inactiva';
+  to: 'Activa' | 'Inactiva';
+}
+
 export type TelemetryHistoryEntry =
   | TelemetryStateHistoryEntry
-  | TelemetryOutageHistoryEntry;
+  | TelemetryOutageHistoryEntry
+  | CameraStateHistoryEntry;
 
 @Injectable({
   providedIn: 'root'

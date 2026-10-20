@@ -80,9 +80,9 @@
        <img *ngIf="cameraStreamUrl"
          [src]="cameraStreamUrl"
            class="camera-stream"
-           [class.hidden]="!camera1Loaded" 
-           (load)="camera1Loaded = true" 
-           (error)="camera1Loaded = false" 
+           [class.hidden]="!camera1Loaded"
+           (load)="onCameraLoad(1)"
+           (error)="onCameraError(1)"
            alt="Cámara del Cluster"/>
     </div>
   </div>
@@ -95,10 +95,11 @@
         Cámara inactiva
       </div>
 
-      <img src="http://live1.tusten.no:8080/axis-cgi/mjpg/video.cgi" 
+      <img src="http://live1.tusten.no:8080/axis-cgi/mjpg/video.cgi"
            class="camera-stream"
-           [class.hidden]="!camera2Loaded" 
-           (load)="camera2Loaded = true" />
+           [class.hidden]="!camera2Loaded"
+           (load)="onCameraLoad(2)"
+           (error)="onCameraError(2)" />
     </div>
   </div>
 </div>
@@ -381,7 +382,7 @@
   <div class="state-history-header">
     <div>
       <h3>Historial de cambios de estado</h3>
-      <span>Extractor, aire, puerta y luz; registra cortes si pasan más de 1 minuto entre lecturas.</span>
+      <span>Extractor, aire, puerta, luz y cámaras; también registra cortes si pasan más de 1 minuto entre lecturas.</span>
     </div>
   </div>
 
@@ -409,6 +410,11 @@
               <strong>Conexión perdida</strong>;
               restablecida {{ entry.endedAt | date:'dd/MM/yyyy HH:mm:ss':getClusterTimezone() }}.
               Tiempo sin conexión: {{ formatOutageDuration(entry.startedAt, entry.endedAt) }}.
+            </td>
+          } @else if (isCameraStateChange(entry)) {
+            <td>{{ entry.createdAt | date:'dd/MM/yyyy HH:mm:ss':getClusterTimezone() }}</td>
+            <td colspan="5">
+              <strong>{{ entry.cameraName }}:</strong> {{ entry.from }} → {{ entry.to }}.
             </td>
           } @else {
             <td>{{ entry.createdAt | date:'dd/MM/yyyy HH:mm:ss':getClusterTimezone() }}</td>

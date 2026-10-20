@@ -36,6 +36,38 @@ describe('DashboardComponent', () => {
     expect(url).not.toContain(':81/stream');
   });
 
+  it('should mark a camera inactive and record it when a refreshed stream times out', () => {
+    jasmine.clock().install();
+    jasmine.clock().mockDate(new Date('2026-10-16T15:00:00.000Z'));
+    component.historyFilter = '24h';
+
+    component.onCameraLoad(1);
+    component['refreshCameraSource'](1, 7);
+    jasmine.clock().tick(10_000);
+
+    expect(component.camera1Loaded).toBeFalse();
+    expect(component.stateHistory).toHaveSize(1);
+    expect(component.stateHistory[0]).toEqual(
+      jasmine.objectContaining({
+        eventType: 'camera-state-change',
+        cameraName: 'Cámara Datacenter',
+        from: 'Activa',
+        to: 'Inactiva',
+      }),
+    );
+    component.onCameraLoad(1);
+    expect(component.stateHistory).toHaveSize(2);
+    expect(component.stateHistory[0]).toEqual(
+      jasmine.objectContaining({
+        cameraName: 'Cámara Datacenter',
+        from: 'Inactiva',
+        to: 'Activa',
+      }),
+    );
+    component.ngOnDestroy();
+    jasmine.clock().uninstall();
+  });
+
   it('should use the seven complete calendar days before today', () => {
     jasmine.clock().install();
     jasmine.clock().mockDate(new Date(2026, 9, 6, 14, 30));

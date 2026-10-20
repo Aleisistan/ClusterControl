@@ -13,6 +13,7 @@ import {
   TelemetryHistoryEntry,
   TelemetryOutageHistoryEntry,
   TelemetryStateHistoryEntry,
+  CameraStateHistoryEntry,
 } from '../services/telemetry.service';
 import { WeatherService } from '../services/weather.service';
 import { ClusterService } from '../services/cluster.service';
@@ -34,6 +35,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
   private static readonly CHART_MIN_RANGE_MS = 60_000;
   private static readonly CHART_HISTORY_LIMIT = 10_000;
   private static readonly CHART_SAMPLE_INTERVAL_MS = 20_000;
+  private static readonly CAMERA_REFRESH_INTERVAL_MS = 15_000;
+  private static readonly CAMERA_LOAD_TIMEOUT_MS = 10_000;
 
   @ViewChild(BaseChartDirective) telemetryChart?: BaseChartDirective;
 
@@ -83,6 +86,11 @@ export class DashboardComponent implements OnInit, OnDestroy {
   private unsubscribeTelemetry?: () => void;
   private telemetryHistoryRequestId = 0;
   private periodTelemetry: any[] = [];
+  private cameraHistorySequence = 0;
+  private cameraRefreshInterval?: ReturnType<typeof setInterval>;
+  private cameraLoadTimeouts = new Map<1 | 2, ReturnType<typeof setTimeout>>();
+  private pendingCameraChecks = new Set<1 | 2>();
+  private unavailableCameras = new Set<1 | 2>();
 
   lineChartData: ChartConfiguration<'line'>['data'] = {
     labels: [],
@@ -188,6 +196,12 @@ export class DashboardComponent implements OnInit, OnDestroy {
   ) {}
 
   ngOnInit(): void {
+    this.refreshCameraSource(2);
+    this.cameraRefreshInterval = setInterval(() => {
+      this.refreshCameraSource(1);
+      this.refreshCameraSource(2);
+    }, DashboardComponent.CAMERA_REFRESH_INTERVAL_MS);
+
     const initialClusterId = this.route.snapshot.queryParamMap.get('clusterId');
     this.pendingClusterId = initialClusterId ? Number(initialClusterId) : null;
 
@@ -238,6 +252,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     this.routeSubscription?.unsubscribe();
     this.unsubscribeTelemetry?.();
+    if (this.cameraRefreshInterval) clearInterval(this.cameraRefreshInterval);
+    for (const timeout of this.cameraLoadTimeouts.values()) clearTimeout(timeout);
   }
 
   onClusterChange(clusterId: number): void {
@@ -263,6 +279,62 @@ export class DashboardComponent implements OnInit, OnDestroy {
   this.updateClusterTime(); // <--- Aquí ya calculará la hora con el nuevo timezone
   this.updateCameraStream();
 }
+
+  onCameraLoad(cameraId: 1 | 2): void {
+    this.clearCameraLoadTimeout(cameraId);
+    this.pendingCameraChecks.delete(cameraId);
+    const wasInactive = this.unavailableCameras.delete(cameraId);
+    if (cameraId === 1) {
+      this.camera1Loaded = true;
+    } else {
+      this.camera2Loaded = true;
+    }
+
+    if (wasInactive) {
+      this.recordCameraStateChange(cameraId, 'Inactiva', 'Activa');
+    }
+  }
+
+  onCameraError(cameraId: 1 | 2): void {
+    this.clearCameraLoadTimeout(cameraId);
+    this.pendingCameraChecks.delete(cameraId);
+    const wasActive = cameraId === 1 ? this.camera1Loaded : this.camera2Loaded;
+    if (cameraId === 1) {
+      this.camera1Loaded = false;
+    } else {
+      this.camera2Loaded = false;
+    }
+
+    if (!wasActive) return;
+
+    this.unavailableCameras.add(cameraId);
+    this.recordCameraStateChange(cameraId, 'Activa', 'Inactiva');
+  }
+
+  private recordCameraStateChange(
+    cameraId: 1 | 2,
+    from: 'Activa' | 'Inactiva',
+    to: 'Activa' | 'Inactiva',
+  ): void {
+    const createdAt = new Date();
+    if (!this.isWithinHistoryRange(createdAt)) return;
+
+    const cameraEvent: CameraStateHistoryEntry = {
+      id: `camera-${cameraId}-${++this.cameraHistorySequence}`,
+      eventType: 'camera-state-change',
+      createdAt: createdAt.toISOString(),
+      cameraName: cameraId === 1 ? 'Cámara Datacenter' : 'Cámara Exterior',
+      from,
+      to,
+    };
+    this.stateHistory = [...this.stateHistory, cameraEvent]
+      .sort(
+        (first, second) =>
+          new Date(second.createdAt).getTime() -
+          new Date(first.createdAt).getTime(),
+      )
+      .slice(0, 2000);
+  }
 
   onHistoryFilterChange(): void {
     this.historyFilterError = '';
@@ -713,7 +785,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   ): Array<{ label: string; from: string; to: string }> {
     const changes: Array<{ label: string; from: string; to: string }> = [];
 
-    if (this.isOutage(entry)) return changes;
+    if (this.isOutage(entry) || this.isCameraStateChange(entry)) return changes;
 
     if (entry.previousExtractor !== entry.extractor) {
       changes.push({
@@ -749,6 +821,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   isOutage(entry: TelemetryHistoryEntry): entry is TelemetryOutageHistoryEntry {
     return 'eventType' in entry && entry.eventType === 'disconnect';
+  }
+
+  isCameraStateChange(entry: TelemetryHistoryEntry): entry is CameraStateHistoryEntry {
+    return 'eventType' in entry && entry.eventType === 'camera-state-change';
   }
 
   formatOutageDuration(startedAt: string, endedAt: string): string {
@@ -976,8 +1052,43 @@ loadWeather(): void {
   private updateCameraStream(): void {
     const clusterId = Number(this.selectedClusterId);
     this.camera1Loaded = false;
+    this.refreshCameraSource(1, clusterId || null);
+  }
 
-    this.cameraStreamUrl = this.buildCameraStreamUrl(clusterId || null);
+  private refreshCameraSource(
+    cameraId: 1 | 2,
+    clusterId: number | null = Number(this.selectedClusterId) || null,
+  ): void {
+    const source =
+      cameraId === 1
+        ? this.buildCameraStreamUrl(clusterId)
+        : environment.camera2Url;
+    if (!source) return;
+
+    this.clearCameraLoadTimeout(cameraId);
+    this.pendingCameraChecks.add(cameraId);
+    this.cameraLoadTimeouts.set(
+      cameraId,
+      setTimeout(() => {
+        if (!this.pendingCameraChecks.has(cameraId)) return;
+        this.onCameraError(cameraId);
+      }, DashboardComponent.CAMERA_LOAD_TIMEOUT_MS),
+    );
+
+    const separator = source.includes('?') ? '&' : '?';
+    const refreshedSource =
+      `${source}${separator}_camera_check=${Date.now()}-${++this.cameraHistorySequence}`;
+    if (cameraId === 1) {
+      this.cameraStreamUrl = refreshedSource;
+    } else {
+      this.camera2StreamUrl = refreshedSource;
+    }
+  }
+
+  private clearCameraLoadTimeout(cameraId: 1 | 2): void {
+    const timeout = this.cameraLoadTimeouts.get(cameraId);
+    if (timeout) clearTimeout(timeout);
+    this.cameraLoadTimeouts.delete(cameraId);
   }
 
 updateClusterTime(): void {
