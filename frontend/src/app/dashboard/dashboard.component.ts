@@ -14,6 +14,7 @@ import {
   TelemetryOutageHistoryEntry,
   TelemetryStateHistoryEntry,
   CameraStateHistoryEntry,
+  DoorSnapshotHistoryEntry,
 } from '../services/telemetry.service';
 import { WeatherService } from '../services/weather.service';
 import { ClusterService } from '../services/cluster.service';
@@ -76,6 +77,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
   } | null = null;
   stateHistory: TelemetryHistoryEntry[] = [];
   stateHistoryError = '';
+  snapshotDownloadError = '';
+  snapshotPreviewError = '';
   
   lastWsTime: number = 0;
   camera1Loaded = false;
@@ -84,11 +87,15 @@ export class DashboardComponent implements OnInit, OnDestroy {
   private routeSubscription?: Subscription;
   private pendingClusterId: number | null = null;
   private unsubscribeTelemetry?: () => void;
+  private unsubscribeDoorSnapshot?: () => void;
   private telemetryHistoryRequestId = 0;
   private periodTelemetry: any[] = [];
   private cameraHistorySequence = 0;
   private cameraRefreshInterval?: ReturnType<typeof setInterval>;
   private cameraLoadTimeouts = new Map<1 | 2, ReturnType<typeof setTimeout>>();
+  private snapshotImageUrls = new Map<number, string>();
+  private snapshotPreviewRequests = new Map<number, Subscription>();
+  private snapshotPreviewFailures = new Set<number>();
   private pendingCameraChecks = new Set<1 | 2>();
   private unavailableCameras = new Set<1 | 2>();
 
@@ -252,6 +259,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     this.routeSubscription?.unsubscribe();
     this.unsubscribeTelemetry?.();
+    this.unsubscribeDoorSnapshot?.();
+    this.clearDoorSnapshotPreviews();
     if (this.cameraRefreshInterval) clearInterval(this.cameraRefreshInterval);
     for (const timeout of this.cameraLoadTimeouts.values()) clearTimeout(timeout);
   }
@@ -359,6 +368,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.telemetry = [];
     this.historyBuckets = [];
     this.refreshTelemetryChart();
+    this.clearDoorSnapshotPreviews();
     this.stateHistory = [];
     this.stateHistoryError = '';
 
@@ -425,6 +435,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
                 new Date(first.createdAt).getTime(),
             )
             .slice(0, 2000);
+          this.savedDoorSnapshots.forEach((entry) =>
+            this.loadDoorSnapshotPreview(entry),
+          );
         },
         error: () => {
           if (
@@ -488,6 +501,34 @@ export class DashboardComponent implements OnInit, OnDestroy {
         this.avgTemperature = (data.temperature1 + data.temperature2) / 2;
         this.avgHumidity = (data.humidity1 + data.humidity2) / 2;
       }
+    });
+    this.unsubscribeDoorSnapshot?.();
+    this.unsubscribeDoorSnapshot = this.socketService.onDoorSnapshot((data: any) => {
+      if (
+        Number(data?.clusterId) !== clusterId ||
+        Number(this.selectedClusterId) !== clusterId ||
+        !this.isWithinHistoryRange(data.createdAt)
+      ) {
+        return;
+      }
+
+      const snapshot: DoorSnapshotHistoryEntry = {
+        id: `door-snapshot-${data.snapshotId}`,
+        eventType: 'door-snapshot',
+        snapshotId: Number(data.snapshotId),
+        telemetryId: Number(data.telemetryId),
+        createdAt: new Date(data.createdAt).toISOString(),
+      };
+      if (this.stateHistory.some((entry) => entry.id === snapshot.id)) return;
+
+      this.stateHistory = [...this.stateHistory, snapshot]
+        .sort(
+          (first, second) =>
+            new Date(second.createdAt).getTime() -
+            new Date(first.createdAt).getTime(),
+        )
+        .slice(0, 2000);
+      this.loadDoorSnapshotPreview(snapshot);
     });
   }
 
@@ -785,7 +826,13 @@ export class DashboardComponent implements OnInit, OnDestroy {
   ): Array<{ label: string; from: string; to: string }> {
     const changes: Array<{ label: string; from: string; to: string }> = [];
 
-    if (this.isOutage(entry) || this.isCameraStateChange(entry)) return changes;
+    if (
+      this.isOutage(entry) ||
+      this.isCameraStateChange(entry) ||
+      this.isDoorSnapshot(entry)
+    ) {
+      return changes;
+    }
 
     if (entry.previousExtractor !== entry.extractor) {
       changes.push({
@@ -825,6 +872,84 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   isCameraStateChange(entry: TelemetryHistoryEntry): entry is CameraStateHistoryEntry {
     return 'eventType' in entry && entry.eventType === 'camera-state-change';
+  }
+
+  isDoorSnapshot(entry: TelemetryHistoryEntry): entry is DoorSnapshotHistoryEntry {
+    return 'eventType' in entry && entry.eventType === 'door-snapshot';
+  }
+
+  get savedDoorSnapshots(): DoorSnapshotHistoryEntry[] {
+    return this.stateHistory.filter((entry) => this.isDoorSnapshot(entry));
+  }
+
+  getDoorSnapshotImageUrl(snapshotId: number): string | undefined {
+    return this.snapshotImageUrls.get(snapshotId);
+  }
+
+  hasDoorSnapshotPreviewFailed(snapshotId: number): boolean {
+    return this.snapshotPreviewFailures.has(snapshotId);
+  }
+
+  private loadDoorSnapshotPreview(entry: DoorSnapshotHistoryEntry): void {
+    if (
+      this.snapshotImageUrls.has(entry.snapshotId) ||
+      this.snapshotPreviewRequests.has(entry.snapshotId)
+    ) {
+      return;
+    }
+
+    const request = this.telemetryService
+      .getDoorSnapshotImage(entry.snapshotId)
+      .subscribe({
+        next: (image) => {
+          this.snapshotPreviewRequests.delete(entry.snapshotId);
+          this.snapshotPreviewFailures.delete(entry.snapshotId);
+          this.snapshotImageUrls.set(
+            entry.snapshotId,
+            URL.createObjectURL(image),
+          );
+        },
+        error: (error: unknown) => {
+          this.snapshotPreviewRequests.delete(entry.snapshotId);
+          this.snapshotPreviewFailures.add(entry.snapshotId);
+          console.error('No se pudo cargar la vista previa de la captura:', error);
+          this.snapshotPreviewError =
+            'No se pudieron cargar algunas imágenes guardadas.';
+        },
+      });
+    this.snapshotPreviewRequests.set(entry.snapshotId, request);
+  }
+
+  private clearDoorSnapshotPreviews(): void {
+    for (const request of this.snapshotPreviewRequests.values()) {
+      request.unsubscribe();
+    }
+    this.snapshotPreviewRequests.clear();
+
+    for (const imageUrl of this.snapshotImageUrls.values()) {
+      URL.revokeObjectURL(imageUrl);
+    }
+    this.snapshotImageUrls.clear();
+    this.snapshotPreviewFailures.clear();
+    this.snapshotPreviewError = '';
+  }
+
+  downloadDoorSnapshot(entry: DoorSnapshotHistoryEntry): void {
+    this.snapshotDownloadError = '';
+    this.telemetryService.getDoorSnapshotImage(entry.snapshotId).subscribe({
+      next: (image) => {
+        const imageUrl = URL.createObjectURL(image);
+        const downloadLink = document.createElement('a');
+        downloadLink.href = imageUrl;
+        downloadLink.download = `captura-puerta-${entry.telemetryId}.jpg`;
+        downloadLink.click();
+        setTimeout(() => URL.revokeObjectURL(imageUrl), 0);
+      },
+      error: (error: unknown) => {
+        console.error('No se pudo descargar la captura de puerta:', error);
+        this.snapshotDownloadError = 'No se pudo descargar la captura de puerta.';
+      },
+    });
   }
 
   formatOutageDuration(startedAt: string, endedAt: string): string {

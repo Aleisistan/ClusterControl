@@ -3,10 +3,13 @@ import {
   Get,
   Query,
   ParseIntPipe,
+  Param,
   UseGuards,
+  Res,
 } from '@nestjs/common';
 import { TelemetryService } from './telemetry.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import type { Response } from 'express';
 
 @Controller('telemetry')
 @UseGuards(JwtAuthGuard)
@@ -36,5 +39,20 @@ export class TelemetryController {
     @Query('limit') limit?: string,
   ) {
     return this.telemetryService.getStateHistory(clusterId, from, to, limit);
+  }
+
+  @Get('door-snapshots/:id/image')
+  async getDoorSnapshotImage(
+    @Param('id', ParseIntPipe) id: number,
+    @Res() response: Response,
+  ): Promise<void> {
+    const image = await this.telemetryService.getDoorSnapshotImage(id);
+
+    response.setHeader('Content-Type', 'image/jpeg');
+    response.setHeader(
+      'Content-Disposition',
+      `attachment; filename="captura-puerta-${id}.jpg"`,
+    );
+    response.send(image);
   }
 }

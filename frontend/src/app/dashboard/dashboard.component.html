@@ -416,6 +416,15 @@
             <td colspan="5">
               <strong>{{ entry.cameraName }}:</strong> {{ entry.from }} → {{ entry.to }}.
             </td>
+          } @else if (isDoorSnapshot(entry)) {
+            <td>{{ entry.createdAt | date:'dd/MM/yyyy HH:mm:ss':getClusterTimezone() }}</td>
+            <td colspan="5">
+              <strong>Puerta abierta:</strong> captura de cámara guardada.
+              <button type="button" class="btn btn-sm btn-outline-light ms-2"
+                (click)="downloadDoorSnapshot(entry)">
+                Descargar imagen
+              </button>
+            </td>
           } @else {
             <td>{{ entry.createdAt | date:'dd/MM/yyyy HH:mm:ss':getClusterTimezone() }}</td>
             <td>
@@ -438,4 +447,52 @@
       </tbody>
     </table>
   </div>
+  <div class="telemetry-filter-error" *ngIf="snapshotDownloadError">
+    {{ snapshotDownloadError }}
+  </div>
+</div>
+
+<div class="card state-history-card p-3">
+  <div class="state-history-header">
+    <div>
+      <h3>Imágenes guardadas</h3>
+      <span>Capturas tomadas automáticamente cuando se abre la puerta.</span>
+    </div>
+  </div>
+
+  <div class="telemetry-filter-error" *ngIf="snapshotPreviewError">
+    {{ snapshotPreviewError }}
+  </div>
+
+  <div class="row g-3" *ngIf="savedDoorSnapshots.length; else noSavedImages">
+    <article class="col-12 col-sm-6 col-lg-4" *ngFor="let entry of savedDoorSnapshots">
+      <div class="border rounded h-100 overflow-hidden">
+        <img *ngIf="getDoorSnapshotImageUrl(entry.snapshotId) as imageUrl"
+          [src]="imageUrl"
+          [alt]="'Captura de apertura de puerta del ' + (entry.createdAt | date:'dd/MM/yyyy HH:mm:ss':getClusterTimezone())"
+          class="w-100"
+          style="height: 160px; object-fit: cover">
+        <div class="d-flex align-items-center justify-content-center text-white-50"
+          *ngIf="!getDoorSnapshotImageUrl(entry.snapshotId) && !hasDoorSnapshotPreviewFailed(entry.snapshotId)"
+          style="height: 160px">
+          Cargando imagen...
+        </div>
+        <div class="d-flex align-items-center justify-content-center text-white-50"
+          *ngIf="hasDoorSnapshotPreviewFailed(entry.snapshotId)"
+          style="height: 160px">
+          Vista previa no disponible
+        </div>
+        <div class="d-flex align-items-center justify-content-between gap-2 p-2">
+          <strong>{{ entry.createdAt | date:'dd/MM/yyyy HH:mm:ss':getClusterTimezone() }}</strong>
+          <button type="button" class="btn btn-sm btn-outline-light"
+            (click)="downloadDoorSnapshot(entry)">
+            Descargar
+          </button>
+        </div>
+      </div>
+    </article>
+  </div>
+  <ng-template #noSavedImages>
+    <p class="state-history-empty mb-0">Todavía no hay imágenes guardadas para este período.</p>
+  </ng-template>
 </div>

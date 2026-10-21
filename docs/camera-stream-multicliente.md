@@ -104,3 +104,17 @@ La conexión compartida vive en memoria en una instancia del backend. Si se
 ejecutan varias instancias o réplicas, cada instancia podría abrir su propia
 conexión a la cámara; en ese despliegue se necesita un relay único o una capa
 compartida entre instancias.
+
+## Capturas al abrir la puerta
+
+Cuando la telemetría detecta el cambio de puerta cerrada a abierta, el backend
+guarda el último frame JPEG completo recibido por el relay MJPEG compartido y
+lo conserva en PostgreSQL. Esto evita abrir `/capture` en paralelo con el stream
+activo, ya que algunas cámaras no admiten ambas conexiones simultáneamente. La
+captura se agrega al historial de cambios de estado y se puede descargar desde
+el dashboard. El proceso no vuelve a capturar mientras la puerta siga abierta;
+debe registrarse un cierre y una apertura nuevos para generar otra imagen.
+
+Las imágenes usan la tabla `door_snapshots` y el endpoint autenticado
+`GET /telemetry/door-snapshots/:id/image`. Si la cámara no responde, la lectura
+de telemetría se conserva igualmente y el backend registra el error de captura.

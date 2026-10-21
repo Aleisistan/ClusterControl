@@ -80,4 +80,13 @@ export class TelemetryGateway implements OnGatewayConnection {
 
     this.server.emit('telemetry', response);
   }
+
+  sendDoorSnapshot(data: {
+    clusterId: number;
+    snapshotId: number;
+    telemetryId: number;
+    createdAt: Date;
+  }): void {
+    this.server.emit('door-snapshot', data);
+  }
 }

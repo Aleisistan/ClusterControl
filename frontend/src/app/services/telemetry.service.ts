@@ -38,10 +38,19 @@ export interface CameraStateHistoryEntry {
   to: 'Activa' | 'Inactiva';
 }
 
+export interface DoorSnapshotHistoryEntry {
+  id: string;
+  eventType: 'door-snapshot';
+  snapshotId: number;
+  telemetryId: number;
+  createdAt: string;
+}
+
 export type TelemetryHistoryEntry =
   | TelemetryStateHistoryEntry
   | TelemetryOutageHistoryEntry
-  | CameraStateHistoryEntry;
+  | CameraStateHistoryEntry
+  | DoorSnapshotHistoryEntry;
 
 @Injectable({
   providedIn: 'root'
@@ -76,6 +85,13 @@ export class TelemetryService {
   getLatest(clusterId: number) {
     return this.http.get(
       `${this.apiUrl}/latest?clusterId=${clusterId}`
+    );
+  }
+
+  getDoorSnapshotImage(snapshotId: number) {
+    return this.http.get(
+      `${this.apiUrl}/door-snapshots/${snapshotId}/image`,
+      { responseType: 'blob' },
     );
   }
 

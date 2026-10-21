@@ -77,6 +77,11 @@ export class SocketService {
     return () => this.socket.off('telemetry', callback);
   }
 
+  onDoorSnapshot(callback: (data: any) => void): () => void {
+    this.socket.on('door-snapshot', callback);
+    return () => this.socket.off('door-snapshot', callback);
+  }
+
   get connected(): boolean {
     return this.socket.connected;
   }

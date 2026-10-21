@@ -64,6 +64,30 @@ describe('CameraStreamService', () => {
     secondClient.destroy();
     upstream.destroy();
   });
+
+  it('extracts a JPEG frame when its markers arrive in separate chunks', async () => {
+    await service.stream(1, 'http://camera/stream', createResponse());
+    upstream.write(Buffer.from([0x2d, 0xff, 0xd8, 0x01, 0x02]));
+    upstream.write(Buffer.from([0x03, 0xff, 0xd9, 0x2d]));
+
+    await expect(
+      service.getLatestFrame(1, 'http://camera/stream'),
+    ).resolves.toEqual(Buffer.from([0xff, 0xd8, 0x01, 0x02, 0x03, 0xff, 0xd9]));
+
+    upstream.destroy();
+  });
+
+  it('waits for a complete JPEG when the stream has not produced a frame yet', async () => {
+    await service.stream(1, 'http://camera/stream', createResponse());
+    const pendingFrame = service.getLatestFrame(1, 'http://camera/stream');
+    upstream.write(Buffer.from([0xff, 0xd8, 0x04, 0xff, 0xd9]));
+
+    await expect(pendingFrame).resolves.toEqual(
+      Buffer.from([0xff, 0xd8, 0x04, 0xff, 0xd9]),
+    );
+
+    upstream.destroy();
+  });
 });
 
 function createResponse(): Response {

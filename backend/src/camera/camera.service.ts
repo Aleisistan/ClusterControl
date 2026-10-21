@@ -3,12 +3,14 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import axios from 'axios';
 
 import { LoggerService } from '../common/logger/logger.service';
 
 import { CameraPayload } from './dto/camera.payload';
 import { CameraRepository } from './repositories/camera.repository';
 import { ClusterRepository } from '../cluster/repositories/cluster.repository';
+import { CameraStreamService } from './camera-stream.service';
 
 import { CreateCameraDto } from './dto/create-camera.dto';
 import { UpdateCameraDto } from './dto/update-camera.dto';
@@ -21,6 +23,7 @@ export class CameraService {
     private readonly logger: LoggerService,
     private readonly cameraRepository: CameraRepository,
     private readonly clusterRepository: ClusterRepository,
+    private readonly cameraStreamService: CameraStreamService,
   ) {}
 
   setCameraIp(ip: string): void {
@@ -187,5 +190,50 @@ export class CameraService {
 
     return `http://${camera.ip}:81/stream`;
   }
-}
 
+  async captureForCluster(clusterId: number): Promise<Buffer> {
+    const camera = await this.cameraRepository.findByClusterId(clusterId);
+
+    if (!camera) {
+      throw new NotFoundException(
+        `No existe cámara para el cluster ${clusterId}`,
+      );
+    }
+
+    if (!camera.ip) {
+      throw new NotFoundException(
+        `La cámara del cluster ${clusterId} no tiene IP`,
+      );
+    }
+
+    const cleanIp = camera.ip
+      .replace(/^https?:\/\//, '')
+      .split('/')[0];
+    const streamUrl = `http://${cleanIp}:81/stream`;
+    if (this.cameraStreamService.isStreaming(camera.id, streamUrl)) {
+      const streamFrame = await this.cameraStreamService.getLatestFrame(
+        camera.id,
+        streamUrl,
+      );
+      if (streamFrame) return streamFrame;
+
+      throw new Error(
+        `El stream de la cámara del cluster ${clusterId} no entregó un fotograma a tiempo`,
+      );
+    }
+
+    const response = await axios.get<ArrayBuffer>(
+      `http://${cleanIp}:81/capture`,
+      {
+        responseType: 'arraybuffer',
+        timeout: 10000,
+      },
+    );
+
+    if (response.data.byteLength === 0) {
+      throw new Error(`La cámara del cluster ${clusterId} devolvió una imagen vacía`);
+    }
+
+    return Buffer.from(response.data);
+  }
+}

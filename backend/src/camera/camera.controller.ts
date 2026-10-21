@@ -9,10 +9,10 @@ import {
   ParseIntPipe,
   Res,
   UseGuards,
+  NotFoundException,
 } from '@nestjs/common';
 
 import type { Response } from 'express';
-import axios from 'axios';
 
 import { CameraService } from './camera.service';
 import { CameraStreamService } from './camera-stream.service';
@@ -131,7 +131,6 @@ export class CameraController {
       await this.cameraStreamService.stream(camera.id, streamUrl, res);
 
     } catch (error) {
-
       this.logger.error(
         `[CAMERA] Error conectando cluster ${clusterId}: ${
           error instanceof Error
@@ -162,47 +161,24 @@ export class CameraController {
     @Res() res: Response,
   ) {
     try {
-      const cameras = await this.cameraService.findAll();
-
-      const camera = cameras.find(
-        (item) => item.cluster?.id === clusterId,
-      );
-
-      if (!camera || !camera.ip) {
-        return res
-          .status(404)
-          .send('Cámara no encontrada');
-      }
-
-      const cleanIp = camera.ip
-        .replace(/^https?:\/\//, '')
-        .split('/')[0];
-
-      const captureUrl =
-        `http://${cleanIp}:81/capture`;
-
-      this.logger.log(
-        `[CAMERA] Capture cluster ${clusterId} → ${captureUrl}`,
-      );
-
-      const image = await axios({
-        method: 'GET',
-        url: captureUrl,
-        responseType: 'arraybuffer',
-        timeout: 10000,
-      });
+      const image = await this.cameraService.captureForCluster(clusterId);
 
       res.setHeader(
         'Content-Type',
         'image/jpeg',
       );
 
-      res.send(image.data);
+      res.send(image);
 
     } catch (error) {
+      if (error instanceof NotFoundException) {
+        return res.status(error.getStatus()).send(error.message);
+      }
 
       this.logger.error(
-        `[CAMERA] Error obteniendo captura cluster ${clusterId}`,
+        `[CAMERA] Error obteniendo captura cluster ${clusterId}: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
       );
 
       if (!res.headersSent) {

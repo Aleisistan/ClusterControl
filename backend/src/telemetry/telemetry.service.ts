@@ -11,6 +11,9 @@ import { ClusterRepository } from '../cluster/repositories/cluster.repository';
 import { NotFoundException } from '@nestjs/common';
 import { LoggerService } from '../common/logger/logger.service';
 import { TelemetryResponseDto } from './dto/telemetry-response.dto';
+import { CameraService } from '../camera/camera.service';
+import { DoorSnapshotRepository } from './repositories/door-snapshot.repository';
+import { Cluster } from '../cluster/entities/cluster.entity';
 
 @Injectable()
 export class TelemetryService implements OnModuleInit, OnModuleDestroy {
@@ -24,6 +27,8 @@ export class TelemetryService implements OnModuleInit, OnModuleDestroy {
     private readonly clusterRepository: ClusterRepository,
     private readonly telemetryGateway: TelemetryGateway,
     private readonly logger: LoggerService,
+    private readonly cameraService: CameraService,
+    private readonly doorSnapshotRepository: DoorSnapshotRepository,
   ) {}
 
   async onModuleInit(): Promise<void> {
@@ -53,6 +58,7 @@ export class TelemetryService implements OnModuleInit, OnModuleDestroy {
 
     return null;
   }
+    const previousTelemetry = await this.telemetryRepository.findLatest(cluster.id);
     const telemetry = this.telemetryRepository.create({
       temperature1: data.temp1,
 
@@ -92,6 +98,10 @@ export class TelemetryService implements OnModuleInit, OnModuleDestroy {
     // existía, el clusterId se perdía (undefined) justo antes de
     // emitir por WebSocket.
     this.telemetryGateway.sendTelemetry(telemetry);
+
+    if (previousTelemetry && !previousTelemetry.puerta && telemetry.puerta) {
+      void this.captureDoorSnapshot(cluster, telemetry.id);
+    }
 
     this.logger.log('Guardado PostgreSQL');
 
@@ -142,7 +152,7 @@ export class TelemetryService implements OnModuleInit, OnModuleDestroy {
 
     if (!range) return [];
 
-    const [stateChanges, outages] = await Promise.all([
+    const [stateChanges, outages, snapshots] = await Promise.all([
       this.telemetryRepository.findStateChanges(
         clusterId,
         range.from,
@@ -155,15 +165,73 @@ export class TelemetryService implements OnModuleInit, OnModuleDestroy {
         range.to,
         limit,
       ),
+      this.doorSnapshotRepository.findHistory(
+        clusterId,
+        range.from,
+        range.to,
+        limit,
+      ),
     ]);
 
-    return [...stateChanges, ...outages]
+    const snapshotEvents = snapshots.map((snapshot) => ({
+      id: `door-snapshot-${snapshot.id}`,
+      eventType: 'door-snapshot' as const,
+      snapshotId: snapshot.id,
+      telemetryId: snapshot.telemetryId,
+      createdAt: snapshot.createdAt,
+    }));
+
+    return [...stateChanges, ...outages, ...snapshotEvents]
       .sort(
         (first, second) =>
           new Date(second.createdAt).getTime() -
           new Date(first.createdAt).getTime(),
       )
       .slice(0, limit);
+  }
+
+  async getDoorSnapshotImage(snapshotId: number): Promise<Buffer> {
+    const image = await this.doorSnapshotRepository.findImage(snapshotId);
+
+    if (!image) {
+      throw new NotFoundException(
+        `No existe captura de puerta con ID ${snapshotId}`,
+      );
+    }
+
+    return image;
+  }
+
+  private async captureDoorSnapshot(
+    cluster: Cluster,
+    telemetryId: number,
+  ): Promise<void> {
+    try {
+      const image = await this.cameraService.captureForCluster(cluster.id);
+      const snapshot = await this.doorSnapshotRepository.save({
+        telemetryId,
+        image,
+        cluster,
+      });
+
+      this.logger.log(
+        `[CAMERA] Captura guardada para apertura de puerta: ` +
+        `clusterId=${cluster.id}, telemetryId=${telemetryId}, snapshotId=${snapshot.id}`,
+      );
+      this.telemetryGateway.sendDoorSnapshot({
+        clusterId: cluster.id,
+        snapshotId: snapshot.id,
+        telemetryId,
+        createdAt: snapshot.createdAt,
+      });
+    } catch (error) {
+      this.logger.error(
+        `[CAMERA] No se pudo guardar captura por apertura de puerta ` +
+        `(clusterId=${cluster.id}, telemetryId=${telemetryId}): ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+    }
   }
 
   private getEffectiveRange(

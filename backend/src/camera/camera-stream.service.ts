@@ -8,13 +8,19 @@ import { LoggerService } from '../common/logger/logger.service';
 interface SharedCameraStream {
   clients: Set<Response>;
   blockedClients: Set<Response>;
+  frameWaiters: Set<(frame: Buffer) => void>;
   contentType?: string;
+  latestFrame?: Buffer;
+  pendingFrameData: Buffer;
   source?: Readable;
   connection: Promise<void>;
 }
 
 @Injectable()
 export class CameraStreamService {
+  private static readonly MAX_PENDING_FRAME_BYTES = 10 * 1024 * 1024;
+  private static readonly JPEG_START = Buffer.from([0xff, 0xd8]);
+  private static readonly JPEG_END = Buffer.from([0xff, 0xd9]);
   private readonly streams = new Map<string, SharedCameraStream>();
 
   constructor(private readonly logger: LoggerService) {}
@@ -53,6 +59,35 @@ export class CameraStreamService {
     }
   }
 
+  async getLatestFrame(
+    cameraId: number,
+    streamUrl: string,
+    timeoutMs = 3000,
+  ): Promise<Buffer | null> {
+    const key = `${cameraId}:${streamUrl}`;
+    const sharedStream = this.streams.get(key);
+    if (!sharedStream) return null;
+    if (sharedStream.latestFrame) return sharedStream.latestFrame;
+
+    return new Promise((resolve) => {
+      const onFrame = (frame: Buffer) => {
+        clearTimeout(timeout);
+        sharedStream.frameWaiters.delete(onFrame);
+        resolve(frame);
+      };
+      const timeout = setTimeout(() => {
+        sharedStream.frameWaiters.delete(onFrame);
+        resolve(null);
+      }, timeoutMs);
+
+      sharedStream.frameWaiters.add(onFrame);
+    });
+  }
+
+  isStreaming(cameraId: number, streamUrl: string): boolean {
+    return this.streams.has(`${cameraId}:${streamUrl}`);
+  }
+
   private createStream(
     key: string,
     streamUrl: string,
@@ -60,6 +95,8 @@ export class CameraStreamService {
     const sharedStream: SharedCameraStream = {
       clients: new Set(),
       blockedClients: new Set(),
+      frameWaiters: new Set(),
+      pendingFrameData: Buffer.alloc(0),
       connection: Promise.resolve(),
     };
 
@@ -88,6 +125,7 @@ export class CameraStreamService {
       sharedStream.source = data;
       this.logger.log(`[CAMERA] Conexión upstream activa para cámara ${key}`);
       data.on('data', (chunk: Buffer) => {
+        this.updateLatestFrame(sharedStream, chunk);
         this.broadcast(sharedStream, chunk);
       });
       data.on('end', () => {
@@ -102,6 +140,42 @@ export class CameraStreamService {
     });
 
     return sharedStream;
+  }
+
+  private updateLatestFrame(
+    sharedStream: SharedCameraStream,
+    chunk: Buffer,
+  ): void {
+    const data = Buffer.concat([sharedStream.pendingFrameData, chunk]);
+    let searchFrom = 0;
+
+    while (searchFrom < data.length) {
+      const start = data.indexOf(CameraStreamService.JPEG_START, searchFrom);
+      if (start === -1) {
+        sharedStream.pendingFrameData =
+          data[data.length - 1] === 0xff ? data.subarray(-1) : Buffer.alloc(0);
+        return;
+      }
+
+      const end = data.indexOf(CameraStreamService.JPEG_END, start + 2);
+      if (end === -1) {
+        const pendingFrameData = data.subarray(start);
+        sharedStream.pendingFrameData =
+          pendingFrameData.length <= CameraStreamService.MAX_PENDING_FRAME_BYTES
+            ? pendingFrameData
+            : Buffer.alloc(0);
+        return;
+      }
+
+      const frame = Buffer.from(data.subarray(start, end + 2));
+      sharedStream.latestFrame = frame;
+      for (const resolveFrame of sharedStream.frameWaiters) {
+        resolveFrame(frame);
+      }
+      searchFrom = end + 2;
+    }
+
+    sharedStream.pendingFrameData = Buffer.alloc(0);
   }
 
   private broadcast(sharedStream: SharedCameraStream, chunk: Buffer): void {

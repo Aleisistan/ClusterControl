@@ -9,15 +9,22 @@ import { Cluster } from '../cluster/entities/cluster.entity';
 import { ClusterModule } from '../cluster/cluster.module';
 import { TelemetryRepository } from './repositories/telemetry.repository';
 import { AuthModule } from '../auth/auth.module';
+import { DoorSnapshot } from './door-snapshot.entity';
+import { DoorSnapshotRepository } from './repositories/door-snapshot.repository';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Telemetry, Cluster]),
+    TypeOrmModule.forFeature([Telemetry, Cluster, DoorSnapshot]),
     CameraModule,
     ClusterModule,
     AuthModule,
   ],
-  providers: [TelemetryService, TelemetryGateway, TelemetryRepository],
+  providers: [
+    TelemetryService,
+    TelemetryGateway,
+    TelemetryRepository,
+    DoorSnapshotRepository,
+  ],
   controllers: [TelemetryController],
   exports: [TelemetryService, TelemetryRepository],
 })
