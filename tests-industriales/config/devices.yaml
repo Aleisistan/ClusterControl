@@ -1,0 +1,10 @@
+devices:
+  - device_id: "34"
+    name: China simulator
+    simulated: true
+  - device_id: "35"
+    name: Device 35 simulator
+    simulated: true
+  - device_id: "36"
+    name: local
+    simulated: false

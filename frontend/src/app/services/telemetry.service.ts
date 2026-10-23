@@ -46,6 +46,42 @@ export interface DoorSnapshotHistoryEntry {
   createdAt: string;
 }
 
+export interface IndustrialTestStatus {
+  state: 'idle' | 'running' | 'completed' | 'interrupted' | 'unknown' | 'failed';
+  active: boolean;
+  started_at?: string;
+  updated_at?: string;
+  run_directory?: string;
+  requested_hours?: number | null;
+  interval_seconds?: number;
+  current_cycle?: number;
+  completed_cycles?: number;
+  passed_cycles?: number;
+  failed_cycles?: number;
+  totals?: {
+    tests: number;
+    failures: number;
+    errors: number;
+    skipped: number;
+  };
+  failed_tests?: string[];
+  cycle_history?: IndustrialTestCycle[];
+  last_cycle_status?: 'passed' | 'failed' | null;
+  finished_at?: string;
+}
+
+export interface IndustrialTestCycle {
+  cycle: number;
+  started_at: string;
+  duration_seconds: number;
+  status: 'passed' | 'failed';
+  tests: number;
+  failures: number;
+  errors: number;
+  skipped: number;
+  failed_tests: string[];
+}
+
 export type TelemetryHistoryEntry =
   | TelemetryStateHistoryEntry
   | TelemetryOutageHistoryEntry
@@ -65,7 +101,12 @@ export class TelemetryService {
 
   getHistory(
     clusterId: number,
-    options?: { from?: string; to?: string; limit?: number },
+    options?: {
+      from?: string;
+      to?: string;
+      limit?: number;
+      source?: 'device' | 'industrial-test';
+    },
   ) {
     return this.http.get(`${this.apiUrl}/history`, {
       params: this.createHistoryParams(clusterId, options),
@@ -88,6 +129,18 @@ export class TelemetryService {
     );
   }
 
+  getLatestDevice(clusterId: number) {
+    return this.http.get<any>(`${this.apiUrl}/latest-device`, {
+      params: new HttpParams().set('clusterId', clusterId),
+    });
+  }
+
+  getIndustrialTestStatus() {
+    return this.http.get<IndustrialTestStatus>(
+      `${environment.apiUrl}/industrial-tests/status`,
+    );
+  }
+
   getDoorSnapshotImage(snapshotId: number) {
     return this.http.get(
       `${this.apiUrl}/door-snapshots/${snapshotId}/image`,
@@ -97,13 +150,19 @@ export class TelemetryService {
 
   private createHistoryParams(
     clusterId: number,
-    options?: { from?: string; to?: string; limit?: number },
+    options?: {
+      from?: string;
+      to?: string;
+      limit?: number;
+      source?: 'device' | 'industrial-test';
+    },
   ): HttpParams {
     let params = new HttpParams().set('clusterId', clusterId);
 
     if (options?.from) params = params.set('from', options.from);
     if (options?.to) params = params.set('to', options.to);
     if (options?.limit) params = params.set('limit', options.limit);
+    if (options?.source) params = params.set('source', options.source);
 
     return params;
   }

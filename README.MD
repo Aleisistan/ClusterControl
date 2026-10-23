@@ -135,6 +135,7 @@ El filtro «Últimos 7 días completos» excluye el día de hoy y abarca los sie
 - Aplicación Angular: [frontend/src](./frontend/src), con dependencias y scripts en [frontend/package.json](./frontend/package.json)
 - Simulador MQTT: [simulator/simulator.js](./simulator/simulator.js)
 - Inicialización SQL: [backend/database/init.sql](./backend/database/init.sql)
+- Pruebas industriales y endurance: [tests-industriales/README.md](./tests-industriales/README.md)
 
 El simulador envía valores ficticios para dos dispositivos. Para probar la integración desde una placa, esta debe poder alcanzar por la red la dirección IP del equipo que ejecuta Docker y el puerto MQTT `1883`. En la configuración actual el broker permite conexiones anónimas, por lo que debe utilizarse solo en una red de desarrollo confiable y no exponerse directamente a Internet.
 

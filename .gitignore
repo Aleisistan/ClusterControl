@@ -1,2 +1,5 @@
 node_modules/
 .env
+.venv/
+tests-industriales/reports/*
+!tests-industriales/reports/.gitkeep

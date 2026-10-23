@@ -58,7 +58,11 @@ export class TelemetryService implements OnModuleInit, OnModuleDestroy {
 
     return null;
   }
-    const previousTelemetry = await this.telemetryRepository.findLatest(cluster.id);
+    const source = data.source ?? 'device';
+    const previousTelemetry =
+      source === 'device'
+        ? await this.telemetryRepository.findLatestDevice(cluster.id)
+        : null;
     const telemetry = this.telemetryRepository.create({
       temperature1: data.temp1,
 
@@ -75,6 +79,8 @@ export class TelemetryService implements OnModuleInit, OnModuleDestroy {
       puerta: data.puerta,
 
       luzEncendida: data.puerta || data.luzEncendida,
+
+      source,
 
       cluster,
     });
@@ -99,7 +105,12 @@ export class TelemetryService implements OnModuleInit, OnModuleDestroy {
     // emitir por WebSocket.
     this.telemetryGateway.sendTelemetry(telemetry);
 
-    if (previousTelemetry && !previousTelemetry.puerta && telemetry.puerta) {
+    if (
+      telemetry.source === 'device' &&
+      previousTelemetry?.source === 'device' &&
+      !previousTelemetry.puerta &&
+      telemetry.puerta
+    ) {
       void this.captureDoorSnapshot(cluster, telemetry.id);
     }
 
@@ -119,15 +130,33 @@ export class TelemetryService implements OnModuleInit, OnModuleDestroy {
     return new TelemetryResponseDto(telemetry);
   }
 
+  async getLatestDevice(
+    clusterId: number,
+  ): Promise<TelemetryResponseDto | null> {
+    const telemetry =
+      await this.telemetryRepository.findLatestDevice(clusterId);
+    return telemetry ? new TelemetryResponseDto(telemetry) : null;
+  }
+
   async getHistory(
     clusterId: number,
     fromParam?: string,
     toParam?: string,
     limitParam?: string,
+    sourceParam?: string,
   ): Promise<TelemetryResponseDto[]> {
     const now = new Date();
     const range = this.getEffectiveRange(fromParam, toParam, now);
     const limit = this.parseLimit(limitParam, TelemetryService.TELEMETRY_HISTORY_LIMIT);
+    if (
+      sourceParam !== undefined &&
+      sourceParam !== 'device' &&
+      sourceParam !== 'industrial-test'
+    ) {
+      throw new BadRequestException(
+        'Telemetry source must be "device" or "industrial-test"',
+      );
+    }
 
     if (!range) return [];
 
@@ -136,6 +165,7 @@ export class TelemetryService implements OnModuleInit, OnModuleDestroy {
       range.from,
       range.to,
       limit,
+      sourceParam,
     );
 
     return telemetry.map((item) => new TelemetryResponseDto(item));

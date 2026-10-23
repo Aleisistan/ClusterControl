@@ -21,14 +21,20 @@ export class TelemetryController {
     return this.telemetryService.getLatest(clusterId);
   }
 
+  @Get('latest-device')
+  getLatestDevice(@Query('clusterId', ParseIntPipe) clusterId: number) {
+    return this.telemetryService.getLatestDevice(clusterId);
+  }
+
   @Get('history')
   getHistory(
     @Query('clusterId', ParseIntPipe) clusterId: number,
     @Query('from') from?: string,
     @Query('to') to?: string,
     @Query('limit') limit?: string,
+    @Query('source') source?: string,
   ) {
-    return this.telemetryService.getHistory(clusterId, from, to, limit);
+    return this.telemetryService.getHistory(clusterId, from, to, limit, source);
   }
 
   @Get('state-history')

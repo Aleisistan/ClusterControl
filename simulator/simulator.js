@@ -17,7 +17,8 @@ client.on('connect', () => {
       extractor: false,
       aire: true,
       puerta: false,
-      luzEncendida: false
+      luzEncendida: false,
+      source: 'simulator'
     };
 
     client.publish(
@@ -38,7 +39,8 @@ client.on('connect', () => {
       extractor: true,
       aire: false,
       puerta: false,
-      luzEncendida: true
+      luzEncendida: true,
+      source: 'simulator'
     };
 
     client.publish(

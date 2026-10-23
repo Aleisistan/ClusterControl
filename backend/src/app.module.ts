@@ -15,6 +15,7 @@ import { databaseConfig } from './config/database.config';
 import { MqttModule } from './mqtt/mqtt.module';
 import { LoggerModule } from './common/logger';
 import { WeatherModule } from './weather/weather.module';
+import { IndustrialTestStatusModule } from './industrial-tests/industrial-test-status.module';
 @Module({
   imports: [
     LoggerModule,
@@ -35,6 +36,7 @@ import { WeatherModule } from './weather/weather.module';
     AuthModule,
     MqttModule,
     WeatherModule,
+    IndustrialTestStatusModule,
   ],
 
   controllers: [AppController],

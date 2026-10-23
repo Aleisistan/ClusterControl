@@ -16,4 +16,5 @@ export class TelemetryWsDto {
   luzEncendida: boolean;
 
   createdAt: Date;
+  source: 'device' | 'simulator' | 'industrial-test';
 }

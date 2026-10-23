@@ -16,6 +16,7 @@ export class TelemetryResponseDto {
   luzEncendida: boolean;
 
   createdAt: Date;
+  source: 'device' | 'simulator' | 'industrial-test';
 
   constructor(data: any) {
     this.id = data.id;
@@ -35,5 +36,6 @@ export class TelemetryResponseDto {
     this.luzEncendida = data.luzEncendida;
 
     this.createdAt = data.created_at;
+    this.source = data.source ?? 'device';
   }
 }

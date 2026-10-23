@@ -125,6 +125,35 @@ describe('DashboardComponent', () => {
     jasmine.clock().uninstall();
   });
 
+  it('should show the age of the latest real device telemetry with minutes', () => {
+    jasmine.clock().install();
+    jasmine.clock().mockDate(new Date('2026-10-16T15:00:00.000Z'));
+    component.latestDeviceTelemetry = {
+      createdAt: '2026-10-15T21:33:00.000Z',
+    };
+
+    expect(component.getDeviceTelemetryStatus()).toBe(
+      'Sin actualizar hace 17 h 27 min',
+    );
+    jasmine.clock().uninstall();
+  });
+
+  it('should display repeated industrial test errors only once', () => {
+    const connectionFailure = 'test_api_root_is_available (ConnectionError)';
+    const telemetryFailure =
+      'test_target_device_publishes_live_telemetry (AssertionError)';
+
+    expect(
+      component.getIndustrialTestFailureMessages([
+        connectionFailure,
+        connectionFailure,
+        telemetryFailure,
+      ]),
+    ).toBe(
+      'El servidor de la aplicación no respondió durante la prueba. Compruebe que el contenedor esté iniciado. | No llegaron datos reales del dispositivo durante la espera. Las pruebas no generan telemetría real; compruebe que el equipo esté encendido, conectado y configurado con el ID correcto.',
+    );
+  });
+
   it('should mark the latest sensor reading as recent within the reporting gap', () => {
     jasmine.clock().install();
     jasmine.clock().mockDate(new Date('2026-10-16T15:00:00.000Z'));

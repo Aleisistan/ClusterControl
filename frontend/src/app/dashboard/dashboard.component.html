@@ -270,8 +270,47 @@
   </div>
 
   <div class="mt-3 p-3 rounded border border-secondary">
+    <div class="d-grid gap-2 mb-3">
+      <div>
+        <strong>Prueba industrial</strong>
+        <span class="badge ms-2"
+          [ngClass]="getIndustrialTestStatusClass()">
+          {{ getIndustrialTestStatusLabel() }}
+        </span>
+        <small class="d-block mt-1 text-white-50"
+          *ngIf="hasIndustrialTestResults()">
+          {{ getIndustrialTestResultsLabel() }}
+        </small>
+      </div>
+      <div>
+        <strong>Última telemetría real del dispositivo:</strong>
+        <ng-container *ngIf="latestDeviceTelemetry; else noDeviceTelemetry">
+          <span class="ms-2">{{ latestDeviceTelemetry.temperature1 | number:'1.1-1' }} °C</span>
+          <span class="ms-2">{{ latestDeviceTelemetry.humidity1 | number:'1.1-1' }} %</span>
+          <span class="badge ms-2"
+            [ngClass]="getDeviceTelemetryStatusClass()">
+            {{ getDeviceTelemetryStatus() }}
+          </span>
+          <small class="d-block mt-1 text-white-50">
+            {{ latestDeviceTelemetry.createdAt | date:'dd/MM/yyyy HH:mm:ss':getClusterTimezone() }}
+          </small>
+        </ng-container>
+        <ng-template #noDeviceTelemetry>
+          <span class="ms-2" *ngIf="latestDeviceTelemetryError; else noDeviceRecords">
+            No se pudo consultar la telemetría del dispositivo.
+          </span>
+          <ng-template #noDeviceRecords>
+          <span class="ms-2">No hay lecturas clasificadas como dispositivo para este cluster.</span>
+          </ng-template>
+        </ng-template>
+        <small class="d-block mt-1 text-white-50">
+          Esta lectura solo se actualiza cuando llega telemetría del equipo.
+          Ejecutar pruebas industriales no equivale a recibir datos reales.
+        </small>
+      </div>
+    </div>
     <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
-      <strong>Último estado recibido de los sensores</strong>
+      <strong>Último estado recibido del dispositivo</strong>
       <span class="badge"
         [ngClass]="latest && getLatestTelemetryStatus() === 'Lectura reciente'
           ? 'bg-success'
@@ -288,6 +327,7 @@
         <span>Humedad S2: {{ latest.humidity2 | number:'1.1-1' }} %</span>
       </div>
       <small class="d-block mt-2 text-white-50">
+        Origen: {{ getTelemetrySourceLabel() }} ·
         Lectura registrada: {{ latest.createdAt | date:'dd/MM/yyyy HH:mm:ss':getClusterTimezone() }}
       </small>
     </ng-container>
@@ -449,6 +489,63 @@
   </div>
   <div class="telemetry-filter-error" *ngIf="snapshotDownloadError">
     {{ snapshotDownloadError }}
+  </div>
+</div>
+
+<div class="card state-history-card">
+  <div class="state-history-header">
+    <div>
+      <h3>Historial de ejecución de tests industriales</h3>
+      <span>Últimos ciclos registrados de la corrida actual o más reciente.</span>
+    </div>
+  </div>
+
+  <div class="telemetry-filter-error" *ngIf="industrialTestStatusError">
+    No se pudo cargar el historial de tests.
+  </div>
+
+  <div class="table-responsive" *ngIf="!industrialTestStatusError">
+    <table class="table table-dark table-striped table-hover align-middle state-history-table">
+      <thead>
+        <tr>
+          <th scope="col">Ciclo</th>
+          <th scope="col">Inicio</th>
+          <th scope="col">Resultado</th>
+          <th scope="col">Tests</th>
+          <th scope="col">Fallos / errores / omitidos</th>
+          <th scope="col">Qué ocurrió</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let cycle of industrialTestCycles">
+          <td>{{ cycle.cycle }}</td>
+          <td>
+            {{ cycle.started_at | date:'dd/MM/yyyy HH:mm:ss':getClusterTimezone() }}
+            <small class="d-block text-white-50">
+              Duración: {{ cycle.duration_seconds | number:'1.1-1' }} s
+            </small>
+          </td>
+          <td>
+            <span class="badge" [ngClass]="getIndustrialTestCycleClass(cycle)">
+              {{ cycle.status === 'passed' ? 'Aprobado' : 'Fallido' }}
+            </span>
+          </td>
+          <td>{{ cycle.tests }}</td>
+          <td>{{ cycle.failures }} / {{ cycle.errors }} / {{ cycle.skipped }}</td>
+          <td>
+            <span *ngIf="cycle.failed_tests.length; else noCycleFailures">
+              {{ getIndustrialTestFailureMessages(cycle.failed_tests) }}
+            </span>
+            <ng-template #noCycleFailures>—</ng-template>
+          </td>
+        </tr>
+        <tr *ngIf="industrialTestCycles.length === 0">
+          <td colspan="6" class="state-history-empty">
+            Todavía no hay ciclos terminados para mostrar.
+          </td>
+        </tr>
+      </tbody>
+    </table>
   </div>
 </div>
 

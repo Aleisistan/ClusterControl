@@ -3,6 +3,21 @@ import { Telemetry } from '../telemetry.entity';
 import { TelemetryRepository } from './telemetry.repository';
 
 describe('TelemetryRepository', () => {
+  it('queries the latest reading from a real device only', async () => {
+    const latest = { id: 9 } as Telemetry;
+    const repository = {
+      findOne: jest.fn().mockResolvedValue(latest),
+    } as unknown as Repository<Telemetry>;
+    const telemetryRepository = new TelemetryRepository(repository);
+
+    await expect(telemetryRepository.findLatestDevice(4)).resolves.toBe(latest);
+    expect(repository.findOne).toHaveBeenCalledWith({
+      where: { cluster: { id: 4 }, source: 'device' },
+      relations: { cluster: true },
+      order: { created_at: 'DESC' },
+    });
+  });
+
   it('returns representative samples across the whole requested range', async () => {
     const chronological = [
       { id: 2, created_at: new Date('2026-10-05T12:00:02Z') },
@@ -20,7 +35,7 @@ describe('TelemetryRepository', () => {
 
     expect(repository.query).toHaveBeenCalledWith(
       expect.stringContaining('NTILE($4::int)'),
-      [1, from, to, 2],
+      [1, from, to, 2, null],
     );
     expect(repository.find).toHaveBeenCalledWith({
       where: { id: expect.anything() },
@@ -31,6 +46,25 @@ describe('TelemetryRepository', () => {
       chronological[0].created_at,
       chronological[1].created_at,
     ]);
+  });
+
+  it('builds state history only from real-device telemetry', async () => {
+    const repository = {
+      query: jest.fn().mockResolvedValue([]),
+    } as unknown as Repository<Telemetry>;
+    const telemetryRepository = new TelemetryRepository(repository);
+
+    await telemetryRepository.findStateChanges(
+      1,
+      new Date('2026-10-05T12:00:00Z'),
+      new Date('2026-10-05T13:00:00Z'),
+      100,
+    );
+
+    expect(repository.query.mock.calls[0][0]).toContain("source = 'device'");
+    expect(repository.query.mock.calls[0][0]).toContain(
+      "created_at >= $2 AND created_at <= $3",
+    );
   });
 
   it('detects telemetry gaps exceeding the expected reporting interval', async () => {
@@ -56,5 +90,6 @@ describe('TelemetryRepository', () => {
       expect.stringContaining("created_at - previous_created_at > INTERVAL '1 minute'"),
       [1, from, to, 10],
     );
+    expect(repository.query.mock.calls[0][0]).toContain("source = 'device'");
   });
 });

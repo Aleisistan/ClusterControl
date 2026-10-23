@@ -27,11 +27,20 @@ export class TelemetryRepository {
     });
   }
 
+  async findLatestDevice(clusterId: number): Promise<Telemetry | null> {
+    return this.repository.findOne({
+      where: { cluster: { id: clusterId }, source: 'device' },
+      relations: { cluster: true },
+      order: { created_at: 'DESC' },
+    });
+  }
+
   async findHistory(
     clusterId: number,
     from: Date,
     to: Date,
     limit: number,
+    source?: Telemetry['source'],
   ) {
     const sampledIds: Array<{ id: number }> = await this.repository.query(
       `
@@ -44,12 +53,13 @@ export class TelemetryRepository {
           WHERE cluster_id = $1
             AND created_at >= $2
             AND created_at <= $3
+            AND ($5::varchar IS NULL OR source = $5)
         )
         SELECT DISTINCT ON (bucket) id
         FROM buckets
         ORDER BY bucket, created_at, id
       `,
-      [clusterId, from, to, limit],
+      [clusterId, from, to, limit, source ?? null],
     );
 
     if (sampledIds.length === 0) return [];
@@ -93,6 +103,7 @@ export class TelemetryRepository {
             humidity1, humidity2, extractor, aire, puerta, "luzEncendida"
           FROM telemetry
           WHERE cluster_id = $1 AND created_at < $2
+            AND source = 'device'
           ORDER BY created_at DESC, id DESC
           LIMIT 1
         ),
@@ -102,6 +113,7 @@ export class TelemetryRepository {
             humidity1, humidity2, extractor, aire, puerta, "luzEncendida"
           FROM telemetry
           WHERE cluster_id = $1 AND created_at >= $2 AND created_at <= $3
+            AND source = 'device'
           UNION ALL
           SELECT
             id, cluster_id, created_at, temperature1, temperature2,
@@ -168,6 +180,7 @@ export class TelemetryRepository {
           SELECT id, cluster_id, created_at
           FROM telemetry
           WHERE cluster_id = $1 AND created_at < $2
+            AND source = 'device'
           ORDER BY created_at DESC, id DESC
           LIMIT 1
         ),
@@ -175,6 +188,7 @@ export class TelemetryRepository {
           SELECT id, cluster_id, created_at
           FROM telemetry
           WHERE cluster_id = $1 AND created_at >= $2 AND created_at <= $3
+            AND source = 'device'
           UNION ALL
           SELECT id, cluster_id, created_at
           FROM previous_sample

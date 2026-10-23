@@ -33,4 +33,10 @@ export default () => ({
   camera: {
     url: process.env.CAMERA_URL,
   },
+
+  industrialTests: {
+    statusPath:
+      process.env.INDUSTRIAL_TEST_STATUS_PATH ??
+      '../tests-industriales/reports/runner-status.json',
+  },
 });

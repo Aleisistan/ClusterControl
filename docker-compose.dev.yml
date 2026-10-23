@@ -78,7 +78,11 @@ services:
 
     volumes:
       - ./backend:/app
+      - ./tests-industriales/reports:/app/industrial-reports:ro
       - backend_node_modules:/app/node_modules
+
+    environment:
+      INDUSTRIAL_TEST_STATUS_PATH: /app/industrial-reports/runner-status.json
 
     command: sh -c "npm ci --no-audit --no-fund && npm run start:dev"
 

@@ -1,0 +1,20 @@
+api:
+  base_url: http://localhost:3000
+  timeout_seconds: 5
+  recovery_timeout_seconds: 60
+mqtt:
+  host: localhost
+  port: 1883
+  topic: datacenter/ambiente
+  connect_timeout_seconds: 10
+  message_timeout_seconds: 15
+  telemetry_timeout_seconds: 30
+endurance:
+  hours: 1
+  interval_seconds: 60
+thresholds:
+  max_api_latency_ms: 2000
+test:
+  username: ""
+  password: ""
+  target_device_id: "36"

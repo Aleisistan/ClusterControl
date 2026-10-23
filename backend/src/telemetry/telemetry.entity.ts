@@ -39,6 +39,8 @@ export class Telemetry {
   @Column()
   luzEncendida: boolean;
 
+  @Column({ type: 'varchar', length: 32, default: 'device' })
+  source: 'device' | 'simulator' | 'industrial-test';
 
   @ManyToOne(() => Cluster, (cluster) => cluster.telemetries, {
     nullable: false,

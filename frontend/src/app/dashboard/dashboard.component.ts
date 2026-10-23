@@ -15,6 +15,8 @@ import {
   TelemetryStateHistoryEntry,
   CameraStateHistoryEntry,
   DoorSnapshotHistoryEntry,
+  IndustrialTestStatus,
+  IndustrialTestCycle,
 } from '../services/telemetry.service';
 import { WeatherService } from '../services/weather.service';
 import { ClusterService } from '../services/cluster.service';
@@ -43,6 +45,11 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   telemetry: any[] = [];
   latest: any;
+  latestDeviceTelemetry: any;
+  latestDeviceTelemetryError = false;
+  industrialTestStatus?: IndustrialTestStatus;
+  industrialTestCycles: IndustrialTestCycle[] = [];
+  industrialTestStatusError = false;
   avgTemperature: number = 0;
   avgHumidity: number = 0;
   weather: any;
@@ -92,6 +99,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   private periodTelemetry: any[] = [];
   private cameraHistorySequence = 0;
   private cameraRefreshInterval?: ReturnType<typeof setInterval>;
+  private industrialTestRefreshInterval?: ReturnType<typeof setInterval>;
   private cameraLoadTimeouts = new Map<1 | 2, ReturnType<typeof setTimeout>>();
   private snapshotImageUrls = new Map<number, string>();
   private snapshotPreviewRequests = new Map<number, Subscription>();
@@ -204,6 +212,14 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.refreshCameraSource(2);
+    this.refreshIndustrialTestStatus();
+    this.industrialTestRefreshInterval = setInterval(
+      () => {
+        this.refreshIndustrialTestStatus();
+        this.refreshLatestDeviceTelemetry();
+      },
+      15_000,
+    );
     this.cameraRefreshInterval = setInterval(() => {
       this.refreshCameraSource(1);
       this.refreshCameraSource(2);
@@ -262,6 +278,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.unsubscribeDoorSnapshot?.();
     this.clearDoorSnapshotPreviews();
     if (this.cameraRefreshInterval) clearInterval(this.cameraRefreshInterval);
+    if (this.industrialTestRefreshInterval) {
+      clearInterval(this.industrialTestRefreshInterval);
+    }
     for (const timeout of this.cameraLoadTimeouts.values()) clearTimeout(timeout);
   }
 
@@ -374,13 +393,27 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
     // 1. Obtener telemetría inicial
     this.telemetryService
-      .getLatest(clusterId)
-      .subscribe((data: any) => {
-        if (data && Number(this.selectedClusterId) === clusterId) {
-          this.latest = data;
-          this.avgTemperature = (this.latest.temperature1 + this.latest.temperature2) / 2;
-          this.avgHumidity = (this.latest.humidity1 + this.latest.humidity2) / 2;
-        }
+      .getLatestDevice(clusterId)
+      .subscribe({
+        next: (data: any) => {
+          if (Number(this.selectedClusterId) !== clusterId) return;
+          this.latest = data ?? undefined;
+          this.latestDeviceTelemetry = data ?? undefined;
+          this.latestDeviceTelemetryError = false;
+          this.avgTemperature = data
+            ? (data.temperature1 + data.temperature2) / 2
+            : 0;
+          this.avgHumidity = data
+            ? (data.humidity1 + data.humidity2) / 2
+            : 0;
+        },
+        error: () => {
+          if (Number(this.selectedClusterId) === clusterId) {
+            this.latest = undefined;
+            this.latestDeviceTelemetry = undefined;
+            this.latestDeviceTelemetryError = true;
+          }
+        },
       });
 
     // 2. Obtener historial para el gráfico
@@ -389,6 +422,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
         from: range.from.toISOString(),
         to: range.to.toISOString(),
         limit: DashboardComponent.CHART_HISTORY_LIMIT,
+        source: 'device',
       })
       .subscribe((data: any) => {
         if (
@@ -458,7 +492,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
       const payloadClusterId = data?.clusterId ?? data?.cluster_id;
 
       if (data && Number(payloadClusterId) === clusterId &&
-          Number(this.selectedClusterId) === clusterId) {
+          Number(this.selectedClusterId) === clusterId &&
+          data.source === 'device') {
         this.lastWsTime = Date.now();
         this.addTelemetrySample(data);
         const previous = this.latest;
@@ -682,6 +717,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
         from: bucket.start.toISOString(),
         to: bucket.end.toISOString(),
         limit: DashboardComponent.CHART_HISTORY_LIMIT,
+        source: 'device',
       })
       .subscribe({
         next: (data: any) => {
@@ -802,6 +838,189 @@ export class DashboardComponent implements OnInit, OnDestroy {
     }
 
     return `Sin actualización hace ${Math.floor(ageHours / 24)} días`;
+  }
+
+  getTelemetrySourceLabel(): string {
+    if (!this.latest) return 'Sin lecturas disponibles';
+    if (this.latest.source === 'industrial-test') {
+      return 'Telemetría sintética de prueba';
+    }
+    if (this.latest.source === 'simulator') {
+      return 'Telemetría del simulador';
+    }
+    return 'Telemetría del dispositivo';
+  }
+
+  getDeviceTelemetryStatus(): string {
+    const timestamp = new Date(this.latestDeviceTelemetry?.createdAt).getTime();
+    if (!Number.isFinite(timestamp)) return 'Hora de lectura no disponible';
+    const ageMs = Math.max(0, Date.now() - timestamp);
+    if (ageMs <= DashboardComponent.OUTAGE_GAP_MS) return 'Reciente';
+
+    const ageSeconds = Math.floor(ageMs / 1000);
+    if (ageSeconds < 60) return `Sin actualizar hace ${ageSeconds} s`;
+    const ageMinutes = Math.floor(ageSeconds / 60);
+    if (ageMinutes < 60) return `Sin actualizar hace ${ageMinutes} min`;
+    const ageHours = Math.floor(ageMinutes / 60);
+    if (ageHours < 24) {
+      return `Sin actualizar hace ${ageHours} h ${ageMinutes % 60} min`;
+    }
+    return `Sin actualizar hace ${Math.floor(ageHours / 24)} días`;
+  }
+
+  getDeviceTelemetryStatusClass(): string {
+    return this.getDeviceTelemetryStatus() === 'Reciente'
+      ? 'bg-success'
+      : 'bg-warning text-dark';
+  }
+
+  getIndustrialTestStatusLabel(): string {
+    if (this.industrialTestStatusError) {
+      return 'No se pudo consultar el estado';
+    }
+
+    const status = this.industrialTestStatus;
+    if (!status) return 'Consultando estado...';
+    if (status.state === 'running') {
+      return `En ejecución - ciclo ${status.current_cycle ?? 0}`;
+    }
+    if (status.state === 'unknown' || status.state === 'idle') {
+      return 'Sin estado del runner - verifica que uses el runner actualizado';
+    }
+    if (status.state === 'interrupted') return 'Última ejecución interrumpida';
+    if (status.state === 'failed') {
+      return 'Runner detenido por error';
+    }
+    if (status.state === 'completed') {
+      if (status.failed_cycles === undefined) {
+        return 'Finalizada - resultado detallado no disponible';
+      }
+      return status.failed_cycles
+        ? 'Finalizada con ciclos fallidos'
+        : 'Finalizada sin ciclos fallidos';
+    }
+    return 'Sin prueba en ejecución';
+  }
+
+  getIndustrialTestStatusClass(): string {
+    if (this.industrialTestStatusError) return 'bg-danger';
+
+    switch (this.industrialTestStatus?.state) {
+      case 'running':
+        return 'bg-primary';
+      case 'completed':
+      case 'idle':
+        if (this.industrialTestStatus?.failed_cycles === undefined) {
+          return 'bg-secondary';
+        }
+        return this.industrialTestStatus?.failed_cycles
+          ? 'bg-warning text-dark'
+          : 'bg-success';
+      case 'interrupted':
+      case 'failed':
+        return 'bg-danger';
+      default:
+        return 'bg-secondary';
+    }
+  }
+
+  hasIndustrialTestResults(): boolean {
+    return Boolean(
+      this.industrialTestStatus?.completed_cycles &&
+      this.industrialTestStatus.totals,
+    );
+  }
+
+  getIndustrialTestResultsLabel(): string {
+    const status = this.industrialTestStatus;
+    const totals = status?.totals;
+    if (
+      !status ||
+      !totals ||
+      status.passed_cycles === undefined ||
+      status.failed_cycles === undefined
+    ) {
+      return '';
+    }
+
+    const outcome =
+      status.state === 'running'
+        ? 'Resultado parcial'
+        : status.state === 'interrupted'
+          ? 'Resultado al interrumpir'
+          : 'Resultado final';
+    return `${outcome}: ${status.completed_cycles} ciclos (${status.passed_cycles} aprobados, ${status.failed_cycles} fallidos); ${totals.tests} tests, ${totals.failures} fallas, ${totals.errors} errores y ${totals.skipped} omitidos.`;
+  }
+
+  private refreshIndustrialTestStatus(): void {
+    this.telemetryService.getIndustrialTestStatus().subscribe({
+      next: (status) => {
+        this.industrialTestStatus = status;
+        this.industrialTestCycles = [...(status.cycle_history ?? [])].reverse();
+        this.industrialTestStatusError = false;
+      },
+      error: () => {
+        this.industrialTestStatusError = true;
+      },
+    });
+  }
+
+  getIndustrialTestCycleClass(cycle: IndustrialTestCycle): string {
+    return cycle.status === 'passed' ? 'bg-success' : 'bg-danger';
+  }
+
+  getIndustrialTestFailureMessage(failure: string): string {
+    if (failure.startsWith('test_target_device_publishes_live_telemetry')) {
+      return 'No llegaron datos reales del dispositivo durante la espera. Las pruebas no generan telemetría real; compruebe que el equipo esté encendido, conectado y configurado con el ID correcto.';
+    }
+    if (
+      failure.includes('ConnectionError') ||
+      failure.includes('RemoteDisconnected') ||
+      failure.includes('Connection refused') ||
+      failure.includes('API did not become healthy')
+    ) {
+      return 'El servidor de la aplicación no respondió durante la prueba. Compruebe que el contenedor esté iniciado.';
+    }
+    if (/^test_[\w.]+ \([\w]+\)$/.test(failure)) {
+      return 'Una comprobación del sistema no obtuvo el resultado esperado. Compruebe que el equipo y la aplicación estén funcionando.';
+    }
+    return failure;
+  }
+
+  getIndustrialTestFailureMessages(failures: string[]): string {
+    return Array.from(
+      new Set(failures.map((failure) => this.getIndustrialTestFailureMessage(failure))),
+    ).join(' | ');
+  }
+
+
+  private refreshLatestDeviceTelemetry(
+    clusterId = Number(this.selectedClusterId),
+  ): void {
+    if (!clusterId) return;
+    this.telemetryService.getLatestDevice(clusterId).subscribe({
+      next: (telemetry) => {
+        if (Number(this.selectedClusterId) === clusterId) {
+          this.latestDeviceTelemetry = telemetry;
+          this.latest = telemetry ?? undefined;
+          if (telemetry) {
+            this.avgTemperature =
+              (telemetry.temperature1 + telemetry.temperature2) / 2;
+            this.avgHumidity = (telemetry.humidity1 + telemetry.humidity2) / 2;
+          } else {
+            this.avgTemperature = 0;
+            this.avgHumidity = 0;
+          }
+          this.latestDeviceTelemetryError = false;
+        }
+      },
+      error: () => {
+        if (Number(this.selectedClusterId) === clusterId) {
+          this.latestDeviceTelemetry = undefined;
+          this.latestDeviceTelemetryError = true;
+        }
+      },
+    });
   }
 
   resetChartZoom(): void {

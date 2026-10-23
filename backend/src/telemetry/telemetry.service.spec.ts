@@ -13,6 +13,7 @@ describe('TelemetryService', () => {
   let telemetryRepository: {
     create: jest.Mock;
     findLatest: jest.Mock;
+    findLatestDevice: jest.Mock;
     save: jest.Mock;
     findStateChanges: jest.Mock;
     findOutages: jest.Mock;
@@ -35,6 +36,7 @@ describe('TelemetryService', () => {
     telemetryRepository = {
       create: jest.fn((data) => ({ id: 24, ...data })),
       findLatest: jest.fn().mockResolvedValue(null),
+      findLatestDevice: jest.fn().mockResolvedValue(null),
       save: jest.fn().mockImplementation(async (telemetry) => telemetry),
       findStateChanges: jest.fn().mockResolvedValue([]),
       findOutages: jest.fn().mockResolvedValue([]),
@@ -80,7 +82,10 @@ describe('TelemetryService', () => {
   });
 
   it('captures and stores an image when the door changes from closed to open', async () => {
-    telemetryRepository.findLatest.mockResolvedValue({ puerta: false });
+    telemetryRepository.findLatestDevice.mockResolvedValue({
+      puerta: false,
+      source: 'device',
+    });
 
     await service.saveTelemetry({
       deviceId: 12,
@@ -109,7 +114,10 @@ describe('TelemetryService', () => {
   });
 
   it('does not capture an image unless the door transitions to open', async () => {
-    telemetryRepository.findLatest.mockResolvedValue({ puerta: true });
+    telemetryRepository.findLatestDevice.mockResolvedValue({
+      puerta: true,
+      source: 'device',
+    });
 
     await service.saveTelemetry({
       deviceId: 12,
@@ -124,6 +132,26 @@ describe('TelemetryService', () => {
     });
 
     expect(cameraService.captureForCluster).not.toHaveBeenCalled();
+  });
+
+  it('keeps industrial test telemetry out of real-device state handling', async () => {
+    await service.saveTelemetry({
+      deviceId: 12,
+      temp1: 20,
+      temp2: 21,
+      hum1: 40,
+      hum2: 41,
+      extractor: false,
+      aire: false,
+      puerta: false,
+      luzEncendida: false,
+      source: 'industrial-test',
+    });
+
+    expect(telemetryRepository.findLatestDevice).not.toHaveBeenCalled();
+    expect(telemetryRepository.create).toHaveBeenCalledWith(
+      expect.objectContaining({ source: 'industrial-test' }),
+    );
   });
 
   it('returns state changes for the requested cluster and date range', async () => {
