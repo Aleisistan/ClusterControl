@@ -11,23 +11,23 @@ import {
 
 export class UpdateAlertConfigurationDto {
   @IsNumber({ maxDecimalPlaces: 2 })
-  @IsOptional()
   @Min(-40)
   @Max(100)
   temperatureLimit: number;
 
   @IsNumber({ maxDecimalPlaces: 2 })
-  @IsOptional()
   @Min(0)
   @Max(100)
   humidityLimit: number;
 
   @IsNumber({ maxDecimalPlaces: 2 })
+  @IsOptional()
   @Min(-40)
   @Max(100)
   temperatureRecoveryLimit?: number;
 
   @IsNumber({ maxDecimalPlaces: 2 })
+  @IsOptional()
   @Min(0)
   @Max(100)
   humidityRecoveryLimit?: number;
