@@ -103,11 +103,11 @@ describe('AlertsService', () => {
     );
   });
 
-  it('sends an individual email for every sensor reading at or above its limit', async () => {
+  it('sends one email per parameter with both sensors and their average', async () => {
     await service.notifyThresholds(cluster, {
       temperature1: 32.4,
-      temperature2: 25,
-      humidity1: 79,
+      temperature2: 31,
+      humidity1: 81,
       humidity2: 80,
     });
 
@@ -115,19 +115,23 @@ describe('AlertsService', () => {
     expect(mail.sendMail).toHaveBeenCalledWith(
       ['alerts@example.com'],
       '[ClusterControl] Temperatura elevada - Datacenter 1',
-      expect.stringContaining('32.4 °C'),
+      expect.stringMatching(
+        /Sensor 1[\s\S]*32\.4 °C[\s\S]*Sensor 2[\s\S]*31\.0 °C[\s\S]*promedio[\s\S]*31\.7 °C/,
+      ),
     );
     expect(mail.sendMail).toHaveBeenCalledWith(
       ['alerts@example.com'],
       '[ClusterControl] Humedad elevada - Datacenter 1',
-      expect.stringContaining('80.0 %'),
+      expect.stringMatching(
+        /Sensor 1[\s\S]*81\.0 %[\s\S]*Sensor 2[\s\S]*80\.0 %[\s\S]*promedio[\s\S]*80\.5 %/,
+      ),
     );
   });
 
-  it('does not repeat an email until the sensor recovers', async () => {
+  it('does not repeat an email until the average recovers', async () => {
     const readings = {
       temperature1: 32,
-      temperature2: 25,
+      temperature2: 32,
       humidity1: 70,
       humidity2: 70,
     };
@@ -139,8 +143,27 @@ describe('AlertsService', () => {
     await service.notifyThresholds(cluster, {
       ...readings,
       temperature1: 27,
+      temperature2: 27,
     });
     await service.notifyThresholds(cluster, readings);
+    expect(mail.sendMail).toHaveBeenCalledTimes(2);
+  });
+
+  it('retries an alert after a failed email delivery', async () => {
+    mail.sendMail
+      .mockRejectedValueOnce(new Error('SMTP unavailable'))
+      .mockResolvedValueOnce(undefined);
+
+    const readings = {
+      temperature1: 32,
+      temperature2: 32,
+      humidity1: 70,
+      humidity2: 70,
+    };
+
+    await service.notifyThresholds(cluster, readings);
+    await service.notifyThresholds(cluster, readings);
+
     expect(mail.sendMail).toHaveBeenCalledTimes(2);
   });
 

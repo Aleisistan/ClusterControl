@@ -12,11 +12,7 @@ import { AlertConfiguration } from './alert-configuration.entity';
 import { AlertsMailService } from './alerts-mail.service';
 import { UpdateAlertConfigurationDto } from './dto/update-alert-configuration.dto';
 
-type AlertActiveField =
-  | 'temperature1Active'
-  | 'temperature2Active'
-  | 'humidity1Active'
-  | 'humidity2Active';
+type AlertActiveField = 'temperatureActive' | 'humidityActive';
 
 const TEMPERATURE_RECOVERY_OFFSET = 3;
 const HUMIDITY_RECOVERY_OFFSET = 10;
@@ -154,8 +150,9 @@ export class AlertsService {
     if (!configuration?.recipients.length) return;
 
     const conditions = [
-      ...[readings.temperature1, readings.temperature2].map((value, index) => ({
-        value,
+      {
+        values: [readings.temperature1, readings.temperature2],
+        average: (readings.temperature1 + readings.temperature2) / 2,
         limit: configuration.temperatureLimit ?? 30,
         recoveryLimit:
           configuration.temperatureRecoveryLimit ??
@@ -165,15 +162,13 @@ export class AlertsService {
               TEMPERATURE_RECOVERY_OFFSET,
           ),
         enabled: configuration.temperatureEnabled ?? true,
-        activeField: (index === 0
-          ? 'temperature1Active'
-          : 'temperature2Active') as AlertActiveField,
-        sensor: `Sensor ${index + 1}`,
+        activeField: 'temperatureActive' as AlertActiveField,
         parameter: 'Temperatura',
         unit: '°C',
-      })),
-      ...[readings.humidity1, readings.humidity2].map((value, index) => ({
-        value,
+      },
+      {
+        values: [readings.humidity1, readings.humidity2],
+        average: (readings.humidity1 + readings.humidity2) / 2,
         limit: configuration.humidityLimit ?? 80,
         recoveryLimit:
           configuration.humidityRecoveryLimit ??
@@ -182,23 +177,20 @@ export class AlertsService {
             (configuration.humidityLimit ?? 80) - HUMIDITY_RECOVERY_OFFSET,
           ),
         enabled: configuration.humidityEnabled ?? true,
-        activeField: (index === 0
-          ? 'humidity1Active'
-          : 'humidity2Active') as AlertActiveField,
-        sensor: `Sensor ${index + 1}`,
+        activeField: 'humidityActive' as AlertActiveField,
         parameter: 'Humedad',
         unit: '%',
-      })),
+      },
     ].filter(({ enabled }) => enabled);
 
     for (const condition of conditions) {
       const isActive = configuration[condition.activeField];
-      if (isActive && condition.value <= condition.recoveryLimit) {
+      if (isActive && condition.average <= condition.recoveryLimit) {
         configuration[condition.activeField] = false;
         await this.configurations.save(configuration);
         continue;
       }
-      if (isActive || condition.value < condition.limit) continue;
+      if (isActive || condition.average < condition.limit) continue;
 
       const title =
         condition.parameter === 'Temperatura'
@@ -212,9 +204,9 @@ export class AlertsService {
       const html = this.buildAlertEmail({
         title,
         clusterName: cluster.name,
-        sensor: condition.sensor,
         parameter: condition.parameter,
-        value: condition.value,
+        values: condition.values,
+        average: condition.average,
         limit: condition.limit,
         unit: condition.unit,
         date,
@@ -233,7 +225,7 @@ export class AlertsService {
           error instanceof Error ? error.message : 'Error desconocido';
         this.logger.error(
           `No se pudo enviar alerta de ${condition.parameter.toLowerCase()} ` +
-            `para cluster ${cluster.id}, ${condition.sensor}: ${reason}`,
+            `para cluster ${cluster.id}: ${reason}`,
         );
       }
     }
@@ -242,9 +234,9 @@ export class AlertsService {
   private buildAlertEmail(alert: {
     title: string;
     clusterName: string;
-    sensor: string;
     parameter: string;
-    value: number;
+    values: number[];
+    average: number;
     limit: number;
     unit: string;
     date: string;
@@ -255,8 +247,9 @@ export class AlertsService {
       <table style="border-collapse:collapse">
         <tr><th style="text-align:left;padding:6px">Parámetro</th><th style="text-align:left;padding:6px">Valor</th></tr>
         <tr><td style="padding:6px">Cluster</td><td style="padding:6px">${this.escapeHtml(alert.clusterName)}</td></tr>
-        <tr><td style="padding:6px">Sensor</td><td style="padding:6px">${alert.sensor}</td></tr>
-        <tr><td style="padding:6px">${alert.parameter} actual</td><td style="padding:6px">${alert.value.toFixed(1)} ${alert.unit}</td></tr>
+        <tr><td style="padding:6px">Sensor 1</td><td style="padding:6px">${alert.values[0].toFixed(1)} ${alert.unit}</td></tr>
+        <tr><td style="padding:6px">Sensor 2</td><td style="padding:6px">${alert.values[1].toFixed(1)} ${alert.unit}</td></tr>
+        <tr><td style="padding:6px">${alert.parameter} promedio</td><td style="padding:6px"><strong>${alert.average.toFixed(1)} ${alert.unit}</strong></td></tr>
         <tr><td style="padding:6px">${alert.parameter} máxima</td><td style="padding:6px">${alert.limit} ${alert.unit}</td></tr>
         <tr><td style="padding:6px">Fecha</td><td style="padding:6px">${this.escapeHtml(alert.date)}</td></tr>
       </table>
