@@ -108,8 +108,11 @@
 }
 
 .history-day {
-  flex: 1 0 0;
-  min-width: 100px;
+  flex: 0 0 132px;
+  width: 132px;
+  min-width: 132px;
+  max-width: 132px;
+  min-height: 74px;
   color: inherit;
   text-align: left;
   cursor: pointer;
