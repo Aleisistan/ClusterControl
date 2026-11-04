@@ -34,6 +34,15 @@ export default () => ({
     url: process.env.CAMERA_URL,
   },
 
+  mail: {
+    host: process.env.MAIL_HOST,
+    port: parseInt(process.env.MAIL_PORT || '587'),
+    secure: process.env.MAIL_SECURE === 'true',
+    user: process.env.MAIL_USER,
+    password: process.env.MAIL_PASSWORD,
+    from: process.env.MAIL_FROM,
+  },
+
   industrialTests: {
     statusPath:
       process.env.INDUSTRIAL_TEST_STATUS_PATH ??

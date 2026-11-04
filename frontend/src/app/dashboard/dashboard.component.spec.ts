@@ -68,6 +68,26 @@ describe('DashboardComponent', () => {
     jasmine.clock().uninstall();
   });
 
+  it('should retry a failed camera stream without periodic reloads', () => {
+    jasmine.clock().install();
+    jasmine.clock().mockDate(new Date('2026-10-16T15:00:00.000Z'));
+    component.historyFilter = '24h';
+    component.camera1Loaded = true;
+
+    component.onCameraError(1);
+
+    expect(component.camera1Loaded).toBeFalse();
+    expect(component.stateHistory).toHaveSize(1);
+    expect(component['cameraRetryTimeouts'].has(1)).toBeTrue();
+
+    jasmine.clock().tick(15_000);
+
+    expect(component['cameraRetryTimeouts'].has(1)).toBeFalse();
+    expect(component['pendingCameraChecks'].has(1)).toBeTrue();
+    component.ngOnDestroy();
+    jasmine.clock().uninstall();
+  });
+
   it('should use the seven complete calendar days before today', () => {
     jasmine.clock().install();
     jasmine.clock().mockDate(new Date(2026, 9, 6, 14, 30));

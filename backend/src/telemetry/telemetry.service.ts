@@ -14,6 +14,7 @@ import { TelemetryResponseDto } from './dto/telemetry-response.dto';
 import { CameraService } from '../camera/camera.service';
 import { DoorSnapshotRepository } from './repositories/door-snapshot.repository';
 import { Cluster } from '../cluster/entities/cluster.entity';
+import { AlertsService } from '../alerts/alerts.service';
 
 @Injectable()
 export class TelemetryService implements OnModuleInit, OnModuleDestroy {
@@ -29,6 +30,7 @@ export class TelemetryService implements OnModuleInit, OnModuleDestroy {
     private readonly logger: LoggerService,
     private readonly cameraService: CameraService,
     private readonly doorSnapshotRepository: DoorSnapshotRepository,
+    private readonly alertsService: AlertsService,
   ) {}
 
   async onModuleInit(): Promise<void> {
@@ -86,6 +88,18 @@ export class TelemetryService implements OnModuleInit, OnModuleDestroy {
     });
 
     await this.telemetryRepository.save(telemetry);
+
+    if (source === 'device') {
+      void this.alertsService
+        .notifyThresholds(cluster, telemetry)
+        .catch((error: unknown) => {
+          const reason =
+            error instanceof Error ? error.message : 'Error desconocido';
+          this.logger.error(
+            `[ALERTAS] No se pudieron evaluar umbrales del cluster ${cluster.id}: ${reason}`,
+          );
+        });
+    }
 
     this.logger.log(
     `[MQTT] Telemetría guardada: ` +

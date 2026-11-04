@@ -57,6 +57,23 @@ $ npm run test:e2e
 $ npm run test:cov
 ```
 
+## Alertas por correo
+
+Las alertas se evalúan para telemetría real del Arduino y usan los umbrales y destinatarios configurados por cluster desde el dashboard (solo administradores). Los valores iniciales son 30 °C y 80 %; se envía un mensaje separado por cada sensor/parámetro que alcance o supere el límite, en cada lectura.
+
+Configura estas variables en `backend/.env` para habilitar el envío SMTP:
+
+```env
+MAIL_HOST=smtp.gmail.com
+MAIL_PORT=587
+MAIL_SECURE=false
+MAIL_USER=tu-cuenta@gmail.com
+MAIL_PASSWORD=contraseña-de-aplicación
+MAIL_FROM=tu-cuenta@gmail.com
+```
+
+Para Gmail, usa una contraseña de aplicación; no uses la contraseña normal de la cuenta. Para otro proveedor, reemplaza host, puerto y modo TLS por los valores SMTP que indique ese proveedor. Mantén las credenciales fuera del repositorio. Al reiniciar el backend, el dashboard indicará que SMTP está configurado y permitirá enviar un correo de prueba.
+
 ## Deployment
 
 When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.

@@ -11,6 +11,7 @@ import { TelemetryRepository } from './repositories/telemetry.repository';
 import { AuthModule } from '../auth/auth.module';
 import { DoorSnapshot } from './door-snapshot.entity';
 import { DoorSnapshotRepository } from './repositories/door-snapshot.repository';
+import { AlertsModule } from '../alerts/alerts.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { DoorSnapshotRepository } from './repositories/door-snapshot.repository'
     CameraModule,
     ClusterModule,
     AuthModule,
+    AlertsModule,
   ],
   providers: [
     TelemetryService,

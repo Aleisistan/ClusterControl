@@ -16,6 +16,7 @@ import { MqttModule } from './mqtt/mqtt.module';
 import { LoggerModule } from './common/logger';
 import { WeatherModule } from './weather/weather.module';
 import { IndustrialTestStatusModule } from './industrial-tests/industrial-test-status.module';
+import { AlertsModule } from './alerts/alerts.module';
 @Module({
   imports: [
     LoggerModule,
@@ -37,6 +38,7 @@ import { IndustrialTestStatusModule } from './industrial-tests/industrial-test-s
     MqttModule,
     WeatherModule,
     IndustrialTestStatusModule,
+    AlertsModule,
   ],
 
   controllers: [AppController],

@@ -1,3 +1,4 @@
+import { HttpErrorResponse } from '@angular/common/http';
 import { Component, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Chart, ChartConfiguration } from 'chart.js';
@@ -21,6 +22,10 @@ import {
 import { WeatherService } from '../services/weather.service';
 import { ClusterService } from '../services/cluster.service';
 import { AuthService } from '../services/auth.service';
+import {
+  AlertConfiguration,
+  AlertsService,
+} from '../services/alerts.service';
 import { environment } from '../../environments/environment';
 
 Chart.register(zoomPlugin);
@@ -38,8 +43,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
   private static readonly CHART_MIN_RANGE_MS = 60_000;
   private static readonly CHART_HISTORY_LIMIT = 10_000;
   private static readonly CHART_SAMPLE_INTERVAL_MS = 20_000;
-  private static readonly CAMERA_REFRESH_INTERVAL_MS = 15_000;
   private static readonly CAMERA_LOAD_TIMEOUT_MS = 10_000;
+  private static readonly CAMERA_RETRY_INTERVAL_MS = 15_000;
 
   @ViewChild(BaseChartDirective) telemetryChart?: BaseChartDirective;
 
@@ -86,6 +91,17 @@ export class DashboardComponent implements OnInit, OnDestroy {
   stateHistoryError = '';
   snapshotDownloadError = '';
   snapshotPreviewError = '';
+  alertConfiguration: AlertConfiguration = {
+    temperatureLimit: 30,
+    humidityLimit: 80,
+    recipients: [],
+    smtpConfigured: false,
+  };
+  alertRecipientsInput = '';
+  alertConfigurationMessage = '';
+  savingAlertConfiguration = false;
+  testingAlertEmail = false;
+  private alertConfigurationRequestId = 0;
   
   lastWsTime: number = 0;
   camera1Loaded = false;
@@ -98,9 +114,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
   private telemetryHistoryRequestId = 0;
   private periodTelemetry: any[] = [];
   private cameraHistorySequence = 0;
-  private cameraRefreshInterval?: ReturnType<typeof setInterval>;
   private industrialTestRefreshInterval?: ReturnType<typeof setInterval>;
   private cameraLoadTimeouts = new Map<1 | 2, ReturnType<typeof setTimeout>>();
+  private cameraRetryTimeouts = new Map<1 | 2, ReturnType<typeof setTimeout>>();
   private snapshotImageUrls = new Map<number, string>();
   private snapshotPreviewRequests = new Map<number, Subscription>();
   private snapshotPreviewFailures = new Set<number>();
@@ -208,6 +224,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     private route: ActivatedRoute,
     private router: Router,
     private authService: AuthService,
+    private alertsService: AlertsService,
   ) {}
 
   ngOnInit(): void {
@@ -220,11 +237,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
       },
       15_000,
     );
-    this.cameraRefreshInterval = setInterval(() => {
-      this.refreshCameraSource(1);
-      this.refreshCameraSource(2);
-    }, DashboardComponent.CAMERA_REFRESH_INTERVAL_MS);
-
     const initialClusterId = this.route.snapshot.queryParamMap.get('clusterId');
     this.pendingClusterId = initialClusterId ? Number(initialClusterId) : null;
 
@@ -235,7 +247,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
       if (this.clusters.length > 0) {
         const clusterId = this.pendingClusterId ?? this.selectedClusterId;
         this.applyClusterSelection(clusterId);
-        
+        this.loadAlertConfiguration(clusterId);
+
         this.loadTelemetry();
         this.loadWeather();
       this.updateClusterTime();
@@ -259,6 +272,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
             : Number(this.clusters[0].id);
 
         this.applyClusterSelection(initialSelectedId);
+        this.loadAlertConfiguration(initialSelectedId);
         this.navigateWithClusterId(this.selectedClusterId);
         this.loadTelemetry();
         this.loadWeather();
@@ -277,11 +291,11 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.unsubscribeTelemetry?.();
     this.unsubscribeDoorSnapshot?.();
     this.clearDoorSnapshotPreviews();
-    if (this.cameraRefreshInterval) clearInterval(this.cameraRefreshInterval);
     if (this.industrialTestRefreshInterval) {
       clearInterval(this.industrialTestRefreshInterval);
     }
     for (const timeout of this.cameraLoadTimeouts.values()) clearTimeout(timeout);
+    for (const timeout of this.cameraRetryTimeouts.values()) clearTimeout(timeout);
   }
 
   onClusterChange(clusterId: number): void {
@@ -295,6 +309,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   // Actualiza el cluster seleccionado en memoria
   this.applyClusterSelection(id);
+  this.loadAlertConfiguration(id);
 
   // Navega y refresca
   this.navigateWithClusterId(id);
@@ -308,8 +323,148 @@ export class DashboardComponent implements OnInit, OnDestroy {
   this.updateCameraStream();
 }
 
+isAlertConfigurationAdmin(): boolean {
+  return this.authService.isAdmin();
+}
+
+saveAlertConfiguration(): void {
+  const clusterId = Number(this.selectedClusterId);
+  if (!clusterId || this.savingAlertConfiguration) return;
+
+  const temperatureLimit = Number(this.alertConfiguration.temperatureLimit);
+  const humidityLimit = Number(this.alertConfiguration.humidityLimit);
+  if (
+    !Number.isFinite(temperatureLimit) ||
+    temperatureLimit < -40 ||
+    temperatureLimit > 100 ||
+    !Number.isFinite(humidityLimit) ||
+    humidityLimit < 0 ||
+    humidityLimit > 100
+  ) {
+    this.alertConfigurationMessage =
+      'La temperatura debe estar entre -40 y 100 °C; la humedad, entre 0 y 100 %.';
+    return;
+  }
+
+  const recipients = this.alertRecipientsInput
+    .split(',')
+    .map((address) => address.trim())
+    .filter(Boolean);
+
+  const requestId = this.alertConfigurationRequestId;
+  this.savingAlertConfiguration = true;
+  this.alertConfigurationMessage = '';
+  this.alertsService
+    .updateConfiguration(clusterId, {
+      temperatureLimit,
+      humidityLimit,
+      recipients,
+    })
+    .subscribe({
+      next: (configuration) => {
+        if (clusterId === Number(this.selectedClusterId)) {
+          this.setAlertConfiguration(configuration);
+          this.alertConfigurationMessage = 'Configuración guardada.';
+        }
+        this.savingAlertConfiguration = false;
+      },
+      error: (error: unknown) => {
+        console.error('No se pudo guardar la configuración de alertas:', error);
+        if (requestId === this.alertConfigurationRequestId) {
+          this.alertConfigurationMessage = this.getAlertConfigurationError(error);
+        }
+        this.savingAlertConfiguration = false;
+      },
+    });
+}
+
+private getAlertConfigurationError(error: unknown): string {
+  if (!(error instanceof HttpErrorResponse)) {
+    return 'No se pudo guardar la configuración por un error inesperado.';
+  }
+
+  if (error.status === 0) {
+    return 'No se pudo conectar con el servidor. Comprueba que el backend esté iniciado.';
+  }
+  if (error.status === 401) {
+    return 'Tu sesión expiró. Vuelve a iniciar sesión e intenta guardar otra vez.';
+  }
+  if (error.status === 403) {
+    return 'Solo un administrador puede modificar la configuración de alertas.';
+  }
+
+  const message = error.error?.message;
+  if (Array.isArray(message) && message.every((item) => typeof item === 'string')) {
+    return `No se pudo guardar: ${message.join(' ')}`;
+  }
+  if (typeof message === 'string' && message.trim()) {
+    return `No se pudo guardar: ${message}`;
+  }
+
+  if (error.status >= 500) {
+    return 'El servidor no pudo guardar los cambios. Revisa los logs del backend para conocer el error de base de datos.';
+  }
+
+  return `No se pudo guardar la configuración (HTTP ${error.status}).`;
+}
+
+sendTestAlertEmail(): void {
+  const clusterId = Number(this.selectedClusterId);
+  if (!clusterId || this.testingAlertEmail) return;
+
+  this.testingAlertEmail = true;
+  this.alertConfigurationMessage = '';
+  this.alertsService.sendTestEmail(clusterId).subscribe({
+    next: () => {
+      this.alertConfigurationMessage =
+        'Correo de prueba enviado correctamente.';
+      this.testingAlertEmail = false;
+    },
+    error: (error: unknown) => {
+      console.error('No se pudo enviar el correo de prueba:', error);
+      this.alertConfigurationMessage =
+        'No se pudo enviar el correo. Comprueba los destinatarios y la configuración SMTP del servidor.';
+      this.testingAlertEmail = false;
+    },
+  });
+}
+
+private loadAlertConfiguration(clusterId: number): void {
+  const requestId = ++this.alertConfigurationRequestId;
+  this.alertConfigurationMessage = '';
+  this.alertConfiguration = {
+    temperatureLimit: 30,
+    humidityLimit: 80,
+    recipients: [],
+    smtpConfigured: false,
+  };
+  this.alertRecipientsInput = '';
+  this.alertsService.getConfiguration(clusterId).subscribe({
+    next: (configuration) => {
+      if (
+        requestId === this.alertConfigurationRequestId &&
+        clusterId === Number(this.selectedClusterId)
+      ) {
+        this.setAlertConfiguration(configuration);
+      }
+    },
+    error: (error: unknown) => {
+      if (requestId !== this.alertConfigurationRequestId) return;
+      console.error('No se pudo cargar la configuración de alertas:', error);
+      this.alertConfigurationMessage =
+        'No se pudo cargar la configuración de alertas.';
+    },
+  });
+}
+
+private setAlertConfiguration(configuration: AlertConfiguration): void {
+  this.alertConfiguration = configuration;
+  this.alertRecipientsInput = configuration.recipients.join(', ');
+}
+
   onCameraLoad(cameraId: 1 | 2): void {
     this.clearCameraLoadTimeout(cameraId);
+    this.clearCameraRetryTimeout(cameraId);
     this.pendingCameraChecks.delete(cameraId);
     const wasInactive = this.unavailableCameras.delete(cameraId);
     if (cameraId === 1) {
@@ -333,10 +488,12 @@ export class DashboardComponent implements OnInit, OnDestroy {
       this.camera2Loaded = false;
     }
 
-    if (!wasActive) return;
+    if (wasActive) {
+      this.unavailableCameras.add(cameraId);
+      this.recordCameraStateChange(cameraId, 'Activa', 'Inactiva');
+    }
 
-    this.unavailableCameras.add(cameraId);
-    this.recordCameraStateChange(cameraId, 'Activa', 'Inactiva');
+    this.scheduleCameraRetry(cameraId);
   }
 
   private recordCameraStateChange(
@@ -1395,6 +1552,8 @@ loadWeather(): void {
 
   private updateCameraStream(): void {
     const clusterId = Number(this.selectedClusterId);
+    this.clearCameraRetryTimeout(1);
+    this.unavailableCameras.delete(1);
     this.camera1Loaded = false;
     this.refreshCameraSource(1, clusterId || null);
   }
@@ -1403,6 +1562,7 @@ loadWeather(): void {
     cameraId: 1 | 2,
     clusterId: number | null = Number(this.selectedClusterId) || null,
   ): void {
+    this.clearCameraRetryTimeout(cameraId);
     const source =
       cameraId === 1
         ? this.buildCameraStreamUrl(clusterId)
@@ -1433,6 +1593,22 @@ loadWeather(): void {
     const timeout = this.cameraLoadTimeouts.get(cameraId);
     if (timeout) clearTimeout(timeout);
     this.cameraLoadTimeouts.delete(cameraId);
+  }
+
+  private scheduleCameraRetry(cameraId: 1 | 2): void {
+    if (this.cameraRetryTimeouts.has(cameraId)) return;
+
+    const timeout = setTimeout(() => {
+      this.cameraRetryTimeouts.delete(cameraId);
+      this.refreshCameraSource(cameraId);
+    }, DashboardComponent.CAMERA_RETRY_INTERVAL_MS);
+    this.cameraRetryTimeouts.set(cameraId, timeout);
+  }
+
+  private clearCameraRetryTimeout(cameraId: 1 | 2): void {
+    const timeout = this.cameraRetryTimeouts.get(cameraId);
+    if (timeout) clearTimeout(timeout);
+    this.cameraRetryTimeouts.delete(cameraId);
   }
 
 updateClusterTime(): void {

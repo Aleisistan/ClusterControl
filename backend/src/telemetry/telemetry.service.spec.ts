@@ -7,6 +7,7 @@ import { TelemetryGateway } from './telemetry.gateway';
 import { LoggerService } from '../common/logger/logger.service';
 import { CameraService } from '../camera/camera.service';
 import { DoorSnapshotRepository } from './repositories/door-snapshot.repository';
+import { AlertsService } from '../alerts/alerts.service';
 
 describe('TelemetryService', () => {
   let service: TelemetryService;
@@ -31,6 +32,7 @@ describe('TelemetryService', () => {
   };
   let clusterRepository: { findByDeviceId: jest.Mock };
   let logger: { log: jest.Mock; warn: jest.Mock; error: jest.Mock };
+  let alertsService: { notifyThresholds: jest.Mock };
 
   beforeEach(async () => {
     telemetryRepository = {
@@ -61,6 +63,7 @@ describe('TelemetryService', () => {
       findByDeviceId: jest.fn().mockResolvedValue({ id: 12 }),
     };
     logger = { log: jest.fn(), warn: jest.fn(), error: jest.fn() };
+    alertsService = { notifyThresholds: jest.fn().mockResolvedValue(undefined) };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -71,6 +74,7 @@ describe('TelemetryService', () => {
         { provide: LoggerService, useValue: logger },
         { provide: CameraService, useValue: cameraService },
         { provide: DoorSnapshotRepository, useValue: doorSnapshotRepository },
+        { provide: AlertsService, useValue: alertsService },
       ],
     }).compile();
 
@@ -152,6 +156,7 @@ describe('TelemetryService', () => {
     expect(telemetryRepository.create).toHaveBeenCalledWith(
       expect.objectContaining({ source: 'industrial-test' }),
     );
+    expect(alertsService.notifyThresholds).not.toHaveBeenCalled();
   });
 
   it('returns state changes for the requested cluster and date range', async () => {
