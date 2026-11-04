@@ -96,6 +96,12 @@ export class AlertsService {
       Math.max(0, data.humidityLimit - HUMIDITY_RECOVERY_OFFSET);
     configuration.temperatureEnabled = data.temperatureEnabled ?? true;
     configuration.humidityEnabled = data.humidityEnabled ?? true;
+    configuration.temperatureActive = false;
+    configuration.humidityActive = false;
+    configuration.temperature1Active = false;
+    configuration.temperature2Active = false;
+    configuration.humidity1Active = false;
+    configuration.humidity2Active = false;
     const recipients = [...(configuration.recipients ?? []), ...data.recipients]
       .map((address) => address.trim())
       .filter(Boolean)
@@ -149,10 +155,25 @@ export class AlertsService {
     });
     if (!configuration?.recipients.length) return;
 
+    const temperatureAverage =
+      (readings.temperature1 + readings.temperature2) / 2;
+    const humidityAverage = (readings.humidity1 + readings.humidity2) / 2;
+    if (
+      !Number.isFinite(temperatureAverage) ||
+      !Number.isFinite(humidityAverage)
+    ) {
+      this.logger.warn(
+        `[ALERTAS] Lecturas inválidas para cluster ${cluster.id}: ` +
+          `temperatura=${readings.temperature1},${readings.temperature2}; ` +
+          `humedad=${readings.humidity1},${readings.humidity2}`,
+      );
+      return;
+    }
+
     const conditions = [
       {
         values: [readings.temperature1, readings.temperature2],
-        average: (readings.temperature1 + readings.temperature2) / 2,
+        average: temperatureAverage,
         limit: configuration.temperatureLimit ?? 30,
         recoveryLimit:
           configuration.temperatureRecoveryLimit ??
@@ -168,7 +189,7 @@ export class AlertsService {
       },
       {
         values: [readings.humidity1, readings.humidity2],
-        average: (readings.humidity1 + readings.humidity2) / 2,
+        average: humidityAverage,
         limit: configuration.humidityLimit ?? 80,
         recoveryLimit:
           configuration.humidityRecoveryLimit ??

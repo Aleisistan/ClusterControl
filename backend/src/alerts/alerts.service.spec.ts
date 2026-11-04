@@ -167,6 +167,32 @@ describe('AlertsService', () => {
     expect(mail.sendMail).toHaveBeenCalledTimes(2);
   });
 
+  it('rearms alert state when the threshold configuration is updated', async () => {
+    const existingConfiguration = {
+      temperatureLimit: 30,
+      humidityLimit: 80,
+      temperatureRecoveryLimit: 27,
+      humidityRecoveryLimit: 70,
+      temperatureActive: true,
+      humidityActive: true,
+      recipients: ['alerts@example.com'],
+    };
+    repository.findOne.mockResolvedValue(existingConfiguration);
+
+    await service.updateConfiguration(cluster.id, {
+      temperatureLimit: 5,
+      humidityLimit: 80,
+      recipients: ['alerts@example.com'],
+    });
+
+    expect(repository.save).toHaveBeenCalledWith(
+      expect.objectContaining({
+        temperatureActive: false,
+        humidityActive: false,
+      }),
+    );
+  });
+
   it('does not send an alert when no recipients are configured', async () => {
     repository.findOne.mockResolvedValue({
       temperatureLimit: 30,
