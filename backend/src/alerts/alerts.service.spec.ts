@@ -51,8 +51,8 @@ describe('AlertsService', () => {
     await expect(service.getConfiguration(cluster.id)).resolves.toEqual({
       temperatureLimit: 30,
       humidityLimit: 80,
-      temperatureRecoveryLimit: 28,
-      humidityRecoveryLimit: 75,
+      temperatureRecoveryLimit: 27,
+      humidityRecoveryLimit: 70,
       temperatureEnabled: true,
       humidityEnabled: true,
       recipients: [],

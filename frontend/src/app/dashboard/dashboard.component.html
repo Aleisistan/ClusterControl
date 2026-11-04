@@ -607,11 +607,9 @@
           min="-40" max="100" step="0.1" required
           [(ngModel)]="alertConfiguration.temperatureLimit"
           [disabled]="!alertConfiguration.temperatureEnabled" />
-        <label class="form-label mt-2" for="alert-temperature-recovery">Recuperación (°C)</label>
-        <input id="alert-temperature-recovery" class="form-control" type="number"
-          min="-40" max="100" step="0.1" required
-          [(ngModel)]="alertConfiguration.temperatureRecoveryLimit"
-          [disabled]="!alertConfiguration.temperatureEnabled" />
+        <div class="form-text mt-2">
+          Recuperación automática: 3 °C por debajo del límite.
+        </div>
         <div class="form-check mt-2">
           <input id="alert-temperature-enabled" class="form-check-input" type="checkbox"
             [(ngModel)]="alertConfiguration.temperatureEnabled" />
@@ -624,11 +622,9 @@
           min="0" max="100" step="0.1" required
           [(ngModel)]="alertConfiguration.humidityLimit"
           [disabled]="!alertConfiguration.humidityEnabled" />
-        <label class="form-label mt-2" for="alert-humidity-recovery">Recuperación (%)</label>
-        <input id="alert-humidity-recovery" class="form-control" type="number"
-          min="0" max="100" step="0.1" required
-          [(ngModel)]="alertConfiguration.humidityRecoveryLimit"
-          [disabled]="!alertConfiguration.humidityEnabled" />
+        <div class="form-text mt-2">
+          Recuperación automática: 10 % por debajo del límite.
+        </div>
         <div class="form-check mt-2">
           <input id="alert-humidity-enabled" class="form-check-input" type="checkbox"
             [(ngModel)]="alertConfiguration.humidityEnabled" />
@@ -641,6 +637,18 @@
           placeholder="correo@ejemplo.com, otro@ejemplo.com"
           [(ngModel)]="alertRecipientsInput" />
         <small class="form-text">Separa varias direcciones con comas. Sin destinatarios no se envían alertas.</small>
+        <div class="mt-2" *ngIf="alertConfiguration.recipients.length">
+          <div class="small fw-semibold mb-1">Correos que reciben las alertas:</div>
+          <ul class="list-group list-group-sm">
+            <li class="list-group-item py-1 px-2"
+              *ngFor="let recipient of alertConfiguration.recipients">
+              {{ recipient }}
+            </li>
+          </ul>
+        </div>
+        <div class="small text-muted mt-2" *ngIf="!alertConfiguration.recipients.length">
+          No hay correos configurados para recibir alertas.
+        </div>
       </div>
     </div>
     <div class="d-flex flex-wrap align-items-center gap-2 mt-3">

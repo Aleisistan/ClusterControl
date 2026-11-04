@@ -18,6 +18,9 @@ type AlertActiveField =
   | 'humidity1Active'
   | 'humidity2Active';
 
+const TEMPERATURE_RECOVERY_OFFSET = 3;
+const HUMIDITY_RECOVERY_OFFSET = 10;
+
 @Injectable()
 export class AlertsService {
   private readonly logger = new Logger(AlertsService.name);
@@ -42,10 +45,16 @@ export class AlertsService {
       humidityLimit: configuration?.humidityLimit ?? 80,
       temperatureRecoveryLimit:
         configuration?.temperatureRecoveryLimit ??
-        Math.max(-40, (configuration?.temperatureLimit ?? 30) - 2),
+        Math.max(
+          -40,
+          (configuration?.temperatureLimit ?? 30) - TEMPERATURE_RECOVERY_OFFSET,
+        ),
       humidityRecoveryLimit:
         configuration?.humidityRecoveryLimit ??
-        Math.max(0, (configuration?.humidityLimit ?? 80) - 5),
+        Math.max(
+          0,
+          (configuration?.humidityLimit ?? 80) - HUMIDITY_RECOVERY_OFFSET,
+        ),
       temperatureEnabled: configuration?.temperatureEnabled ?? true,
       humidityEnabled: configuration?.humidityEnabled ?? true,
       recipients: configuration?.recipients ?? [],
@@ -84,9 +93,11 @@ export class AlertsService {
     configuration.temperatureLimit = data.temperatureLimit;
     configuration.humidityLimit = data.humidityLimit;
     configuration.temperatureRecoveryLimit =
-      data.temperatureRecoveryLimit ?? Math.max(-40, data.temperatureLimit - 2);
+      data.temperatureRecoveryLimit ??
+      Math.max(-40, data.temperatureLimit - TEMPERATURE_RECOVERY_OFFSET);
     configuration.humidityRecoveryLimit =
-      data.humidityRecoveryLimit ?? Math.max(0, data.humidityLimit - 5);
+      data.humidityRecoveryLimit ??
+      Math.max(0, data.humidityLimit - HUMIDITY_RECOVERY_OFFSET);
     configuration.temperatureEnabled = data.temperatureEnabled ?? true;
     configuration.humidityEnabled = data.humidityEnabled ?? true;
     configuration.recipients = data.recipients.map((address) => address.trim());
@@ -139,7 +150,11 @@ export class AlertsService {
         limit: configuration.temperatureLimit ?? 30,
         recoveryLimit:
           configuration.temperatureRecoveryLimit ??
-          Math.max(-40, (configuration.temperatureLimit ?? 30) - 2),
+          Math.max(
+            -40,
+            (configuration.temperatureLimit ?? 30) -
+              TEMPERATURE_RECOVERY_OFFSET,
+          ),
         enabled: configuration.temperatureEnabled ?? true,
         activeField: (index === 0
           ? 'temperature1Active'
@@ -153,7 +168,10 @@ export class AlertsService {
         limit: configuration.humidityLimit ?? 80,
         recoveryLimit:
           configuration.humidityRecoveryLimit ??
-          Math.max(0, (configuration.humidityLimit ?? 80) - 5),
+          Math.max(
+            0,
+            (configuration.humidityLimit ?? 80) - HUMIDITY_RECOVERY_OFFSET,
+          ),
         enabled: configuration.humidityEnabled ?? true,
         activeField: (index === 0
           ? 'humidity1Active'
