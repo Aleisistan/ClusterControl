@@ -22,6 +22,30 @@ export class AlertConfiguration {
   @Column('float', { default: 80 })
   humidityLimit: number;
 
+  @Column('float', { default: 28 })
+  temperatureRecoveryLimit: number;
+
+  @Column('float', { default: 75 })
+  humidityRecoveryLimit: number;
+
+  @Column({ default: true })
+  temperatureEnabled: boolean;
+
+  @Column({ default: true })
+  humidityEnabled: boolean;
+
+  @Column({ default: false })
+  temperature1Active: boolean;
+
+  @Column({ default: false })
+  temperature2Active: boolean;
+
+  @Column({ default: false })
+  humidity1Active: boolean;
+
+  @Column({ default: false })
+  humidity2Active: boolean;
+
   @Column('text', { array: true, default: '{}' })
   recipients: string[];
 }

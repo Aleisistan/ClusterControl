@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Injectable,
   Logger,
   NotFoundException,
@@ -10,6 +11,12 @@ import { ClusterRepository } from '../cluster/repositories/cluster.repository';
 import { AlertConfiguration } from './alert-configuration.entity';
 import { AlertsMailService } from './alerts-mail.service';
 import { UpdateAlertConfigurationDto } from './dto/update-alert-configuration.dto';
+
+type AlertActiveField =
+  | 'temperature1Active'
+  | 'temperature2Active'
+  | 'humidity1Active'
+  | 'humidity2Active';
 
 @Injectable()
 export class AlertsService {
@@ -33,6 +40,14 @@ export class AlertsService {
     return {
       temperatureLimit: configuration?.temperatureLimit ?? 30,
       humidityLimit: configuration?.humidityLimit ?? 80,
+      temperatureRecoveryLimit:
+        configuration?.temperatureRecoveryLimit ??
+        Math.max(-40, (configuration?.temperatureLimit ?? 30) - 2),
+      humidityRecoveryLimit:
+        configuration?.humidityRecoveryLimit ??
+        Math.max(0, (configuration?.humidityLimit ?? 80) - 5),
+      temperatureEnabled: configuration?.temperatureEnabled ?? true,
+      humidityEnabled: configuration?.humidityEnabled ?? true,
       recipients: configuration?.recipients ?? [],
       smtpConfigured: this.mail.isConfigured(),
     };
@@ -44,6 +59,22 @@ export class AlertsService {
   ) {
     const cluster = await this.clusters.findById(clusterId);
     if (!cluster) throw new NotFoundException('Cluster no encontrado');
+    if (
+      data.temperatureRecoveryLimit !== undefined &&
+      data.temperatureRecoveryLimit >= data.temperatureLimit
+    ) {
+      throw new BadRequestException(
+        'El umbral de recuperación de temperatura debe ser menor que el límite máximo',
+      );
+    }
+    if (
+      data.humidityRecoveryLimit !== undefined &&
+      data.humidityRecoveryLimit >= data.humidityLimit
+    ) {
+      throw new BadRequestException(
+        'El umbral de recuperación de humedad debe ser menor que el límite máximo',
+      );
+    }
 
     const configuration =
       (await this.configurations.findOne({
@@ -52,9 +83,13 @@ export class AlertsService {
 
     configuration.temperatureLimit = data.temperatureLimit;
     configuration.humidityLimit = data.humidityLimit;
-    configuration.recipients = data.recipients.map((address) =>
-      address.trim(),
-    );
+    configuration.temperatureRecoveryLimit =
+      data.temperatureRecoveryLimit ?? Math.max(-40, data.temperatureLimit - 2);
+    configuration.humidityRecoveryLimit =
+      data.humidityRecoveryLimit ?? Math.max(0, data.humidityLimit - 5);
+    configuration.temperatureEnabled = data.temperatureEnabled ?? true;
+    configuration.humidityEnabled = data.humidityEnabled ?? true;
+    configuration.recipients = data.recipients.map((address) => address.trim());
 
     await this.configurations.save(configuration);
     return this.getConfiguration(clusterId);
@@ -99,64 +134,82 @@ export class AlertsService {
     if (!configuration?.recipients.length) return;
 
     const conditions = [
-      ...[readings.temperature1, readings.temperature2]
-        .map((value, index) => ({
-          value,
-          limit: configuration.temperatureLimit,
-          sensor: `Sensor ${index + 1}`,
-          parameter: 'Temperatura',
-          unit: '°C',
-        }))
-        .filter(({ value, limit }) => value >= limit),
-      ...[readings.humidity1, readings.humidity2]
-        .map((value, index) => ({
-          value,
-          limit: configuration.humidityLimit,
-          sensor: `Sensor ${index + 1}`,
-          parameter: 'Humedad',
-          unit: '%',
-        }))
-        .filter(({ value, limit }) => value >= limit),
-    ];
+      ...[readings.temperature1, readings.temperature2].map((value, index) => ({
+        value,
+        limit: configuration.temperatureLimit ?? 30,
+        recoveryLimit:
+          configuration.temperatureRecoveryLimit ??
+          Math.max(-40, (configuration.temperatureLimit ?? 30) - 2),
+        enabled: configuration.temperatureEnabled ?? true,
+        activeField: (index === 0
+          ? 'temperature1Active'
+          : 'temperature2Active') as AlertActiveField,
+        sensor: `Sensor ${index + 1}`,
+        parameter: 'Temperatura',
+        unit: '°C',
+      })),
+      ...[readings.humidity1, readings.humidity2].map((value, index) => ({
+        value,
+        limit: configuration.humidityLimit ?? 80,
+        recoveryLimit:
+          configuration.humidityRecoveryLimit ??
+          Math.max(0, (configuration.humidityLimit ?? 80) - 5),
+        enabled: configuration.humidityEnabled ?? true,
+        activeField: (index === 0
+          ? 'humidity1Active'
+          : 'humidity2Active') as AlertActiveField,
+        sensor: `Sensor ${index + 1}`,
+        parameter: 'Humedad',
+        unit: '%',
+      })),
+    ].filter(({ enabled }) => enabled);
 
-    await Promise.all(
-      conditions.map(async (condition) => {
-        const title =
-          condition.parameter === 'Temperatura'
-            ? 'Temperatura elevada'
-            : 'Humedad elevada';
-        const date = new Intl.DateTimeFormat('es-AR', {
-          timeZone: cluster.timezone || 'America/Argentina/Buenos_Aires',
-          dateStyle: 'short',
-          timeStyle: 'medium',
-        }).format(new Date());
-        const html = this.buildAlertEmail({
-          title,
-          clusterName: cluster.name,
-          sensor: condition.sensor,
-          parameter: condition.parameter,
-          value: condition.value,
-          limit: condition.limit,
-          unit: condition.unit,
-          date,
-        });
+    for (const condition of conditions) {
+      const isActive = configuration[condition.activeField];
+      if (isActive && condition.value <= condition.recoveryLimit) {
+        configuration[condition.activeField] = false;
+        await this.configurations.save(configuration);
+        continue;
+      }
+      if (isActive || condition.value < condition.limit) continue;
 
-        try {
-          await this.mail.sendMail(
-            configuration.recipients,
-            `[ClusterControl] ${title} - ${cluster.name}`,
-            html,
-          );
-        } catch (error) {
-          const reason =
-            error instanceof Error ? error.message : 'Error desconocido';
-          this.logger.error(
-            `No se pudo enviar alerta de ${condition.parameter.toLowerCase()} ` +
-              `para cluster ${cluster.id}, ${condition.sensor}: ${reason}`,
-          );
-        }
-      }),
-    );
+      const title =
+        condition.parameter === 'Temperatura'
+          ? 'Temperatura elevada'
+          : 'Humedad elevada';
+      const date = new Intl.DateTimeFormat('es-AR', {
+        timeZone: cluster.timezone || 'America/Argentina/Buenos_Aires',
+        dateStyle: 'short',
+        timeStyle: 'medium',
+      }).format(new Date());
+      const html = this.buildAlertEmail({
+        title,
+        clusterName: cluster.name,
+        sensor: condition.sensor,
+        parameter: condition.parameter,
+        value: condition.value,
+        limit: condition.limit,
+        unit: condition.unit,
+        date,
+      });
+
+      try {
+        await this.mail.sendMail(
+          configuration.recipients,
+          `[ClusterControl] ${title} - ${cluster.name}`,
+          html,
+        );
+        configuration[condition.activeField] = true;
+        await this.configurations.save(configuration);
+      } catch (error) {
+        const reason =
+          error instanceof Error ? error.message : 'Error desconocido';
+        this.logger.error(
+          `No se pudo enviar alerta de ${condition.parameter.toLowerCase()} ` +
+            `para cluster ${cluster.id}, ${condition.sensor}: ${reason}`,
+        );
+      }
+    }
   }
 
   private buildAlertEmail(alert: {

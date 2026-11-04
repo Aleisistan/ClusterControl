@@ -597,21 +597,43 @@
   </summary>
   <div class="pt-3">
     <p class="mb-3">
-      Se envía un correo por cada sensor y lectura que alcance o supere uno de
-      estos límites. Se enviarán avisos en cada lectura mientras continúe la condición.
+      Se envía un correo cuando un sensor supera un límite. El aviso se rearma
+      cuando el valor baja hasta el umbral de recuperación.
     </p>
     <div class="row g-3">
       <div class="col-12 col-md-3">
         <label class="form-label" for="alert-temperature-limit">Temperatura máxima (°C)</label>
         <input id="alert-temperature-limit" class="form-control" type="number"
           min="-40" max="100" step="0.1" required
-          [(ngModel)]="alertConfiguration.temperatureLimit" />
+          [(ngModel)]="alertConfiguration.temperatureLimit"
+          [disabled]="!alertConfiguration.temperatureEnabled" />
+        <label class="form-label mt-2" for="alert-temperature-recovery">Recuperación (°C)</label>
+        <input id="alert-temperature-recovery" class="form-control" type="number"
+          min="-40" max="100" step="0.1" required
+          [(ngModel)]="alertConfiguration.temperatureRecoveryLimit"
+          [disabled]="!alertConfiguration.temperatureEnabled" />
+        <div class="form-check mt-2">
+          <input id="alert-temperature-enabled" class="form-check-input" type="checkbox"
+            [(ngModel)]="alertConfiguration.temperatureEnabled" />
+          <label class="form-check-label" for="alert-temperature-enabled">Activar temperatura</label>
+        </div>
       </div>
       <div class="col-12 col-md-3">
         <label class="form-label" for="alert-humidity-limit">Humedad máxima (%)</label>
         <input id="alert-humidity-limit" class="form-control" type="number"
           min="0" max="100" step="0.1" required
-          [(ngModel)]="alertConfiguration.humidityLimit" />
+          [(ngModel)]="alertConfiguration.humidityLimit"
+          [disabled]="!alertConfiguration.humidityEnabled" />
+        <label class="form-label mt-2" for="alert-humidity-recovery">Recuperación (%)</label>
+        <input id="alert-humidity-recovery" class="form-control" type="number"
+          min="0" max="100" step="0.1" required
+          [(ngModel)]="alertConfiguration.humidityRecoveryLimit"
+          [disabled]="!alertConfiguration.humidityEnabled" />
+        <div class="form-check mt-2">
+          <input id="alert-humidity-enabled" class="form-check-input" type="checkbox"
+            [(ngModel)]="alertConfiguration.humidityEnabled" />
+          <label class="form-check-label" for="alert-humidity-enabled">Activar humedad</label>
+        </div>
       </div>
       <div class="col-12 col-md-6">
         <label class="form-label" for="alert-recipients">Destinatarios</label>

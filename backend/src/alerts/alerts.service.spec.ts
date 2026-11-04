@@ -28,7 +28,9 @@ describe('AlertsService', () => {
         recipients: ['alerts@example.com'],
       }),
       create: jest.fn((configuration) => configuration),
-      save: jest.fn().mockImplementation(async (configuration) => configuration),
+      save: jest
+        .fn()
+        .mockImplementation(async (configuration) => configuration),
     };
     clusterRepository = { findById: jest.fn().mockResolvedValue(cluster) };
     mail = {
@@ -49,6 +51,10 @@ describe('AlertsService', () => {
     await expect(service.getConfiguration(cluster.id)).resolves.toEqual({
       temperatureLimit: 30,
       humidityLimit: 80,
+      temperatureRecoveryLimit: 28,
+      humidityRecoveryLimit: 75,
+      temperatureEnabled: true,
+      humidityEnabled: true,
       recipients: [],
       smtpConfigured: true,
     });
@@ -97,7 +103,7 @@ describe('AlertsService', () => {
     );
   });
 
-  it('sends another email for a later reading that remains above the limit', async () => {
+  it('does not repeat an email until the sensor recovers', async () => {
     const readings = {
       temperature1: 32,
       temperature2: 25,
@@ -108,6 +114,12 @@ describe('AlertsService', () => {
     await service.notifyThresholds(cluster, readings);
     await service.notifyThresholds(cluster, readings);
 
+    expect(mail.sendMail).toHaveBeenCalledTimes(1);
+    await service.notifyThresholds(cluster, {
+      ...readings,
+      temperature1: 27,
+    });
+    await service.notifyThresholds(cluster, readings);
     expect(mail.sendMail).toHaveBeenCalledTimes(2);
   });
 

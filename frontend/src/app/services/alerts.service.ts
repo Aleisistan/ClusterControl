@@ -7,6 +7,10 @@ import { environment } from '../../environments/environment';
 export interface AlertConfiguration {
   temperatureLimit: number;
   humidityLimit: number;
+  temperatureRecoveryLimit: number;
+  humidityRecoveryLimit: number;
+  temperatureEnabled: boolean;
+  humidityEnabled: boolean;
   recipients: string[];
   smtpConfigured: boolean;
 }
@@ -14,6 +18,10 @@ export interface AlertConfiguration {
 export interface AlertConfigurationUpdate {
   temperatureLimit: number;
   humidityLimit: number;
+  temperatureRecoveryLimit: number;
+  humidityRecoveryLimit: number;
+  temperatureEnabled: boolean;
+  humidityEnabled: boolean;
   recipients: string[];
 }
 

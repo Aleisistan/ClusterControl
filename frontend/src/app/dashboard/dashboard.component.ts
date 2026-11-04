@@ -94,6 +94,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
   alertConfiguration: AlertConfiguration = {
     temperatureLimit: 30,
     humidityLimit: 80,
+    temperatureRecoveryLimit: 28,
+    humidityRecoveryLimit: 75,
+    temperatureEnabled: true,
+    humidityEnabled: true,
     recipients: [],
     smtpConfigured: false,
   };
@@ -333,16 +337,26 @@ saveAlertConfiguration(): void {
 
   const temperatureLimit = Number(this.alertConfiguration.temperatureLimit);
   const humidityLimit = Number(this.alertConfiguration.humidityLimit);
+  const temperatureRecoveryLimit = Number(
+    this.alertConfiguration.temperatureRecoveryLimit,
+  );
+  const humidityRecoveryLimit = Number(
+    this.alertConfiguration.humidityRecoveryLimit,
+  );
   if (
     !Number.isFinite(temperatureLimit) ||
     temperatureLimit < -40 ||
     temperatureLimit > 100 ||
     !Number.isFinite(humidityLimit) ||
     humidityLimit < 0 ||
-    humidityLimit > 100
+    humidityLimit > 100 ||
+    !Number.isFinite(temperatureRecoveryLimit) ||
+    temperatureRecoveryLimit >= temperatureLimit ||
+    !Number.isFinite(humidityRecoveryLimit) ||
+    humidityRecoveryLimit >= humidityLimit
   ) {
     this.alertConfigurationMessage =
-      'La temperatura debe estar entre -40 y 100 °C; la humedad, entre 0 y 100 %.';
+      'Los umbrales máximos deben ser válidos y mayores que sus umbrales de recuperación.';
     return;
   }
 
@@ -358,6 +372,10 @@ saveAlertConfiguration(): void {
     .updateConfiguration(clusterId, {
       temperatureLimit,
       humidityLimit,
+      temperatureRecoveryLimit,
+      humidityRecoveryLimit,
+      temperatureEnabled: this.alertConfiguration.temperatureEnabled,
+      humidityEnabled: this.alertConfiguration.humidityEnabled,
       recipients,
     })
     .subscribe({
@@ -435,6 +453,10 @@ private loadAlertConfiguration(clusterId: number): void {
   this.alertConfiguration = {
     temperatureLimit: 30,
     humidityLimit: 80,
+    temperatureRecoveryLimit: 28,
+    humidityRecoveryLimit: 75,
+    temperatureEnabled: true,
+    humidityEnabled: true,
     recipients: [],
     smtpConfigured: false,
   };
