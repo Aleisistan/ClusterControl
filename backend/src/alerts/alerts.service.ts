@@ -100,7 +100,16 @@ export class AlertsService {
       Math.max(0, data.humidityLimit - HUMIDITY_RECOVERY_OFFSET);
     configuration.temperatureEnabled = data.temperatureEnabled ?? true;
     configuration.humidityEnabled = data.humidityEnabled ?? true;
-    configuration.recipients = data.recipients.map((address) => address.trim());
+    const recipients = [...(configuration.recipients ?? []), ...data.recipients]
+      .map((address) => address.trim())
+      .filter(Boolean)
+      .filter(
+        (address, index, addresses) =>
+          addresses.findIndex(
+            (candidate) => candidate.toLowerCase() === address.toLowerCase(),
+          ) === index,
+      );
+    configuration.recipients = recipients;
 
     await this.configurations.save(configuration);
     return this.getConfiguration(clusterId);

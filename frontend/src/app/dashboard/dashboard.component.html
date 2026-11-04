@@ -590,68 +590,102 @@
   </div>
 </details>
 
-<details class="card state-history-card p-3 dashboard-collapsible"
+<details class="card state-history-card alert-settings-card p-3 dashboard-collapsible"
   *ngIf="isAlertConfigurationAdmin()">
-  <summary>
-    <strong>Alertas por correo</strong>
+  <summary class="alert-settings-summary">
+    <span class="alert-settings-title">
+      <i class="bi bi-envelope-at-fill" aria-hidden="true"></i>
+      <strong>Alertas por correo</strong>
+    </span>
+    <span class="alert-settings-subtitle">Configuración del cluster seleccionado</span>
   </summary>
-  <div class="pt-3">
-    <p class="mb-3">
+  <div class="alert-settings-content">
+    <p class="alert-settings-description">
       Se envía un correo cuando un sensor supera un límite. El aviso se rearma
       cuando el valor baja hasta el umbral de recuperación.
     </p>
-    <div class="row g-3">
-      <div class="col-12 col-md-3">
-        <label class="form-label" for="alert-temperature-limit">Temperatura máxima (°C)</label>
-        <input id="alert-temperature-limit" class="form-control" type="number"
+    <div class="alert-settings-grid">
+      <section class="alert-settings-section">
+        <div class="alert-section-heading">
+          <span class="alert-section-icon temperature-icon">
+            <i class="bi bi-thermometer-half" aria-hidden="true"></i>
+          </span>
+          <div>
+            <h3>Temperatura</h3>
+            <span>Control por sensor</span>
+          </div>
+        </div>
+        <label class="form-label" for="alert-temperature-limit">Límite máximo (°C)</label>
+        <input id="alert-temperature-limit" class="form-control alert-settings-input" type="number"
           min="-40" max="100" step="0.1" required
           [(ngModel)]="alertConfiguration.temperatureLimit"
           [disabled]="!alertConfiguration.temperatureEnabled" />
-        <div class="form-text mt-2">
-          Recuperación automática: 3 °C por debajo del límite.
+        <div class="alert-recovery-note">
+          <i class="bi bi-arrow-down-circle" aria-hidden="true"></i>
+          Se rearma 3 °C por debajo
         </div>
         <div class="form-check mt-2">
           <input id="alert-temperature-enabled" class="form-check-input" type="checkbox"
             [(ngModel)]="alertConfiguration.temperatureEnabled" />
-          <label class="form-check-label" for="alert-temperature-enabled">Activar temperatura</label>
+          <label class="form-check-label" for="alert-temperature-enabled">Activar monitoreo</label>
         </div>
-      </div>
-      <div class="col-12 col-md-3">
-        <label class="form-label" for="alert-humidity-limit">Humedad máxima (%)</label>
-        <input id="alert-humidity-limit" class="form-control" type="number"
+      </section>
+
+      <section class="alert-settings-section">
+        <div class="alert-section-heading">
+          <span class="alert-section-icon humidity-icon">
+            <i class="bi bi-droplet-half" aria-hidden="true"></i>
+          </span>
+          <div>
+            <h3>Humedad</h3>
+            <span>Control por sensor</span>
+          </div>
+        </div>
+        <label class="form-label" for="alert-humidity-limit">Límite máximo (%)</label>
+        <input id="alert-humidity-limit" class="form-control alert-settings-input" type="number"
           min="0" max="100" step="0.1" required
           [(ngModel)]="alertConfiguration.humidityLimit"
           [disabled]="!alertConfiguration.humidityEnabled" />
-        <div class="form-text mt-2">
-          Recuperación automática: 10 % por debajo del límite.
+        <div class="alert-recovery-note">
+          <i class="bi bi-arrow-down-circle" aria-hidden="true"></i>
+          Se rearma 10 % por debajo
         </div>
         <div class="form-check mt-2">
           <input id="alert-humidity-enabled" class="form-check-input" type="checkbox"
             [(ngModel)]="alertConfiguration.humidityEnabled" />
-          <label class="form-check-label" for="alert-humidity-enabled">Activar humedad</label>
+          <label class="form-check-label" for="alert-humidity-enabled">Activar monitoreo</label>
         </div>
-      </div>
-      <div class="col-12 col-md-6">
-        <label class="form-label" for="alert-recipients">Destinatarios</label>
+      </section>
+
+      <section class="alert-settings-section alert-recipients-section">
+        <div class="alert-section-heading">
+          <span class="alert-section-icon recipients-icon">
+            <i class="bi bi-people-fill" aria-hidden="true"></i>
+          </span>
+          <div>
+            <h3>Destinatarios</h3>
+            <span>{{ alertConfiguration.recipients.length }} correo(s) reciben alertas</span>
+          </div>
+        </div>
         <input id="alert-recipients" class="form-control" type="text"
           placeholder="correo@ejemplo.com, otro@ejemplo.com"
           [(ngModel)]="alertRecipientsInput" />
-        <small class="form-text">Separa varias direcciones con comas. Sin destinatarios no se envían alertas.</small>
-        <div class="mt-2" *ngIf="alertConfiguration.recipients.length">
-          <div class="small fw-semibold mb-1">Correos que reciben las alertas:</div>
-          <ul class="list-group list-group-sm">
-            <li class="list-group-item py-1 px-2"
-              *ngFor="let recipient of alertConfiguration.recipients">
-              {{ recipient }}
-            </li>
-          </ul>
+        <small class="form-text">
+          Agregá una o varias direcciones separadas por comas. Las ya guardadas se conservan.
+        </small>
+        <div class="alert-recipient-list" *ngIf="alertConfiguration.recipients.length">
+          <div class="alert-recipient" *ngFor="let recipient of alertConfiguration.recipients">
+            <i class="bi bi-envelope" aria-hidden="true"></i>
+            <span>{{ recipient }}</span>
+          </div>
         </div>
-        <div class="small text-muted mt-2" *ngIf="!alertConfiguration.recipients.length">
+        <div class="alert-empty-recipients" *ngIf="!alertConfiguration.recipients.length">
+          <i class="bi bi-info-circle" aria-hidden="true"></i>
           No hay correos configurados para recibir alertas.
         </div>
-      </div>
+      </section>
     </div>
-    <div class="d-flex flex-wrap align-items-center gap-2 mt-3">
+    <div class="alert-settings-actions">
       <button class="btn btn-primary" type="button" (click)="saveAlertConfiguration()"
         [disabled]="savingAlertConfiguration">
         {{ savingAlertConfiguration ? 'Guardando...' : 'Guardar configuración' }}
@@ -660,12 +694,12 @@
         [disabled]="testingAlertEmail || !alertConfiguration.smtpConfigured || !alertConfiguration.recipients.length">
         {{ testingAlertEmail ? 'Enviando...' : 'Enviar correo de prueba' }}
       </button>
-      <span aria-live="polite">{{ alertConfigurationMessage }}</span>
+      <span class="alert-settings-message" aria-live="polite">{{ alertConfigurationMessage }}</span>
     </div>
-    <small class="text-muted" *ngIf="!alertConfiguration.recipients.length">
+    <small class="alert-settings-hint" *ngIf="!alertConfiguration.recipients.length">
       Guarda al menos un destinatario para habilitar el correo de prueba.
     </small>
-    <small class="text-muted mt-2" *ngIf="!alertConfiguration.smtpConfigured">
+    <small class="alert-settings-hint" *ngIf="!alertConfiguration.smtpConfigured">
       La configuración del dashboard se puede guardar, pero no se enviarán correos hasta configurar SMTP en el backend. Consulta backend/README.md.
     </small>
   </div>

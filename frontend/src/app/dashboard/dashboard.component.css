@@ -209,6 +209,40 @@
   text-align: left;
 }
 
+.alert-settings-card { max-width: 1080px; margin: 20px auto 34px; padding: 0; overflow: hidden; background: linear-gradient(145deg, #1e293b, #172033); }
+.alert-settings-summary, .alert-settings-title, .alert-section-heading, .alert-settings-actions { display: flex; align-items: center; }
+.alert-settings-summary { justify-content: space-between; gap: 16px; padding: 20px 28px; text-align: left; }
+.alert-settings-title { gap: 10px; font-size: 1.15rem; }
+.alert-settings-title i { color: #38bdf8; font-size: 1.35rem; }
+.alert-settings-subtitle, .alert-section-heading span, .alert-settings-hint { color: rgba(226,232,240,.68); font-size: .82rem; }
+.alert-settings-content { max-width: 940px; margin: auto; padding: 0 28px 28px; }
+.alert-settings-description { max-width: 720px; margin: 0 auto 22px; color: rgba(226,232,240,.76); font-size: .92rem; text-align: center; }
+.alert-settings-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 16px; }
+.alert-settings-section { padding: 20px; border: 1px solid rgba(148,163,184,.16); border-radius: 16px; background: rgba(15,23,42,.45); }
+.alert-recipients-section { grid-column: 1/-1; }
+.alert-section-heading { gap: 12px; margin-bottom: 18px; }
+.alert-section-heading h3 { margin: 0 0 2px; font-size: 1rem; }
+.alert-section-icon { display: grid; width: 38px; height: 38px; place-items: center; border-radius: 12px; font-size: 1.15rem; }
+.temperature-icon { color: #fda4af; background: rgba(244,63,94,.16); }
+.humidity-icon { color: #7dd3fc; background: rgba(14,165,233,.16); }
+.recipients-icon { color: #86efac; background: rgba(34,197,94,.16); }
+.alert-settings-input { max-width: 220px; }
+.alert-recovery-note, .alert-empty-recipients { display: flex; align-items: center; gap: 6px; margin-top: 9px; color: rgba(226,232,240,.62); font-size: .8rem; }
+.alert-recovery-note i { color: #38bdf8; }
+.alert-recipient-list { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+.alert-recipient { display: inline-flex; align-items: center; gap: 7px; max-width: 100%; padding: 7px 11px; border: 1px solid rgba(56,189,248,.25); border-radius: 999px; color: #e0f2fe; background: rgba(14,165,233,.12); font-size: .84rem; }
+.alert-recipient span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.alert-empty-recipients { margin-top: 14px; }
+.alert-settings-actions { justify-content: center; gap: 10px; flex-wrap: wrap; margin-top: 22px; }
+.alert-settings-message { width: 100%; color: #bae6fd; text-align: center; }
+.alert-settings-hint { display: block; margin-top: 10px; text-align: center; }
+@media (max-width: 700px) {
+  .alert-settings-summary { align-items: flex-start; flex-direction: column; }
+  .alert-settings-content { padding: 0 16px 22px; }
+  .alert-settings-grid { grid-template-columns: 1fr; }
+  .alert-recipients-section { grid-column: auto; }
+}
+
 .state-history-header {
   margin-bottom: 14px;
 }

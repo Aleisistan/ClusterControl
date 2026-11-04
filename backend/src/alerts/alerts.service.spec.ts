@@ -82,6 +82,27 @@ describe('AlertsService', () => {
     );
   });
 
+  it('keeps existing recipients when adding a new address', async () => {
+    const existingConfiguration = {
+      temperatureLimit: 30,
+      humidityLimit: 80,
+      recipients: ['alerts@example.com'],
+    };
+    repository.findOne.mockResolvedValue(existingConfiguration);
+
+    await service.updateConfiguration(cluster.id, {
+      temperatureLimit: 30,
+      humidityLimit: 80,
+      recipients: [' new@example.com ', 'ALERTS@example.com'],
+    });
+
+    expect(repository.save).toHaveBeenCalledWith(
+      expect.objectContaining({
+        recipients: ['alerts@example.com', 'new@example.com'],
+      }),
+    );
+  });
+
   it('sends an individual email for every sensor reading at or above its limit', async () => {
     await service.notifyThresholds(cluster, {
       temperature1: 32.4,
