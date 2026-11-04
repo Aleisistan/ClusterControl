@@ -364,8 +364,26 @@ saveAlertConfiguration(): void {
     .subscribe({
       next: (configuration) => {
         if (clusterId === Number(this.selectedClusterId)) {
-          this.setAlertConfiguration(configuration);
-          this.alertConfigurationMessage = 'Configuración guardada.';
+          this.alertsService.getConfiguration(clusterId).subscribe({
+            next: (refreshedConfiguration) => {
+              if (clusterId === Number(this.selectedClusterId)) {
+                this.setAlertConfiguration(refreshedConfiguration);
+                this.alertConfigurationMessage = 'Configuración guardada.';
+              }
+              this.savingAlertConfiguration = false;
+            },
+            error: (error: unknown) => {
+              console.error(
+                'La configuración se guardó, pero no se pudo refrescar la lista de destinatarios:',
+                error,
+              );
+              this.setAlertConfiguration(configuration);
+              this.alertConfigurationMessage =
+                'Configuración guardada, pero no se pudo refrescar la lista.';
+              this.savingAlertConfiguration = false;
+            },
+          });
+          return;
         }
         this.savingAlertConfiguration = false;
       },
