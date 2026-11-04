@@ -667,16 +667,31 @@
             <span>{{ alertConfiguration.recipients.length }} correo(s) reciben alertas</span>
           </div>
         </div>
-        <input id="alert-recipients" class="form-control" type="text"
-          placeholder="correo@ejemplo.com, otro@ejemplo.com"
-          [(ngModel)]="alertRecipientsInput" />
+        <div class="alert-recipient-input">
+          <input id="alert-recipients" class="form-control" type="email"
+            placeholder="correo@ejemplo.com"
+            [(ngModel)]="alertRecipientsInput"
+            (keyup.enter)="addAlertRecipient()" />
+          <button class="btn btn-outline-info" type="button"
+            (click)="addAlertRecipient()"
+            [disabled]="!alertRecipientsInput.trim() || savingAlertConfiguration">
+            <i class="bi bi-plus-lg" aria-hidden="true"></i>
+            Agregar
+          </button>
+        </div>
         <small class="form-text">
-          Agregá una o varias direcciones separadas por comas. Las ya guardadas se conservan.
+          Escribí un correo y agregalo a la lista.
         </small>
         <div class="alert-recipient-list" *ngIf="alertConfiguration.recipients.length">
           <div class="alert-recipient" *ngFor="let recipient of alertConfiguration.recipients">
             <i class="bi bi-envelope" aria-hidden="true"></i>
             <span>{{ recipient }}</span>
+            <button type="button" class="alert-recipient-remove"
+              [attr.aria-label]="'Quitar ' + recipient"
+              (click)="removeAlertRecipient(recipient)"
+              [disabled]="savingAlertConfiguration">
+              <i class="bi bi-x-lg" aria-hidden="true"></i>
+            </button>
           </div>
         </div>
         <div class="alert-empty-recipients" *ngIf="!alertConfiguration.recipients.length">

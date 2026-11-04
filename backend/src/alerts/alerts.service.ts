@@ -102,7 +102,7 @@ export class AlertsService {
     configuration.temperature2Active = false;
     configuration.humidity1Active = false;
     configuration.humidity2Active = false;
-    const recipients = [...(configuration.recipients ?? []), ...data.recipients]
+    const recipients = data.recipients
       .map((address) => address.trim())
       .filter(Boolean)
       .filter(

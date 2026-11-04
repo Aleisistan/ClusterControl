@@ -350,11 +350,6 @@ saveAlertConfiguration(): void {
     return;
   }
 
-  const recipients = this.alertRecipientsInput
-    .split(',')
-    .map((address) => address.trim())
-    .filter(Boolean);
-
   const requestId = this.alertConfigurationRequestId;
   this.savingAlertConfiguration = true;
   this.alertConfigurationMessage = '';
@@ -364,7 +359,7 @@ saveAlertConfiguration(): void {
       humidityLimit,
       temperatureEnabled: this.alertConfiguration.temperatureEnabled,
       humidityEnabled: this.alertConfiguration.humidityEnabled,
-      recipients,
+      recipients: this.alertConfiguration.recipients,
     })
     .subscribe({
       next: (configuration) => {
@@ -382,6 +377,35 @@ saveAlertConfiguration(): void {
         this.savingAlertConfiguration = false;
       },
     });
+}
+
+addAlertRecipient(): void {
+    const address = this.alertRecipientsInput.trim();
+    if (!address) return;
+
+    const alreadyAdded = this.alertConfiguration.recipients.some(
+      (recipient) => recipient.toLowerCase() === address.toLowerCase(),
+    );
+    if (alreadyAdded) {
+      this.alertConfigurationMessage = 'Ese correo ya está en la lista.';
+      return;
+    }
+
+    this.alertConfiguration.recipients = [
+      ...this.alertConfiguration.recipients,
+      address,
+    ];
+    this.alertRecipientsInput = '';
+    this.saveAlertConfiguration();
+}
+
+removeAlertRecipient(recipientToRemove: string): void {
+    this.alertConfiguration.recipients =
+      this.alertConfiguration.recipients.filter(
+        (recipient) =>
+          recipient.toLowerCase() !== recipientToRemove.toLowerCase(),
+      );
+    this.saveAlertConfiguration();
 }
 
 private getAlertConfigurationError(error: unknown): string {
@@ -469,7 +493,7 @@ private loadAlertConfiguration(clusterId: number): void {
 
 private setAlertConfiguration(configuration: AlertConfiguration): void {
   this.alertConfiguration = configuration;
-  this.alertRecipientsInput = configuration.recipients.join(', ');
+  this.alertRecipientsInput = '';
 }
 
   onCameraLoad(cameraId: 1 | 2): void {

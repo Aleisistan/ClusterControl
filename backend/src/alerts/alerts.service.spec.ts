@@ -82,7 +82,7 @@ describe('AlertsService', () => {
     );
   });
 
-  it('keeps existing recipients when adding a new address', async () => {
+  it('saves multiple recipients without duplicates', async () => {
     const existingConfiguration = {
       temperatureLimit: 30,
       humidityLimit: 80,
@@ -93,7 +93,11 @@ describe('AlertsService', () => {
     await service.updateConfiguration(cluster.id, {
       temperatureLimit: 30,
       humidityLimit: 80,
-      recipients: [' new@example.com ', 'ALERTS@example.com'],
+      recipients: [
+        'alerts@example.com',
+        ' new@example.com ',
+        'ALERTS@example.com',
+      ],
     });
 
     expect(repository.save).toHaveBeenCalledWith(

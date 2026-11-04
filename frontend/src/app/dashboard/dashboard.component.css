@@ -227,11 +227,15 @@
 .humidity-icon { color: #7dd3fc; background: rgba(14,165,233,.16); }
 .recipients-icon { color: #86efac; background: rgba(34,197,94,.16); }
 .alert-settings-input { max-width: 220px; }
+.alert-recipient-input { display: flex; gap: 8px; }
+.alert-recipient-input .form-control { min-width: 0; }
 .alert-recovery-note, .alert-empty-recipients { display: flex; align-items: center; gap: 6px; margin-top: 9px; color: rgba(226,232,240,.62); font-size: .8rem; }
 .alert-recovery-note i { color: #38bdf8; }
 .alert-recipient-list { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
-.alert-recipient { display: inline-flex; align-items: center; gap: 7px; max-width: 100%; padding: 7px 11px; border: 1px solid rgba(56,189,248,.25); border-radius: 999px; color: #e0f2fe; background: rgba(14,165,233,.12); font-size: .84rem; }
+.alert-recipient { display: inline-flex; align-items: center; gap: 7px; max-width: 100%; padding: 7px 9px 7px 11px; border: 1px solid rgba(56,189,248,.25); border-radius: 999px; color: #e0f2fe; background: rgba(14,165,233,.12); font-size: .84rem; }
 .alert-recipient span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.alert-recipient-remove { display: grid; width: 22px; height: 22px; padding: 0; place-items: center; border: 0; border-radius: 50%; color: #bae6fd; background: transparent; }
+.alert-recipient-remove:hover:not(:disabled), .alert-recipient-remove:focus-visible { color: #fecaca; background: rgba(239,68,68,.2); }
 .alert-empty-recipients { margin-top: 14px; }
 .alert-settings-actions { justify-content: center; gap: 10px; flex-wrap: wrap; margin-top: 22px; }
 .alert-settings-message { width: 100%; color: #bae6fd; text-align: center; }
@@ -241,6 +245,7 @@
   .alert-settings-content { padding: 0 16px 22px; }
   .alert-settings-grid { grid-template-columns: 1fr; }
   .alert-recipients-section { grid-column: auto; }
+  .alert-recipient-input { align-items: stretch; flex-direction: column; }
 }
 
 .state-history-header {
