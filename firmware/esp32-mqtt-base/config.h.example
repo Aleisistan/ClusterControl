@@ -1,0 +1,22 @@
+#pragma once
+
+// Copia este archivo como config.h y completa los valores del sitio.
+#define WIFI_SSID "cambiar-ssid"
+#define WIFI_PASSWORD "cambiar-password"
+
+#define MQTT_HOST "192.168.1.50"
+#define MQTT_PORT 1883
+#define MQTT_USERNAME ""
+#define MQTT_PASSWORD ""
+
+// Lo asigna ClusterControl al crear el cluster. Debe ser numerico.
+#define DEVICE_ID "4"
+
+// Opcional. Deja vacio si no hay camara IP asociada.
+#define CAMERA_IP ""
+
+// Intervalo entre publicaciones de telemetria.
+#define TELEMETRY_INTERVAL_MS 15000UL
+
+// Tiempo maximo de espera por conexion Wi-Fi/MQTT.
+#define CONNECTION_RETRY_MS 5000UL

@@ -70,6 +70,19 @@ No es necesario instalar Node.js localmente para levantar los servicios con Comp
 
    `DB_PASSWORD` debe coincidir con `POSTGRES_PASSWORD`. El broker está configurado para permitir conexiones anónimas; por eso `MQTT_USER` y `MQTT_PASSWORD` se dejan vacíos en el entorno local. `OPENWEATHER_API_KEY` solo es necesaria para las funciones que consultan ese servicio externo.
 
+## Primera instalación
+
+En un equipo nuevo, la primera ejecución crea la base, las tablas, el usuario administrador inicial y los clusters de demostración. Desde la raíz del proyecto:
+
+```bash
+docker compose -f docker-compose.dev.yml up --build -d
+docker compose -f docker-compose.dev.yml ps
+```
+
+La primera cuenta es `admin` con contraseña `admin123`. Cambia esa contraseña desde la sección de usuarios antes de conectar equipos reales. Los clusters de demostración se crean una sola vez; si la base ya tiene datos, el seed no los reemplaza.
+
+El volumen `postgres_data` conserva la instalación entre reinicios. `docker compose -f docker-compose.dev.yml down` detiene los servicios sin perder información. `down -v` elimina también la base y debe reservarse para una instalación de desarrollo que se quiera reiniciar desde cero.
+
 ## Levantar la aplicación
 
 Desde el directorio raíz, construir las imágenes e iniciar los servicios:
@@ -99,7 +112,13 @@ En el Compose de desarrollo, `corx` tiene habilitado el rate limiting (`RATE_LIM
 
 Si se expone `corx` fuera de la máquina, el rate limiting seguirá activo. Redis debe permanecer en la red privada y no exponerse directamente a Internet. La exposición pública también requiere configurar la red, el firewall y, preferentemente, un proxy con HTTPS; este Compose es solo para desarrollo y no está preparado como configuración de producción.
 
-El simulador publica cada 15 segundos mensajes de ejemplo en el tópico `datacenter/ambiente`. La API se suscribe a los tópicos definidos en [backend/src/config/topics.ts](./backend/src/config/topics.ts).
+El simulador publica cada 15 segundos mensajes de ejemplo en el tópico `datacenter/ambiente`. En una instalación conectada a hardware real, detenlo para no mezclar lecturas sintéticas con las del dispositivo:
+
+```bash
+docker compose -f docker-compose.dev.yml stop simulator
+```
+
+La API se suscribe a los tópicos definidos en [backend/src/config/topics.ts](./backend/src/config/topics.ts).
 
 Para seguir los registros:
 
@@ -127,6 +146,23 @@ El dashboard permite consultar el historial de temperatura y humedad, y el histo
 
 El filtro «Últimos 7 días completos» excluye el día de hoy y abarca los siete días calendario anteriores. Debajo del gráfico, los días u horas se pueden seleccionar para ampliar el gráfico a ese período; la opción de volver al período completo restaura la vista anterior. Cada bloque indica si hubo lecturas o si figura «Sin registros». El historial de estados se obtiene de las muestras de telemetría ya guardadas, comparando cada muestra con la anterior; no requiere una tabla adicional. La API expone este historial en `GET /telemetry/state-history` y conserva el límite existente de 30 días y hasta 2000 resultados por consulta. Cuando hay más de 2000 muestras, el historial de temperatura y humedad selecciona hasta 2000 lecturas distribuidas a lo largo de todo el período consultado.
 
+## Alta de un cluster y dispositivo
+
+El cluster es el registro lógico del sitio en la base de datos. El dispositivo físico tiene además un `deviceId`, que es el valor que debe viajar en cada mensaje MQTT. Al crear un cluster desde `/admin/clusters`, el backend genera un `deviceId` numérico si no se proporciona uno y verifica que no esté repetido. Los IDs existentes se conservan para no romper equipos ya instalados.
+
+La creación del cluster no programa el Arduino por sí sola. Después de guardarlo:
+
+1. Copia el `deviceId` que aparece en la tabla de clusters.
+2. Configura ese valor en `firmware/esp32-mqtt-base/config.h`.
+3. Configura en el firmware la IP o nombre DNS del equipo que ejecuta Mosquitto.
+4. Adapta las lecturas de sensores en `sensor_adapter.h`.
+5. Carga el sketch y verifica en el monitor serie que el equipo se conecta.
+6. Comprueba que el dashboard recibe telemetría del cluster correcto.
+
+El backend ignora mensajes cuyo `deviceId` no existe y deja constancia en sus logs. No uses el `cluster.id` en el firmware: ese valor es interno de la base; el dispositivo debe usar el `deviceId` asignado.
+
+El contrato de telemetría, el procedimiento de carga y las decisiones de seguridad están documentados en [firmware/esp32-mqtt-base/README.md](./firmware/esp32-mqtt-base/README.md). El sketch base se encuentra en [firmware/esp32-mqtt-base/esp32-mqtt-base.ino](./firmware/esp32-mqtt-base/esp32-mqtt-base.ino). La adaptación del hardware queda separada en [firmware/esp32-mqtt-base/sensor_adapter.h](./firmware/esp32-mqtt-base/sensor_adapter.h).
+
 ## Servicios y código fuente
 
 - Compose de desarrollo: [docker-compose.dev.yml](./docker-compose.dev.yml)
@@ -139,12 +175,22 @@ El filtro «Últimos 7 días completos» excluye el día de hoy y abarca los sie
 
 El simulador envía valores ficticios para dos dispositivos. Para probar la integración desde una placa, esta debe poder alcanzar por la red la dirección IP del equipo que ejecuta Docker y el puerto MQTT `1883`. En la configuración actual el broker permite conexiones anónimas, por lo que debe utilizarse solo en una red de desarrollo confiable y no exponerse directamente a Internet.
 
-## Firmware Arduino y diseño electrónico
+## Preparación para producción
 
-### Firmware ESP32
+El archivo `docker-compose.dev.yml` sirve para desarrollo y pruebas. Antes de usarlo en un sitio real hay que separar, como mínimo, estas tareas:
 
-Los archivos de firmware no se enlazan por ahora porque contienen credenciales de red o del broker configuradas directamente en el código. Permanecen en la copia local; antes de agregarlos o publicarlos, reemplaza esas credenciales por configuración local no versionada y verifica que no queden claves reales en los archivos.
+- Desactivar el servicio `simulator`.
+- Cambiar `JWT_SECRET`, contraseñas de PostgreSQL, pgAdmin y MQTT.
+- Desactivar MQTT anónimo y definir usuarios y ACL por dispositivo.
+- No publicar PostgreSQL ni pgAdmin fuera de la red de administración.
+- Servir el frontend y la API detrás de HTTPS y un proxy con límites de acceso.
+- Fijar versiones de las imágenes y dependencias en lugar de depender de `latest`.
+- Definir copias de seguridad y una política de restauración para `postgres_data`.
+- Sustituir `synchronize: true` por migraciones controladas antes de modificar el esquema en producción.
+- Revisar los topics de actuadores: están reservados, pero el backend todavía no implementa un flujo completo para comandarlos.
 
-### Diseño de la placa
+El broker de desarrollo escucha en el puerto `1883` y permite conexiones anónimas. Esa configuración es útil para probar una placa en una red local aislada, pero no debe exponerse directamente a Internet.
 
-Los archivos del diseño electrónico no se enlazan desde el README por ahora. Se agregarán los enlaces cuando el proyecto esté publicado y accesible desde el repositorio.
+### Diseño electrónico
+
+El repositorio no fija un modelo único de sensores, relés o cámaras. La distribución de pines, tensiones y protecciones debe documentarse junto con la variante de cada placa. El firmware base deja esa parte en `sensor_adapter.h` para que una adaptación no cambie el contrato MQTT ni mezcle credenciales con la lógica de sensores.
