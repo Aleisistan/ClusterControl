@@ -10,7 +10,10 @@
       </div>
 
       <nav class="route-tabs" *ngIf="currentUser; else guestState">
-        <button type="button" class="route-tab" [class.active]="isActive('/dashboard')" (click)="navigate('/dashboard')">
+        <button type="button" class="route-tab" routerLink="/dashboard"
+          [class.active]="isActive('/dashboard')"
+          [class.route-tab-current]="isActive('/dashboard')"
+          routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
           Dashboard
         </button>
         <button type="button" class="route-tab" [class.active]="isActive('/admin/users')" (click)="navigate('/admin/users')">
@@ -19,7 +22,7 @@
         <button type="button" class="route-tab" [class.active]="isActive('/admin/clusters')" (click)="navigate('/admin/clusters')">
           Clusters
         </button>
-        <div class="session-pill">
+        <div class="session-pill" [class.session-hidden]="sessionHidden">
           <span class="session-status"></span>
           <div>
             <strong>{{ currentUser.username }}</strong>
@@ -32,7 +35,7 @@
       </nav>
 
       <ng-template #guestState>
-        <div class="session-pill guest-pill">
+        <div class="session-pill guest-pill" [class.session-hidden]="sessionHidden">
           <span class="session-guest">Acceso restringido</span>
           <button class="btn btn-sm btn-primary" type="button" (click)="navigate('/login')">
             Login

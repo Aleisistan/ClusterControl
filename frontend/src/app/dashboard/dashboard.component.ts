@@ -40,7 +40,8 @@ Chart.register(zoomPlugin);
 export class DashboardComponent implements OnInit, OnDestroy {
   private static readonly TELEMETRY_INTERVAL_MS = 15_000;
   private static readonly OUTAGE_GAP_MS = 60_000;
-  private static readonly CHART_MIN_RANGE_MS = 60_000;
+  private static readonly CHART_MIN_RANGE_MS = 5 * 60_000;
+  private static readonly CHART_POINT_DISPLAY_RANGE_MS = 30 * 60 * 1000;
   private static readonly CHART_HISTORY_LIMIT = 10_000;
   private static readonly CHART_SAMPLE_INTERVAL_MS = 20_000;
   private static readonly CAMERA_LOAD_TIMEOUT_MS = 10_000;
@@ -68,8 +69,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
   selectedClusterId = 1;
   temperatureView = 'avg';
   humidityView = 'avg';
-  chartTemperatureView = 's1';
-  chartHumidityView = 's1';
+  chartTemperatureView = 'avg';
+  chartHumidityView = 'avg';
   historyFilter = '24h';
   historyDate = this.toDateInputValue(new Date());
   historyFromDate = this.toDateInputValue(new Date());
@@ -137,6 +138,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   lineChartOptions: ChartConfiguration<'line'>['options'] = {
     responsive: true,
+    maintainAspectRatio: false,
+    animation: false,
     interaction: {
       mode: 'index',
       intersect: false,
@@ -144,18 +147,39 @@ export class DashboardComponent implements OnInit, OnDestroy {
     scales: {
       x: {
         type: 'linear',
-        title: {
-          display: true,
-          text: 'Fecha y hora',
-        },
         ticks: {
+          color: '#d8e7f2',
+          font: {
+            size: 10,
+            weight: 'bold',
+          },
           autoSkip: true,
-          maxTicksLimit: 100,
+          maxTicksLimit: 8,
           stepSize: DashboardComponent.CHART_SAMPLE_INTERVAL_MS,
-          maxRotation: 45,
+          maxRotation: 0,
           minRotation: 0,
           callback: (value) =>
             this.formatTelemetryDate(new Date(Number(value)).toISOString()),
+        },
+        title: {
+          display: true,
+          text: 'Fecha y hora',
+          color: '#f5f7fb',
+        },
+        grid: {
+          color: 'rgba(216, 231, 242, 0.14)',
+        },
+      },
+      y: {
+        ticks: {
+          color: '#d8e7f2',
+          font: {
+            size: 11,
+            weight: 'bold',
+          },
+        },
+        grid: {
+          color: 'rgba(216, 231, 242, 0.2)',
         },
       },
     },
@@ -173,7 +197,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
             enabled: true,
           },
           drag: {
-            enabled: true,
+            enabled: false,
           },
           mode: 'x',
         },
@@ -199,6 +223,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
               ? `Lectura ID: ${point.id}`
               : '';
           },
+          label: (context) => {
+            const value = Number(context.parsed.y);
+            return `${context.dataset.label}: ${value.toFixed(1)}`;
+          },
           afterBody: (items) => {
             const point = items.find((item) => item.datasetIndex === 1)
               ?.raw as { humidity1?: unknown; humidity2?: unknown } | undefined;
@@ -211,11 +239,40 @@ export class DashboardComponent implements OnInit, OnDestroy {
             }
 
             return [
-              `Sensor 1: ${point.humidity1}%`,
-              `Sensor 2: ${point.humidity2}%`,
+              `Sensor 1: ${point.humidity1.toFixed(1)}%`,
+              `Sensor 2: ${point.humidity2.toFixed(1)}%`,
             ];
           },
         },
+      },
+      legend: {
+        display: true,
+        labels: {
+          color: '#f5f7fb',
+          usePointStyle: true,
+          boxWidth: 10,
+          padding: 14,
+        },
+      },
+    },
+    elements: {
+      point: {
+        radius: (context) => {
+          const xScale = context.chart.scales['x'];
+          if (!xScale) {
+            return 0;
+          }
+
+          return xScale.max - xScale.min <= DashboardComponent.CHART_POINT_DISPLAY_RANGE_MS
+            ? 3
+            : 0;
+        },
+        hoverRadius: 7,
+        borderWidth: 2,
+      },
+      line: {
+        tension: 0.15,
+        borderWidth: 3,
       },
     },
   };
@@ -962,6 +1019,7 @@ private setAlertConfiguration(configuration: AlertConfiguration): void {
 
   private refreshTelemetryChart(): void {
     const chartSamples = this.getChartSamples();
+    this.updateChartZoomLimits(chartSamples);
     this.lineChartData = {
       labels: [],
       datasets: [
@@ -979,7 +1037,12 @@ private setAlertConfiguration(configuration: AlertConfiguration): void {
             ? 'Temperatura Sensor 1 °C'
             : this.chartTemperatureView === 's2'
               ? 'Temperatura Sensor 2 °C'
-              : 'Temperatura Promedio °C'
+                : 'Temperatura Promedio °C',
+              borderColor: '#ffb000',
+              backgroundColor: 'rgba(255, 176, 0, 0.2)',
+              pointBackgroundColor: '#ffb000',
+              pointBorderColor: '#fff3c4',
+              borderWidth: 3,
         },
         {
           data: chartSamples.map((item: any) => ({
@@ -997,9 +1060,39 @@ private setAlertConfiguration(configuration: AlertConfiguration): void {
             ? 'Humedad Sensor 1 %'
             : this.chartHumidityView === 's2'
               ? 'Humedad Sensor 2 %'
-              : 'Humedad Promedio %'
+                : 'Humedad Promedio %',
+              borderColor: '#25c7e8',
+              backgroundColor: 'rgba(37, 199, 232, 0.2)',
+              pointBackgroundColor: '#25c7e8',
+              pointBorderColor: '#d5f8ff',
+              borderWidth: 3,
         }
       ]
+    };
+  }
+
+  private updateChartZoomLimits(chartSamples: any[]): void {
+    const timestamps = chartSamples
+      .map((sample) => new Date(sample.createdAt).getTime())
+      .filter((timestamp) => Number.isFinite(timestamp));
+    const zoomOptions = this.lineChartOptions?.plugins?.zoom as {
+      limits?: {
+        x?: {
+          min?: number;
+          max?: number;
+          minRange?: number;
+        };
+      };
+    };
+
+    zoomOptions.limits = {
+      ...zoomOptions.limits,
+      x: {
+        ...zoomOptions.limits?.x,
+        min: timestamps.length ? Math.min(...timestamps) : undefined,
+        max: timestamps.length ? Math.max(...timestamps) : undefined,
+        minRange: DashboardComponent.CHART_MIN_RANGE_MS,
+      },
     };
   }
 

@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnDestroy, OnInit } from '@angular/core';
-import { Router, RouterOutlet } from '@angular/router';
+import { Component, HostListener, OnDestroy, OnInit } from '@angular/core';
+import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 
 import { Subscription } from 'rxjs';
 
@@ -9,13 +9,17 @@ import { AuthService, AuthUser } from './services/auth.service';
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [CommonModule, RouterOutlet],
+  imports: [CommonModule, RouterLink, RouterLinkActive, RouterOutlet],
   templateUrl: './app.component.html',
   styleUrl: './app.component.css',
 })
 export class AppComponent implements OnInit, OnDestroy {
   currentUser: AuthUser | null = null;
+  sessionHidden = false;
   private authSubscription?: Subscription;
+  private lastScrollY = 0;
+  private scrollDirectionDistance = 0;
+  private scrollLockedUntil = 0;
 
   constructor(
     private authService: AuthService,
@@ -31,6 +35,59 @@ export class AppComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.authSubscription?.unsubscribe();
+  }
+
+  @HostListener('window:scroll')
+  onWindowScroll(): void {
+    if (window.innerWidth > 576) {
+      this.sessionHidden = false;
+      this.lastScrollY = window.scrollY;
+      this.scrollDirectionDistance = 0;
+      return;
+    }
+
+    const currentScrollY = window.scrollY;
+
+    if (Date.now() < this.scrollLockedUntil) {
+      this.lastScrollY = currentScrollY;
+      this.scrollDirectionDistance = 0;
+      return;
+    }
+
+    const scrollDelta = currentScrollY - this.lastScrollY;
+
+    if (currentScrollY <= 8) {
+      this.sessionHidden = false;
+      this.scrollDirectionDistance = 0;
+    } else if (scrollDelta > 0) {
+      this.scrollDirectionDistance = Math.max(
+        0,
+        this.scrollDirectionDistance + scrollDelta,
+      );
+      if (this.scrollDirectionDistance >= 12) {
+        this.setSessionHidden(true);
+      }
+    } else if (scrollDelta < 0) {
+      this.scrollDirectionDistance = Math.min(
+        0,
+        this.scrollDirectionDistance + scrollDelta,
+      );
+      if (this.scrollDirectionDistance <= -12) {
+        this.setSessionHidden(false);
+      }
+    }
+
+    this.lastScrollY = currentScrollY;
+  }
+
+  private setSessionHidden(hidden: boolean): void {
+    if (this.sessionHidden === hidden) {
+      return;
+    }
+
+    this.sessionHidden = hidden;
+    this.scrollDirectionDistance = 0;
+    this.scrollLockedUntil = Date.now() + 420;
   }
 
   logout(): void {

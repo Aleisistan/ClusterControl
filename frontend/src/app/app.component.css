@@ -48,6 +48,7 @@ h1 {
   align-items: center;
   gap: 10px;
   justify-content: flex-end;
+  position: relative;
 }
 
 .route-tab {
@@ -66,6 +67,12 @@ h1 {
   border-color: rgba(5, 141, 199, 0.45);
 }
 
+.route-tab.route-tab-current {
+  background: rgba(7, 73, 128, 0.367) !important;
+  border-color: rgba(5, 141, 199, 0.45) !important;
+  color: #f5f7fb !important;
+}
+
 .session-pill {
   display: flex;
   align-items: center;
@@ -76,6 +83,10 @@ h1 {
   border-radius: 15px;
   background: rgba(255, 255, 255, 0.06);
   border: 1px solid rgba(255, 255, 255, 0.08);
+  max-height: 100px;
+  overflow: hidden;
+  transition: opacity 0.32s ease, transform 0.32s ease, max-height 0.32s ease,
+    padding 0.32s ease, border-width 0.32s ease;
 }
 
 .guest-pill {
@@ -128,6 +139,11 @@ h1 {
 }
 
 @media (max-width: 576px) {
+  .page-main {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
   .container-fluid {
     justify-content: center;
     align-items: center;
@@ -145,6 +161,21 @@ h1 {
   .session-pill {
     width: 100%;
     justify-content: space-between;
+  }
+
+  .route-tabs {
+    width: 100%;
+  }
+
+  .session-pill.session-hidden {
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(-12px);
+    visibility: hidden;
+    max-height: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    border-width: 0;
   }
 
 }

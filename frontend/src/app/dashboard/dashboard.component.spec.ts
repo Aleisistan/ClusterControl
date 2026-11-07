@@ -21,12 +21,12 @@ describe('DashboardComponent', () => {
     expect(component).toBeTruthy();
   });
 
-  it('should limit chart zoom to a one-minute window', () => {
+  it('should limit chart zoom to a five-minute window', () => {
     const zoomOptions = component.lineChartOptions?.plugins?.zoom as {
       limits?: { x?: { minRange?: number } };
     };
 
-    expect(zoomOptions.limits?.x?.minRange).toBe(60_000);
+    expect(zoomOptions.limits?.x?.minRange).toBe(5 * 60_000);
   });
 
   it('should use the backend stream route so camera access can be shared', () => {
