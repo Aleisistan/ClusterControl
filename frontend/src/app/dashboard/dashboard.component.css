@@ -16,59 +16,101 @@
 }
 
 .dashboard-grid {
-
   display: grid;
-
-  grid-template-columns:
-    repeat(12, 1fr);
-
+  grid-template-columns: repeat(12, 1fr);
   gap: 20px;
-
   padding: 20px;
-
 }
 
 /* POSICIONES */
 
 .header-card {
-
   grid-column: 1 / 9;
-
   grid-row: 1;
-
 }
 
 .weather-card {
-
   grid-column: 9 / 13;
-
   grid-row: 1;
-
 }
 
 .temperature-card {
-
   grid-column: 1 / 4;
-
   grid-row: 2;
-
 }
 
 .humidity-card {
-
   grid-column: 4 / 7;
-
   grid-row: 2;
-
 }
 
 .chart-card {
-
   grid-column: 1 / 8;
-
   grid-row: 3;
-
   min-height: 400px;
+  margin-bottom: 40px;
+}
+
+:host {
+  --chart-control-width: 280px;
+  --chart-select-width: 175px;
+}
+
+.chart-range-filter,
+.chart-range-fields {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.chart-range-filter {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) var(--chart-select-width);
+  align-items: center;
+  width: var(--chart-control-width);
+  gap: 8px;
+}
+
+.btn-outline-light{
+    appearance: none;
+    -webkit-appearance: none;
+    padding: 10px 40px 10px 12px;
+    border: 1px solid rgba(191, 219, 254, 0.5);
+    border-radius: 12px;
+    background-color: #142536 !important;
+    background-position: right 14px center !important;
+    background-repeat: no-repeat !important;
+    background-size: 16px 12px !important;
+    color: #f5f7fb;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  }
+
+.chart-range-filter > label,
+.chart-range-fields label {
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 0.85rem;
+}
+
+.chart-range-filter > label {
+  justify-self: start;
+  white-space: nowrap;
+}
+
+.chart-range-fields {
+  flex: 1 1 100%;
+}
+
+.chart-range-filter > .form-select {
+  width: var(--chart-select-width);
+}
+
+.chart-toolbar .form-select-sm {
+  width: var(--chart-select-width);
+}
+
+.chart-range-fields .form-control {
+  width: min(100%, 180px);
 
 }
 
@@ -84,11 +126,40 @@
 }
 
 .chart-toolbar {
+  margin-bottom: 12px;
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 0.85rem;
+}
+
+.chart-controls {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  width: 100%;
+}
+
+.chart-sensor-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   gap: 12px;
-  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.chart-sensor-controls label {
+  width: var(--chart-control-width);
+  justify-content: space-between;
+}
+
+.chart-controls > .btn-outline-light {
+  margin-left: 8px;
+}
+
+.chart-help {
+  display: block;
+  margin: 12px;
   color: rgba(255, 255, 255, 0.72);
   font-size: 0.85rem;
 }
@@ -117,9 +188,18 @@
   gap: 8px;
   margin-top: 16px;
   padding: 3px 2px 10px;
+  cursor: grab;
+  user-select: none;
+  touch-action: pan-y;
+}
+
+.history-days-dragging {
+  cursor: grabbing;
 }
 
 .history-day {
+  appearance: none;
+  box-shadow: 4px 4px 10px rgba(0, 0, 0, 0.462);
   flex: 0 0 132px;
   width: 132px;
   min-width: 132px;
@@ -132,6 +212,7 @@
   flex-direction: column;
   gap: 3px;
   padding: 9px 11px;
+  border: 0;
   border-left: 3px solid #22c55e;
   border-radius: 6px;
   background: rgba(34, 197, 94, 0.1);
@@ -145,8 +226,8 @@
 
 .history-day:hover,
 .history-day:focus-visible {
-  outline: 2px solid rgba(255, 255, 255, 0.75);
-  outline-offset: 1px;
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(125, 211, 252, 0.72);
 }
 
 .history-day-selected {
@@ -155,7 +236,7 @@
 
 .history-day-empty {
   border-left-color: #f59e0b;
-  background: rgba(245, 158, 11, 0.1);
+  background: rgba(109, 131, 142, 0.236);
 }
 
 @media (max-width: 576px) {
@@ -164,29 +245,69 @@
     padding: 14px;
   }
 
-  .chart-toolbar {
-    align-items: flex-start;
+  .chart-controls,
+  .chart-sensor-controls {
+    align-items: stretch;
     flex-direction: column;
+    gap: 10px;
   }
 
-  .chart-toolbar > div,
-  .chart-toolbar label,
-  .chart-toolbar select,
-  .chart-toolbar .btn {
+  .btn-outline-light{
+    appearance: none;
+    -webkit-appearance: none;
+    padding: 10px 40px 10px 12px;
+    border: 1px solid rgba(191, 219, 254, 0.5);
+    border-radius: 12px;
+    background-color: #142536 !important;
+    background-position: right 14px center !important;
+    background-repeat: no-repeat !important;
+    background-size: 16px 12px !important;
+    color: #f5f7fb;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  }
+
+  .chart-controls > .btn,
+  .chart-sensor-controls,
+  .chart-sensor-controls label,
+  .chart-range-filter {
     width: 100%;
   }
 
-  .chart-toolbar > div {
-    gap: 8px !important;
+  .chart-controls > .btn-outline-light {
+    margin-left: 0;
   }
 
-  .chart-toolbar label {
+  .chart-sensor-controls label {
     justify-content: space-between;
   }
 
+  .chart-sensor-controls .form-select-sm,
+  .chart-range-filter > .form-select {
+    width: min(var(--chart-select-width), 55vw);
+  }
+
   .chart-help {
+    margin-bottom: 8px;
     font-size: 0.78rem;
     line-height: 1.3;
+  }
+
+  .chart-range-filter {
+    width: 100%;
+    grid-template-columns: minmax(0, 1fr) min(var(--chart-select-width), 55vw);
+  }
+
+  .chart-range-filter > label {
+    align-self: center;
+  }
+
+  .chart-range-fields,
+  .chart-range-filter .telemetry-filter-error {
+    grid-column: 1 / -1;
+  }
+
+  .chart-toolbar .form-select-sm {
+    width: min(var(--chart-select-width), 55vw);
   }
 
   .chart-canvas-wrap {
@@ -198,69 +319,28 @@
   }
 }
 
-.telemetry-filter {
-  margin: 30px 0 14px;
-  padding: 16px 20px;
-  text-align: left;
-}
-
-.telemetry-filter-header,
-.telemetry-filter-fields {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
-.telemetry-filter-header {
-  justify-content: space-between;
-}
-
-.telemetry-filter h3 {
-  margin: 0;
-  font-size: 1.1rem;
-}
-
-.telemetry-filter-header span {
-  color: rgba(255, 255, 255, 0.7);
-  font-size: 0.85rem;
-}
-
-.telemetry-filter .form-select {
-  max-width: 240px;
-}
-
-.telemetry-filter-fields {
-  margin-top: 14px;
-}
-
-.telemetry-filter-fields label {
-  font-weight: 600;
-}
-
-.telemetry-filter-fields .form-control {
-  width: auto;
-  min-width: 165px;
-}
-
 .telemetry-filter-error {
   margin-top: 10px;
   color: #fecaca;
 }
 
 .state-history-card {
-  margin: 14px 0 30px;
+  margin: 0 0 40px;
   text-align: left;
 }
 
-.alert-settings-card { max-width: 1080px; margin: 20px auto 34px; padding: 0; overflow: hidden; background: linear-gradient(145deg, #1e293b, #172033); }
+.alert-settings-card { margin: 0 0 40px; padding: 0; overflow: hidden; background: linear-gradient(145deg, #1e293b, #172033); }
 .alert-settings-summary, .alert-settings-title, .alert-section-heading, .alert-settings-actions { display: flex; align-items: center; }
-.alert-settings-summary { justify-content: space-between; gap: 16px; padding: 20px 28px; text-align: left; }
-.alert-settings-title { gap: 10px; font-size: 1.15rem; }
+.alert-settings-summary { justify-content: flex-start; gap: 16px; padding: 20px 28px; text-align: left; cursor: pointer; list-style: none; }
+.alert-settings-summary::-webkit-details-marker { display: none; }
+.alert-settings-title { width: 100%; gap: 10px; font-size: 1.1rem; }
 .alert-settings-title i { color: #38bdf8; font-size: 1.35rem; }
+.alert-settings-toggle { margin-left: auto; transition: transform 180ms ease; }
+details[open] .alert-settings-toggle { transform: rotate(180deg); }
 .alert-settings-subtitle, .alert-section-heading span, .alert-settings-hint { color: rgba(226,232,240,.68); font-size: .82rem; }
 .alert-settings-content { max-width: 940px; margin: auto; padding: 0 28px 28px; }
-.alert-settings-description { max-width: 720px; margin: 0 auto 22px; color: rgba(226,232,240,.76); font-size: .92rem; text-align: center; }
+.alert-settings-description { display: block; max-width: 720px; margin: 15px auto 22px; color: rgba(226,232,240,.72); font-size: 1.08rem; text-align: center; }
+.alert-settings-cluster { display: block; max-width: 720px; margin: 45px auto 22px; color: rgba(226,232,240,.72); font-size: 1rem; text-align: center; }
 .alert-settings-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 16px; }
 .alert-settings-section { padding: 20px; border: 1px solid rgba(148,163,184,.16); border-radius: 16px; background: rgba(15,23,42,.45); }
 .alert-recipients-section { grid-column: 1/-1; }

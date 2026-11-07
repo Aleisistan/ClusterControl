@@ -38,10 +38,12 @@
     />
 
     <label class="form-label mt-3">Rol</label>
-    <select class="form-select" name="userRole" [(ngModel)]="userForm.role" required>
-      <option value="USER">USER</option>
-      <option value="ADMIN">ADMIN</option>
-    </select>
+    <div class="app-select-wrap">
+      <select class="form-select app-select" name="userRole" [(ngModel)]="userForm.role" required>
+        <option value="USER">USER</option>
+        <option value="ADMIN">ADMIN</option>
+      </select>
+    </div>
 
     <div class="action-row">
       <button class="btn btn-primary" type="submit">
