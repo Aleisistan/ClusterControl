@@ -4,14 +4,10 @@
       <p class="eyebrow">Inventario</p>
       <h2>Clusters</h2>
     </div>
-    <button class="btn btn-outline-light btn-sm" type="button" (click)="resetClusterForm()">
-      Nuevo
-    </button>
   </div>
 
-  <p class="section-note">El formulario usa los campos del DTO real: name, location, lat, lon, deviceId y timezone.</p>
+  <p class="section-note">Escribe al menos 3 caracteres y selecciona una ubicación mundial para cargar sus coordenadas y zona horaria. El device ID se asigna automáticamente.</p>
 
-  <div class="validation-hint" *ngIf="shouldShowClusterValidationMessage">{{ clusterValidationMessage }}</div>
   <div class="alert alert-info" *ngIf="clusterMessage">{{ clusterMessage }}</div>
 
   <form class="stack-form" (ngSubmit)="saveCluster()">
@@ -33,50 +29,23 @@
       type="text"
       name="clusterLocation"
       [(ngModel)]="clusterForm.location"
+      autocomplete="off"
       maxlength="200"
+      placeholder="Escribe para buscar una ubicación"
+      (input)="onLocationInput()"
     />
-
-    <div class="row g-3 mt-0">
-      <div class="col-12 col-md-6">
-        <label class="form-label mt-3">Latitud</label>
-        <input
-          class="form-control"
-          type="number"
-          name="clusterLat"
-          [(ngModel)]="clusterForm.lat"
-          step="any"
-        />
-      </div>
-      <div class="col-12 col-md-6">
-        <label class="form-label mt-3">Longitud</label>
-        <input
-          class="form-control"
-          type="number"
-          name="clusterLon"
-          [(ngModel)]="clusterForm.lon"
-          step="any"
-        />
-      </div>
+    <div class="location-search-state" *ngIf="isSearchingLocations">Buscando ubicaciones...</div>
+    <div class="location-results" *ngIf="locationOptions.length > 0">
+      <button
+        class="location-result"
+        type="button"
+        *ngFor="let option of locationOptions"
+        (click)="selectLocation(option)"
+      >
+        <strong>{{ option.label }}</strong>
+        <span>{{ option.timezone }}</span>
+      </button>
     </div>
-
-    <label class="form-label mt-3">Device ID</label>
-    <input
-      class="form-control"
-      type="text"
-      name="clusterDeviceId"
-      [(ngModel)]="clusterForm.deviceId"
-      maxlength="100"
-    />
-
-    <label class="form-label mt-3">Timezone</label>
-    <input
-      class="form-control"
-      type="text"
-      name="clusterTimezone"
-      [(ngModel)]="clusterForm.timezone"
-      maxlength="100"
-      placeholder="America/Argentina/Buenos_Aires"
-    />
 
     <div class="action-row">
       <button class="btn btn-primary" type="submit">

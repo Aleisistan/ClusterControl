@@ -1,12 +1,13 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit } from '@angular/core';
+import { Component, OnDestroy, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 
-import { finalize } from 'rxjs';
+import { Subject, catchError, debounceTime, distinctUntilChanged, finalize, of, switchMap } from 'rxjs';
 
 import { AuthService, AuthUser } from '../services/auth.service';
 import { ClusterPayload, ClusterRecord, ClusterService } from '../services/cluster.service';
+import { LocationSearchResult, LocationSearchService } from '../services/location-search.service';
 
 @Component({
   selector: 'app-admin-clusters-page',
@@ -15,9 +16,11 @@ import { ClusterPayload, ClusterRecord, ClusterService } from '../services/clust
   templateUrl: './admin-clusters-page.component.html',
   styleUrl: './admin-clusters-page.component.css',
 })
-export class AdminClustersPageComponent implements OnInit {
+export class AdminClustersPageComponent implements OnInit, OnDestroy {
   currentUser: AuthUser | null = null;
   clusters: ClusterRecord[] = [];
+  locationOptions: LocationSearchResult[] = [];
+  isSearchingLocations = false;
 
   clusterForm: ClusterPayload & { id: number | null } = {
     id: null,
@@ -32,10 +35,13 @@ export class AdminClustersPageComponent implements OnInit {
   clusterMessage = '';
   clusterAttempted = false;
   isLoadingClusters = false;
+  private readonly locationSearchSubject = new Subject<string>();
+  private selectedLocationLabel = '';
 
   constructor(
     private authService: AuthService,
     private clusterService: ClusterService,
+    private locationSearchService: LocationSearchService,
     private router: Router,
   ) {}
 
@@ -52,7 +58,27 @@ export class AdminClustersPageComponent implements OnInit {
       return;
     }
 
+    this.locationSearchSubject
+      .pipe(
+        debounceTime(300),
+        distinctUntilChanged(),
+        switchMap((query) => {
+          this.isSearchingLocations = query.length >= 3;
+          return query.length >= 3
+            ? this.locationSearchService.search(query).pipe(catchError(() => of([])))
+            : of([]);
+        }),
+      )
+      .subscribe((locations) => {
+        this.locationOptions = locations;
+        this.isSearchingLocations = false;
+      });
+
     this.loadClusters();
+  }
+
+  ngOnDestroy(): void {
+    this.locationSearchSubject.complete();
   }
 
   loadClusters(): void {
@@ -86,7 +112,9 @@ export class AdminClustersPageComponent implements OnInit {
       location: this.normalizeText(this.clusterForm.location),
       lat: this.toOptionalNumber(this.clusterForm.lat),
       lon: this.toOptionalNumber(this.clusterForm.lon),
-      deviceId: this.normalizeText(this.clusterForm.deviceId),
+      deviceId: this.clusterForm.id
+        ? this.normalizeText(this.clusterForm.deviceId)
+        : undefined,
       timezone: this.normalizeText(this.clusterForm.timezone),
     };
 
@@ -118,6 +146,7 @@ export class AdminClustersPageComponent implements OnInit {
       deviceId: cluster.deviceId || '',
       timezone: cluster.timezone || '',
     };
+    this.selectedLocationLabel = cluster.location || '';
   }
 
   deleteCluster(cluster: ClusterRecord): void {
@@ -146,6 +175,30 @@ export class AdminClustersPageComponent implements OnInit {
       deviceId: '',
       timezone: '',
     };
+    this.locationOptions = [];
+    this.selectedLocationLabel = '';
+  }
+
+  onLocationInput(): void {
+    const query = this.clusterForm.location?.trim() || '';
+    if (query !== this.selectedLocationLabel) {
+      this.clusterForm.lat = null;
+      this.clusterForm.lon = null;
+      this.clusterForm.timezone = '';
+      this.selectedLocationLabel = '';
+    }
+
+    this.locationSearchSubject.next(query);
+  }
+
+  selectLocation(location: LocationSearchResult): void {
+    this.clusterForm.location = location.label;
+    this.clusterForm.lat = location.latitude;
+    this.clusterForm.lon = location.longitude;
+    this.clusterForm.timezone = location.timezone;
+    this.selectedLocationLabel = location.label;
+    this.locationOptions = [];
+    this.isSearchingLocations = false;
   }
 
   navigate(path: string): void {
@@ -156,14 +209,16 @@ export class AdminClustersPageComponent implements OnInit {
     const name = this.clusterForm.name.trim();
     const location = this.clusterForm.location?.trim() || '';
     const deviceId = this.clusterForm.deviceId?.trim() || '';
-    const timezone = this.clusterForm.timezone?.trim() || '';
-
     if (!name) {
       return 'El nombre del cluster es obligatorio.';
     }
 
     if (name.length > 100) {
       return 'El nombre no puede superar 100 caracteres.';
+    }
+
+    if (!location) {
+      return 'Selecciona una ubicación de la lista para cargar sus coordenadas.';
     }
 
     if (location.length > 200) {
@@ -174,15 +229,15 @@ export class AdminClustersPageComponent implements OnInit {
       return 'El device ID no puede superar 100 caracteres.';
     }
 
-    if (timezone.length > 100) {
-      return 'La zona horaria no puede superar 100 caracteres.';
+    if (this.clusterForm.lat === null || this.clusterForm.lon === null) {
+      return 'Selecciona una ubicación de los resultados para cargar sus coordenadas.';
     }
 
-    if (this.clusterForm.lat !== null && this.clusterForm.lat !== undefined && Number.isNaN(Number(this.clusterForm.lat))) {
+    if (Number.isNaN(Number(this.clusterForm.lat))) {
       return 'La latitud debe ser numérica.';
     }
 
-    if (this.clusterForm.lon !== null && this.clusterForm.lon !== undefined && Number.isNaN(Number(this.clusterForm.lon))) {
+    if (Number.isNaN(Number(this.clusterForm.lon))) {
       return 'La longitud debe ser numérica.';
     }
 
