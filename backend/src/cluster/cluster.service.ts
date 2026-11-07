@@ -3,6 +3,7 @@ import {
   NotFoundException,
   ConflictException,
 } from '@nestjs/common';
+import { QueryFailedError } from 'typeorm';
 import { CreateClusterDto } from './dto/create-cluster.dto';
 import { UpdateClusterDto } from './dto/update-cluster.dto';
 import { ClusterRepository } from './repositories/cluster.repository';
@@ -23,9 +24,11 @@ export class ClusterService {
       throw new ConflictException('No se puede crear el cluster');
     }
 
-    if (data.deviceId) {
+    const deviceId = data.deviceId?.trim();
+
+    if (deviceId) {
       const existingDevice = await this.clusterRepository.findByDeviceId(
-        data.deviceId,
+        deviceId,
       );
 
       if (existingDevice) {
@@ -33,9 +36,38 @@ export class ClusterService {
       }
     }
 
-    const cluster = this.clusterRepository.create(data);
+    const cluster = this.clusterRepository.create({
+      ...data,
+      deviceId: deviceId || undefined,
+    });
+    let savedCluster: Cluster;
+    try {
+      savedCluster = await this.clusterRepository.save(cluster);
+    } catch (error) {
+      if (this.isUniqueViolation(error)) {
+        throw new ConflictException('El nombre o deviceId ya está en uso.');
+      }
 
-    return this.clusterRepository.save(cluster);
+      throw error;
+    }
+
+    if (deviceId) {
+      return savedCluster;
+    }
+
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      savedCluster.deviceId = await this.generateDeviceId(savedCluster.id);
+
+      try {
+        return await this.clusterRepository.save(savedCluster);
+      } catch (error) {
+        if (!this.isUniqueViolation(error)) {
+          throw error;
+        }
+      }
+    }
+
+    throw new ConflictException('No se pudo asignar un deviceId único.');
   }
   async update(id: number, data: UpdateClusterDto): Promise<Cluster> {
     const cluster = await this.clusterRepository.findById(id);
@@ -44,28 +76,17 @@ export class ClusterService {
       throw new NotFoundException('Cluster no encontrado');
     }
 
-    if (data.deviceId && data.deviceId !== cluster.deviceId) {
-      const existingName = await this.clusterRepository.findByName(
-        data.deviceId,
-      );
-
-      if (existingName && existingName.id !== id) {
-        throw new ConflictException('No se puede actualizar el cluster');
-      }
-
-      cluster.name = data.deviceId;
-    }
-
     if (data.deviceId !== undefined && data.deviceId !== cluster.deviceId) {
+      const deviceId = data.deviceId.trim();
       const existing = await this.clusterRepository.findByDeviceId(
-        data.deviceId,
+        deviceId,
       );
 
       if (existing && existing.id !== id) {
         throw new ConflictException('No se puede actualizar el cluster');
       }
 
-      cluster.deviceId = data.deviceId;
+      cluster.deviceId = deviceId;
     }
 
     if (data.location !== undefined) {
@@ -103,5 +124,24 @@ export class ClusterService {
     }
 
     await this.clusterRepository.delete(id);
+  }
+
+  private async generateDeviceId(clusterId: number): Promise<string> {
+    let candidate = clusterId;
+
+    while (await this.clusterRepository.findByDeviceId(String(candidate))) {
+      candidate += 1;
+    }
+
+    return String(candidate);
+  }
+
+  private isUniqueViolation(error: unknown): boolean {
+    if (!(error instanceof QueryFailedError)) {
+      return false;
+    }
+
+    const driverError = error.driverError as { code?: string };
+    return driverError.code === '23505';
   }
 }

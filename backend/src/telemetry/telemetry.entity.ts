@@ -36,7 +36,7 @@ export class Telemetry {
   @Column()
   puerta: boolean;
 
-  @Column()
+  @Column({ default: false })
   luzEncendida: boolean;
 
   @Column({ type: 'varchar', length: 32, default: 'device' })
