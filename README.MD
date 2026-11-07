@@ -35,7 +35,14 @@ No es necesario instalar Node.js localmente para levantar los servicios con Comp
    cd ClusterControl
    ```
 
-2. Crear los archivos locales de variables de entorno. El repositorio no incluye plantillas `.env.example`; los archivos `.env` se ignoran en Git. **No subir contraseñas, claves JWT ni claves de servicios externos al repositorio.**
+2. Crear los archivos locales de variables de entorno a partir de las plantillas. Los archivos `.env` se ignoran en Git. **No subir contraseñas, claves JWT ni claves de servicios externos al repositorio.**
+
+   ```bash
+   cp .env.example .env
+   cp backend/.env.example backend/.env
+   ```
+
+   Las plantillas incluyen comentarios y tips para Docker, MQTT, PostgreSQL, JWT, SMTP y los servicios opcionales.
 
    En el archivo `.env` de la raíz, configurar las variables que consume Compose y PostgreSQL:
 
