@@ -196,22 +196,29 @@ describe('TelemetryService', () => {
   });
 
   it('includes recovered outages in chronological history order', async () => {
+    const from = new Date(Date.now() - 2 * 60 * 1000);
+    const outageCreatedAt = new Date(from.getTime() + 30 * 1000);
+    const stateChangeCreatedAt = new Date(from.getTime() + 60 * 1000);
     const stateChange = {
       id: 5,
-      createdAt: new Date('2026-10-06T12:01:00.000Z'),
+      createdAt: stateChangeCreatedAt,
     };
     const outage = {
       id: 'outage-3-4',
       eventType: 'disconnect',
-      createdAt: new Date('2026-10-06T12:00:30.000Z'),
-      startedAt: new Date('2026-10-06T12:00:15.000Z'),
-      endedAt: new Date('2026-10-06T12:00:30.000Z'),
+      createdAt: outageCreatedAt,
+      startedAt: new Date(from.getTime() + 15 * 1000),
+      endedAt: outageCreatedAt,
     };
     telemetryRepository.findStateChanges.mockResolvedValue([stateChange]);
     telemetryRepository.findOutages.mockResolvedValue([outage]);
 
     await expect(
-      service.getStateHistory(12, '2026-10-06T12:00:00.000Z', '2026-10-06T12:02:00.000Z'),
+      service.getStateHistory(
+        12,
+        from.toISOString(),
+        new Date(from.getTime() + 2 * 60 * 1000).toISOString(),
+      ),
     ).resolves.toEqual([stateChange, outage]);
   });
 
