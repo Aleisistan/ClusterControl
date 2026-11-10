@@ -996,8 +996,8 @@ private setAlertConfiguration(configuration: AlertConfiguration): void {
     }
 
     if (this.historyDaysDragged) {
-      element.scrollLeft = this.historyDaysStartScrollLeft - distance;
       event.preventDefault();
+      element.scrollLeft = this.historyDaysStartScrollLeft - distance;
     }
   }
 
