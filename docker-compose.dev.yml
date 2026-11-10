@@ -59,6 +59,7 @@ services:
   backend:
     build:
       context: ./backend
+      dockerfile: Dockerfile.dev
 
     container_name: backend
     restart: unless-stopped
@@ -101,7 +102,9 @@ services:
 
 
   frontend:
-    build: ./frontend
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
 
     container_name: frontend
     restart: unless-stopped

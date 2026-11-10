@@ -90,7 +90,7 @@ La primera cuenta es `admin` con contraseña `admin123`. Cambia esa contraseña 
 
 El volumen `postgres_data` conserva la instalación entre reinicios. `docker compose -f docker-compose.dev.yml down` detiene los servicios sin perder información. `down -v` elimina también la base y debe reservarse para una instalación de desarrollo que se quiera reiniciar desde cero.
 
-## Levantar la aplicación
+## Levantar la aplicación en desarrollo
 
 Desde el directorio raíz, construir las imágenes e iniciar los servicios:
 
@@ -141,6 +141,41 @@ docker compose -f docker-compose.dev.yml down
 
 PostgreSQL conserva sus datos en el volumen `postgres_data`. Eliminar volúmenes con `docker compose -f docker-compose.dev.yml down -v` borra esos datos; hacerlo solo si se desea reiniciar la base desde cero.
 
+## CI/CD y despliegue de producción
+
+El workflow [ci-cd.yml](./.github/workflows/ci-cd.yml) ejecuta las pruebas y builds de backend y frontend en GitHub Actions. En cada push publica las imágenes de producción en GitHub Container Registry y Docker Hub:
+
+- `ghcr.io/aleisistan/clustercontrol-backend`
+- `ghcr.io/aleisistan/clustercontrol-frontend`
+- `<DOCKERHUB_USERNAME>/clustercontrol-backend`
+- `<DOCKERHUB_USERNAME>/clustercontrol-frontend`
+
+Configurar en el repositorio los secrets `DOCKERHUB_USERNAME` y `DOCKERHUB_TOKEN` (usar un access token de Docker Hub, no la contraseña). Para el frontend, configurar opcionalmente las variables de repositorio `FRONTEND_API_URL`, `FRONTEND_CAMERA_1_URL` y `FRONTEND_CAMERA_2_URL`; se incorporan durante el build porque Angular genera un bundle estático.
+
+El archivo [docker-compose.production.yml](./docker-compose.production.yml) no compila código, no monta el código fuente y no inicia watchers ni el simulador. **La fuente principal de imágenes es GitHub Container Registry (GHCR); Docker Hub se publica únicamente como backup.** En el servidor, copiar `.env` y `backend/.env` y ejecutar:
+
+```bash
+docker login ghcr.io
+docker compose -f docker-compose.production.yml pull
+docker compose -f docker-compose.production.yml up -d
+```
+
+Por defecto el Compose utiliza exclusivamente estas imágenes de GHCR con la etiqueta `latest`:
+
+```text
+ghcr.io/aleisistan/clustercontrol-backend:latest
+ghcr.io/aleisistan/clustercontrol-frontend:latest
+```
+
+Docker Hub no se consulta durante el funcionamiento normal. Solo si GHCR no estuviera disponible se puede hacer un cambio manual de contingencia en `.env`:
+
+```dotenv
+BACKEND_IMAGE=<DOCKERHUB_USERNAME>/clustercontrol-backend:latest
+FRONTEND_IMAGE=<DOCKERHUB_USERNAME>/clustercontrol-frontend:latest
+```
+
+El frontend se sirve con Nginx en el puerto `4200`; el backend se ejecuta con `node dist/main`, sin `--watch`, polling ni volúmenes de código. El servicio `simulator` queda deliberadamente fuera de producción para no inyectar telemetría sintética junto con los equipos reales.
+
 ## Inicialización y persistencia de la base de datos
 
 Compose monta `backend/database` como directorio de inicialización de PostgreSQL. Los scripts de esa carpeta se ejecutan automáticamente cuando PostgreSQL inicializa por primera vez el volumen de datos. El script SQL actual es [backend/database/init.sql](./backend/database/init.sql).
@@ -173,6 +208,8 @@ El contrato de telemetría, el procedimiento de carga y las decisiones de seguri
 ## Servicios y código fuente
 
 - Compose de desarrollo: [docker-compose.dev.yml](./docker-compose.dev.yml)
+- Dockerfiles de desarrollo: [backend/Dockerfile.dev](./backend/Dockerfile.dev) y [frontend/Dockerfile.dev](./frontend/Dockerfile.dev)
+- Dockerfiles de producción: [backend/Dockerfile](./backend/Dockerfile) y [frontend/Dockerfile](./frontend/Dockerfile)
 - Configuración del broker MQTT: [mosquitto/config/mosquitto.conf](./mosquitto/config/mosquitto.conf)
 - API NestJS: [backend/src](./backend/src), con dependencias y scripts en [backend/package.json](./backend/package.json)
 - Aplicación Angular: [frontend/src](./frontend/src), con dependencias y scripts en [frontend/package.json](./frontend/package.json)
@@ -182,11 +219,10 @@ El contrato de telemetría, el procedimiento de carga y las decisiones de seguri
 
 El simulador envía valores ficticios para dos dispositivos. Para probar la integración desde una placa, esta debe poder alcanzar por la red la dirección IP del equipo que ejecuta Docker y el puerto MQTT `1883`. En la configuración actual el broker permite conexiones anónimas, por lo que debe utilizarse solo en una red de desarrollo confiable y no exponerse directamente a Internet.
 
-## Preparación para producción
+## Pendientes de endurecimiento para producción
 
-El archivo `docker-compose.dev.yml` sirve para desarrollo y pruebas. Antes de usarlo en un sitio real hay que separar, como mínimo, estas tareas:
+El archivo [docker-compose.dev.yml](./docker-compose.dev.yml) sigue siendo solo para desarrollo. El despliegue real debe usar [docker-compose.production.yml](./docker-compose.production.yml), que ya excluye el simulador y ejecuta las imágenes compiladas sin watchers. Antes de exponerlo en Internet hay que completar, como mínimo, estas tareas:
 
-- Desactivar el servicio `simulator`.
 - Cambiar `JWT_SECRET`, contraseñas de PostgreSQL, pgAdmin y MQTT.
 - Desactivar MQTT anónimo y definir usuarios y ACL por dispositivo.
 - No publicar PostgreSQL ni pgAdmin fuera de la red de administración.

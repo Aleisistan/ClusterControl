@@ -1,0 +1,81 @@
+name: clustercontrol
+
+services:
+  mosquitto:
+    image: eclipse-mosquitto:2
+    restart: unless-stopped
+    ports:
+      - "1883:1883"
+    volumes:
+      - ./mosquitto/config:/mosquitto/config:ro
+
+  postgres:
+    image: postgres:16
+    restart: unless-stopped
+    env_file:
+      - .env
+    command: ["postgres", "-c", "timezone=America/Argentina/Buenos_Aires"]
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backend/database:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+
+  corx:
+    image: ghcr.io/venipa/corx:latest
+    restart: unless-stopped
+    depends_on:
+      redis:
+        condition: service_healthy
+    ports:
+      - "3001:3001"
+    environment:
+      PORT: "3001"
+      ORIGIN_HOST: "*"
+      ALLOWED_RESPONSE_CATEGORIES: "json,xml,html,yml,text"
+      RATE_LIMIT_ENABLED: "true"
+      REDIS_URL: redis://redis:6379
+
+  backend:
+    image: ${BACKEND_IMAGE:-ghcr.io/aleisistan/clustercontrol-backend:latest}
+    restart: unless-stopped
+    env_file:
+      - ./backend/.env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mosquitto:
+        condition: service_started
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./tests-industriales/reports:/app/industrial-reports:ro
+    environment:
+      NODE_ENV: production
+      INDUSTRIAL_TEST_STATUS_PATH: /app/industrial-reports/runner-status.json
+
+  frontend:
+    image: ${FRONTEND_IMAGE:-ghcr.io/aleisistan/clustercontrol-frontend:latest}
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_started
+    ports:
+      - "4200:80"
+
+volumes:
+  postgres_data:
