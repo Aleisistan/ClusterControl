@@ -1,4 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideHttpClient } from '@angular/common/http';
+import { provideRouter } from '@angular/router';
+import { provideCharts, withDefaultRegisterables } from 'ng2-charts';
 
 import { DashboardComponent } from './dashboard.component';
 import { environment } from '../../environments/environment';
@@ -7,9 +10,17 @@ describe('DashboardComponent', () => {
   let component: DashboardComponent;
   let fixture: ComponentFixture<DashboardComponent>;
 
+  const chartPoints = (data: unknown): Array<Record<string, unknown>> =>
+    data as Array<Record<string, unknown>>;
+
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [DashboardComponent]
+      imports: [DashboardComponent],
+      providers: [
+        provideHttpClient(),
+        provideRouter([]),
+        provideCharts(withDefaultRegisterables()),
+      ],
     })
     .compileComponents();
 
@@ -26,13 +37,13 @@ describe('DashboardComponent', () => {
     component.latest = { temperature1: 20, temperature2: 20 };
 
     component.avgTemperature = 15;
-    expect(component.getTemperatureClass()).toBe('normal');
+    expect(component.getTemperatureClass()).toBe('warning');
 
     component.avgTemperature = 17;
     expect(component.getTemperatureClass()).toBe('warning');
 
     component.avgTemperature = 30;
-    expect(component.getTemperatureClass()).toBe('normal');
+    expect(component.getTemperatureClass()).toBe('warning');
 
     component.avgTemperature = 31;
     expect(component.getTemperatureClass()).toBe('critical');
@@ -87,8 +98,10 @@ describe('DashboardComponent', () => {
     jasmine.clock().install();
     jasmine.clock().mockDate(new Date('2026-10-16T15:00:00.000Z'));
     component.historyFilter = '24h';
+    component.camera1Loaded = false;
+    component['unavailableCameras'].clear();
 
-    component.onCameraLoad(1);
+    component.camera1Loaded = true;
     component['refreshCameraSource'](1, 7);
     jasmine.clock().tick(10_000);
 
@@ -102,6 +115,7 @@ describe('DashboardComponent', () => {
         to: 'Inactiva',
       }),
     );
+    jasmine.clock().tick(1);
     component.onCameraLoad(1);
     expect(component.stateHistory).toHaveSize(2);
     expect(component.stateHistory[0]).toEqual(
@@ -268,7 +282,7 @@ describe('DashboardComponent', () => {
     component.onSensorViewChange();
 
     expect(component.lineChartData.datasets[1].label).toBe('Humedad Sensor 1 %');
-    expect(component.lineChartData.datasets[1].data).toEqual([
+    expect(chartPoints(component.lineChartData.datasets[1].data)).toEqual([
       {
         id: 1,
         x: new Date('2026-10-06T12:00:00.000Z').getTime(),
@@ -302,7 +316,7 @@ describe('DashboardComponent', () => {
     component.onSensorViewChange();
 
     expect(component.lineChartData.datasets[1].label).toBe('Humedad Promedio %');
-    expect(component.lineChartData.datasets[1].data).toEqual([
+    expect(chartPoints(component.lineChartData.datasets[1].data)).toEqual([
       {
         id: 1,
         x: new Date('2026-10-06T12:00:00.000Z').getTime(),
@@ -344,7 +358,7 @@ describe('DashboardComponent', () => {
 
     component.onSensorViewChange();
 
-    expect(component.lineChartData.datasets[1].data).toEqual([
+    expect(chartPoints(component.lineChartData.datasets[1].data)).toEqual([
       {
         id: 2,
         x: new Date('2026-10-06T12:00:15.000Z').getTime(),

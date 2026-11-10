@@ -929,7 +929,7 @@ private setAlertConfiguration(configuration: AlertConfiguration): void {
     const isHourly = this.historyFilter === '24h';
     const cursor = new Date(range.from);
 
-    while (cursor <= range.to) {
+    while (cursor < range.to) {
       const start = new Date(cursor);
       const next = new Date(start);
       if (isHourly) {
