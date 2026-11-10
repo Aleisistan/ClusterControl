@@ -402,14 +402,14 @@ saveAlertConfiguration(): void {
   const humidityLimit = Number(this.alertConfiguration.humidityLimit);
   if (
     !Number.isFinite(temperatureLimit) ||
-    temperatureLimit < -40 ||
-    temperatureLimit > 100 ||
+    temperatureLimit < 1 ||
+    temperatureLimit > 99 ||
     !Number.isFinite(humidityLimit) ||
-    humidityLimit < 0 ||
-    humidityLimit > 100
+    humidityLimit < 1 ||
+    humidityLimit > 99
   ) {
     this.alertConfigurationMessage =
-      'Los umbrales máximos deben ser válidos y mayores que sus umbrales de recuperación.';
+      'Los límites de temperatura y humedad deben estar entre 1 y 99.';
     return;
   }
 
@@ -463,6 +463,12 @@ saveAlertConfiguration(): void {
 addAlertRecipient(): void {
     const address = this.alertRecipientsInput.trim();
     if (!address) return;
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(address)) {
+      this.alertConfigurationMessage =
+        'Ingresá una dirección de correo válida.';
+      return;
+    }
 
     const alreadyAdded = this.alertConfiguration.recipients.some(
       (recipient) => recipient.toLowerCase() === address.toLowerCase(),

@@ -565,7 +565,7 @@
         </div>
         <label class="form-label" for="alert-temperature-limit">Límite máximo (°C)</label>
         <input id="alert-temperature-limit" class="form-control alert-settings-input" type="number"
-          min="-40" max="100" step="0.1" required
+          min="1" max="99" step="0.1" required
           [(ngModel)]="alertConfiguration.temperatureLimit"
           [disabled]="!alertConfiguration.temperatureEnabled" />
         <div class="alert-recovery-note">
@@ -591,7 +591,7 @@
         </div>
         <label class="form-label" for="alert-humidity-limit">Límite máximo (%)</label>
         <input id="alert-humidity-limit" class="form-control alert-settings-input" type="number"
-          min="0" max="100" step="0.1" required
+          min="1" max="99" step="0.1" required
           [(ngModel)]="alertConfiguration.humidityLimit"
           [disabled]="!alertConfiguration.humidityEnabled" />
         <div class="alert-recovery-note">
@@ -661,9 +661,6 @@
     </div>
     <small class="alert-settings-hint" *ngIf="!alertConfiguration.recipients.length">
       Guarda al menos un destinatario para habilitar el correo de prueba.
-    </small>
-    <small class="alert-settings-hint" *ngIf="!alertConfiguration.smtpConfigured">
-      La configuración del dashboard se puede guardar, pero no se enviarán correos hasta configurar SMTP en el backend. Consulta backend/README.md.
     </small>
   </div>
 </details>
