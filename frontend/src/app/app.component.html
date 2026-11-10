@@ -16,10 +16,10 @@
           routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
           Dashboard
         </button>
-        <button type="button" class="route-tab" [class.active]="isActive('/admin/users')" (click)="navigate('/admin/users')">
+        <button *ngIf="isAdmin" type="button" class="route-tab" [class.active]="isActive('/admin/users')" (click)="navigate('/admin/users')">
           Usuarios
         </button>
-        <button type="button" class="route-tab" [class.active]="isActive('/admin/clusters')" (click)="navigate('/admin/clusters')">
+        <button *ngIf="isAdmin" type="button" class="route-tab" [class.active]="isActive('/admin/clusters')" (click)="navigate('/admin/clusters')">
           Clusters
         </button>
         <div class="session-pill" [class.session-hidden]="sessionHidden">
