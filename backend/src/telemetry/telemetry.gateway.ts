@@ -26,51 +26,20 @@ export class TelemetryGateway implements OnGatewayConnection {
     private readonly logger: LoggerService,
   ) {}
 
-  /*handleConnection(client: Socket): void {
+  handleConnection(client: Socket): void {
     const token = client.handshake.auth?.token;
 
-    if (!token) {
-      this.logger.warn('Conexión WebSocket rechazada');
-
+    if (typeof token !== 'string' || token.length === 0) {
+      this.logger.warn('Conexión rechazada: no se envió ningún token');
       client.disconnect();
-
       return;
     }
 
     try {
       this.jwtService.verify(token);
-
-      this.logger.log('Cliente WebSocket autenticado');
+      this.logger.debug('Cliente autenticado correctamente');
     } catch {
-      this.logger.warn('Conexión WebSocket rechazada');
-
-      client.disconnect();
-    }*/
-  handleConnection(client: Socket): void {
-    // Busca el token en auth, luego en headers y finalmente en query params
-    const token =
-      client.handshake.auth?.token ||
-      client.handshake.headers?.authorization ||
-      client.handshake.headers?.token ||
-      (client.handshake.query?.token as string);
-
-    //console.log('>>> Token capturado:', token);
-
-    if (!token) {
-      this.logger.warn('❌ Conexión rechazada: No se envió ningún token');
-      client.disconnect();
-      return;
-    }
-
-    try {
-      // Si usas 'Bearer tu_token', limpia la palabra 'Bearer '
-      const cleanToken = token.startsWith('Bearer ') ? token.slice(7) : token;
-      this.jwtService.verify(cleanToken);
-
-      this.logger.debug('✅ Cliente autenticado correctamente');
-    } catch (error) {
-      //console.error('❌ Token inválido:', error.message);
-      this.logger.warn('❌ Conexión rechazada: Token inválido');
+      this.logger.warn('Conexión rechazada: token inválido');
       client.disconnect();
     }
   }

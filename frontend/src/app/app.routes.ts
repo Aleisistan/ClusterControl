@@ -5,6 +5,7 @@ import { AdminUsersPageComponent } from './pages/admin-users-page.component';
 import { DashboardComponent } from './dashboard/dashboard.component';
 import { LoginPageComponent } from './pages/login-page.component';
 import { authGuard } from './guards/auth.guard';
+import { adminGuard } from './guards/admin.guard';
 
 export const routes: Routes = [
   {
@@ -25,6 +26,7 @@ export const routes: Routes = [
   },
   {
     path: 'admin',
+    canActivate: [authGuard, adminGuard],
     children: [
       {
         path: '',

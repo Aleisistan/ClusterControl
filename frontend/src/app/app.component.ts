@@ -37,6 +37,10 @@ export class AppComponent implements OnInit, OnDestroy {
     this.authSubscription?.unsubscribe();
   }
 
+  get isAdmin(): boolean {
+    return this.authService.isAdmin();
+  }
+
   @HostListener('window:scroll')
   onWindowScroll(): void {
     if (window.innerWidth > 576) {
