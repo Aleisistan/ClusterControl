@@ -29,30 +29,34 @@
    <!-- Derecha -->
 <div class="weather-card" [ngClass]="getWeatherClass()">
 
-  <h5>Hora Local</h5>
+  <div class="weather-header">
+    <h5>Hora Local</h5>
+    <h3>
+      <i class="bi bi-clock"></i>
+      {{ clusterTime || '--:--:--' }}
+    </h3>
+  </div>
 
-  <h3>
-    <i class="bi bi-clock"></i>
-    {{ clusterTime || '--:--:--' }}
-  </h3>
+  <div class="weather-date">
+    <p>{{ clusterDate }}</p>
+    <p>{{ getTimezoneLabel() }}</p>
+  </div>
 
-  <p>{{ clusterDate }}</p>
-  <p>{{ getTimezoneLabel() }}</p>
-
-  <h3>
+  <h3 class="weather-location">
     <i class="bi bi-geo-alt"></i>
     {{ weather?.name || selectedCluster?.location || 'Cargando...' }}
   </h3>
 
-  <h3>
-    <i class="bi bi-thermometer-half"></i>
-    {{ (weather?.main?.temp | number:'1.0-0') ?? '--' }} °C
-  </h3>
-
-  <h3>
-    <i class="bi bi-droplet"></i>
-    {{ weather?.main?.humidity ?? '--' }} %
-  </h3>
+  <div class="weather-metrics">
+    <h3>
+      <i class="bi bi-thermometer-half"></i>
+      {{ (weather?.main?.temp | number:'1.0-0') ?? '--' }} °C
+    </h3>
+    <h3>
+      <i class="bi bi-droplet"></i>
+      {{ weather?.main?.humidity ?? '--' }} %
+    </h3>
+  </div>
 
   <!-- Renderizar el ícono solo cuando la API haya respondido -->
   <div class="weather-info" *ngIf="weather?.weather?.[0]">
@@ -62,7 +66,7 @@
       [alt]="weather.weather[0].description" 
     />
 
-    <p>{{ weather.weather[0].description }}</p>
+    <p>{{ capitalizeWeatherDescription(weather.weather[0].description) }}</p>
 
   </div>
 
@@ -73,8 +77,10 @@
     <h2>Cámara Datacenter</h2>
 
     <div class="camera-wrapper">
-      <div class="camera-inactive" *ngIf="!camera1Loaded">
-        Cámara inactiva
+      <div class="camera-inactive" *ngIf="!camera1Loaded" role="status" aria-live="polite">
+        <i class="bi bi-camera-video-off" aria-hidden="true"></i>
+        <span>Cámara inactiva</span>
+        <small>La señal no está disponible</small>
       </div>
 
        <img *ngIf="cameraStreamUrl"
@@ -83,7 +89,7 @@
            [class.hidden]="!camera1Loaded"
            (load)="onCameraLoad(1)"
            (error)="onCameraError(1)"
-           alt="Cámara del Cluster"/>
+           alt="Vista de la cámara del datacenter"/>
     </div>
   </div>
 
@@ -91,15 +97,18 @@
     <h2 class="camera-capture-title">Cámara Exterior</h2>
 
     <div class="camera-wrapper">
-      <div class="camera-inactive" *ngIf="!camera2Loaded">
-        Cámara inactiva
+      <div class="camera-inactive" *ngIf="!camera2Loaded" role="status" aria-live="polite">
+        <i class="bi bi-camera-video-off" aria-hidden="true"></i>
+        <span>Cámara inactiva</span>
+        <small>La señal no está disponible</small>
       </div>
 
-      <img src="http://live1.tusten.no:8080/axis-cgi/mjpg/video.cgi"
+      <img [src]="camera2StreamUrl"
            class="camera-stream"
            [class.hidden]="!camera2Loaded"
            (load)="onCameraLoad(2)"
-           (error)="onCameraError(2)" />
+           (error)="onCameraError(2)"
+           alt="Vista de la cámara exterior" />
     </div>
   </div>
 </div>
@@ -116,7 +125,7 @@
     <div class="card kpicard" [ngClass]="getTemperatureClass()">
       <div class="card-content">
         <div class="top">
-          <span class="name">🌡 Temperatura</span>
+          <span class="name"><i class="bi bi-thermometer-half" aria-hidden="true"></i> Temperatura</span>
           <select class="form-select app-select" [(ngModel)]="temperatureView">
             <option value="avg">Promedio</option>
             <option value="s1">Sensor 1</option>
@@ -141,7 +150,7 @@
     <div class="card kpicard" [ngClass]="getHumidityClass()">
       <div class="card-content">
         <div class="top">
-          <span class="name">💧 Humedad</span>
+          <span class="name"><i class="bi bi-droplet-half" aria-hidden="true"></i> Humedad</span>
           <select class="form-select app-select" [(ngModel)]="humidityView">
             <option value="avg">Promedio</option>
             <option value="s1">Sensor 1</option>
@@ -166,7 +175,7 @@
     <div class="card kpicard" [ngClass]="getExtractorClass()">
       <div class="card-content">
         <div class="top">
-          <span class="name">🌀 Extractor</span>
+          <span class="name"><i class="bi bi-fan" aria-hidden="true"></i> Extractor</span>
         </div>
         <div class="bottom">
           <h2>
@@ -186,7 +195,7 @@
     <div class="card kpicard" [ngClass]="getAirClass()">
       <div class="card-content">
         <div class="top">
-          <span class="name">❄ Aire</span>
+          <span class="name"><i class="bi bi-snow2" aria-hidden="true"></i> Aire</span>
         </div>
         <div class="bottom">
           <h2>
@@ -207,9 +216,8 @@
 
     <div class="card-content">
 
-      <!-- PUERTA -->
       <div class="top">
-        <span class="name">🚪 Puerta</span>
+        <span class="name"><i class="bi bi-door-open" aria-hidden="true"></i> Puerta</span>
       </div>
 
       <div class="bottom">
@@ -225,29 +233,16 @@
       </div>
 
 
-      <!-- SEPARADOR -->
-      <hr>
-
-
-      <!-- LUZ -->
-     <div class="card-content" [ngClass]="getLightClass()">
-  <div class="top">
-    <span class="name">💡 Luz</span>
+    <div class="state-divider" aria-hidden="true"></div>
+    <div class="state-row" [ngClass]="getLightClass()">
+      <span class="name"><i class="bi bi-lightbulb" aria-hidden="true"></i> Luz</span>
+      <h2>{{ isLightOn() ? 'ENCENDIDA' : 'APAGADA' }}</h2>
+    </div>
+    <span class="date">Estado de la luz</span>
   </div>
 
-  <div class="bottom">
-    <h2>
-      {{ isLightOn() ? 'ENCENDIDA' : 'APAGADA' }}
-    </h2>
-
-    <span class="date">
-      Estado de la luz
-    </span>
-  </div>
-</div>
   </div>
 
-</div>
 </div>
 
 <!-- CHART -->
