@@ -1,6 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
 import { DashboardComponent } from './dashboard.component';
+import { environment } from '../../environments/environment';
 
 describe('DashboardComponent', () => {
   let component: DashboardComponent;
@@ -21,6 +22,44 @@ describe('DashboardComponent', () => {
     expect(component).toBeTruthy();
   });
 
+  it('should classify temperature using the datacenter ranges', () => {
+    component.latest = { temperature1: 20, temperature2: 20 };
+
+    component.avgTemperature = 15;
+    expect(component.getTemperatureClass()).toBe('normal');
+
+    component.avgTemperature = 17;
+    expect(component.getTemperatureClass()).toBe('warning');
+
+    component.avgTemperature = 30;
+    expect(component.getTemperatureClass()).toBe('normal');
+
+    component.avgTemperature = 31;
+    expect(component.getTemperatureClass()).toBe('critical');
+
+    component.avgTemperature = 14;
+    expect(component.getTemperatureClass()).toBe('critical');
+  });
+
+  it('should classify humidity using the datacenter ranges', () => {
+    component.latest = { humidity1: 40, humidity2: 40 };
+
+    component.avgHumidity = 30;
+    expect(component.getHumidityClass()).toBe('normal');
+
+    component.avgHumidity = 25;
+    expect(component.getHumidityClass()).toBe('warning');
+
+    component.avgHumidity = 60;
+    expect(component.getHumidityClass()).toBe('normal');
+
+    component.avgHumidity = 65;
+    expect(component.getHumidityClass()).toBe('warning');
+
+    component.avgHumidity = 19;
+    expect(component.getHumidityClass()).toBe('critical');
+  });
+
   it('should limit chart zoom to a five-minute window', () => {
     const zoomOptions = component.lineChartOptions?.plugins?.zoom as {
       limits?: { x?: { minRange?: number } };
@@ -34,6 +73,14 @@ describe('DashboardComponent', () => {
 
     expect(url).toContain('/camera/stream/7');
     expect(url).not.toContain(':81/stream');
+  });
+
+  it('should build the camera 1 URL from the environment configuration', () => {
+    const url = component.buildCameraStreamUrl(7);
+
+    expect(url).toContain(
+      `${environment.apiUrl}${environment.camera1Url}/7`,
+    );
   });
 
   it('should mark a camera inactive and record it when a refreshed stream times out', () => {

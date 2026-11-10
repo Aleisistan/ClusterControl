@@ -94,7 +94,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   snapshotPreviewError = '';
   alertConfiguration: AlertConfiguration = {
     temperatureLimit: 30,
-    humidityLimit: 80,
+    humidityLimit: 70,
     temperatureRecoveryLimit: 27,
     humidityRecoveryLimit: 70,
     temperatureEnabled: true,
@@ -545,7 +545,7 @@ private loadAlertConfiguration(clusterId: number): void {
   this.alertConfigurationMessage = '';
   this.alertConfiguration = {
     temperatureLimit: 30,
-    humidityLimit: 80,
+    humidityLimit: 70,
     temperatureRecoveryLimit: 27,
     humidityRecoveryLimit: 70,
     temperatureEnabled: true,
@@ -1754,7 +1754,7 @@ loadWeather(): void {
       query.set('token', token);
     }
 
-    return `${environment.apiUrl}/camera/stream/${clusterId}?${query.toString()}`;
+    return `${environment.apiUrl}${environment.camera1Url}/${clusterId}?${query.toString()}`;
   }
 
   private updateCameraStream(): void {
@@ -1874,16 +1874,16 @@ updateClusterTime(): void {
 
   getTemperatureClass(): string {
     if (!this.latest) return 'normal';
-    if (this.avgTemperature >= 32) return 'critical';
-    if (this.avgTemperature >= 28) return 'warning';
+    if (this.avgTemperature < 15 || this.avgTemperature > 30) return 'critical';
+    if (this.avgTemperature < 18 || this.avgTemperature > 27) return 'warning';
     return 'normal';
   }
 
   getHumidityClass(): string {
     if (!this.latest) return 'normal';
-    if (this.avgHumidity >= 80) return 'critical';
-    if (this.avgHumidity >= 45 && this.avgHumidity < 55) return 'normal';
-    return 'warning';
+    if (this.avgHumidity < 20 || this.avgHumidity > 70) return 'critical';
+    if (this.avgHumidity < 30 || this.avgHumidity > 60) return 'warning';
+    return 'normal';
   }
 
   getClusterTimezone(): string {
@@ -1951,5 +1951,11 @@ updateClusterTime(): void {
       case 'Thunderstorm': return 'weather-storm';
       default: return 'weather-default';
     }
+  }
+
+  capitalizeWeatherDescription(description: string): string {
+    return description
+      ? description.charAt(0).toUpperCase() + description.slice(1)
+      : description;
   }
 }
