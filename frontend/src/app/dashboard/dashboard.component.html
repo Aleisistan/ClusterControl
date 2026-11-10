@@ -270,40 +270,41 @@
             <option value="s2">Sensor 2</option>
           </select>
         </label>
-      </div>
+        <div class="chart-range-filter">
+          <label class="d-flex align-items-center gap-2 mb-0" for="history-filter">
+            Rango de tiempo
+            <select id="history-filter" class="form-select form-select-sm app-select" [(ngModel)]="historyFilter"
+              (ngModelChange)="onHistoryFilterChange()">
+              <option value="5m">Últimos 5 minutos</option>
+              <option value="24h">Últimas 24 horas</option>
+              <option value="7d">Últimos 7 días completos (sin hoy)</option>
+              <option value="30d">Últimos 30 días</option>
+              <option value="day">Día específico</option>
+              <option value="custom">Rango personalizado</option>
+            </select>
+          </label>
 
-      <div class="chart-range-filter">
-        <label for="history-filter">Rango de tiempo</label>
-        <select id="history-filter" class="form-select form-select-sm app-select" [(ngModel)]="historyFilter"
-          (ngModelChange)="onHistoryFilterChange()">
-          <option value="5m">Últimos 5 minutos</option>
-          <option value="24h">Últimas 24 horas</option>
-          <option value="7d">Últimos 7 días completos (sin hoy)</option>
-          <option value="30d">Últimos 30 días</option>
-          <option value="day">Día específico</option>
-          <option value="custom">Rango personalizado</option>
-        </select>
+          <div class="chart-range-fields" *ngIf="historyFilter === 'day'">
+            <label for="history-date">Día</label>
+            <input id="history-date" class="form-control" type="date" [(ngModel)]="historyDate"
+              (change)="applyHistoryFilter()" />
+          </div>
 
-        <div class="chart-range-fields" *ngIf="historyFilter === 'day'">
-          <label for="history-date">Día</label>
-          <input id="history-date" class="form-control" type="date" [(ngModel)]="historyDate"
-            (change)="applyHistoryFilter()" />
-        </div>
+          <div class="chart-range-fields" *ngIf="historyFilter === 'custom'">
+            <label for="history-from">Desde</label>
+            <input id="history-from" class="form-control" type="date" [(ngModel)]="historyFromDate" />
 
-        <div class="chart-range-fields" *ngIf="historyFilter === 'custom'">
-          <label for="history-from">Desde</label>
-          <input id="history-from" class="form-control" type="date" [(ngModel)]="historyFromDate" />
+            <label for="history-to">Hasta</label>
+            <input id="history-to" class="form-control" type="date" [(ngModel)]="historyToDate" />
 
-          <label for="history-to">Hasta</label>
-          <input id="history-to" class="form-control" type="date" [(ngModel)]="historyToDate" />
+            <button type="button" class="btn btn-primary" (click)="applyHistoryFilter()">
+              Aplicar filtro
+            </button>
+          </div>
 
-          <button type="button" class="btn btn-primary" (click)="applyHistoryFilter()">
-            Aplicar filtro
-          </button>
-        </div>
-
-        <div class="telemetry-filter-error" *ngIf="historyFilterError">
-          {{ historyFilterError }}
+          <div class="telemetry-filter-error" *ngIf="historyFilterError">
+            {{ historyFilterError }}
+          </div>
         </div>
       </div>
 
