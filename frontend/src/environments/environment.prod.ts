@@ -1,6 +1,6 @@
 export const environment = {
   production: true,
-  apiUrl: 'http://192.168.2.63:3000',
-  camera1Url: '/camera/stream',
-  camera2Url: 'http://live1.tusten.no:8080/axis-cgi/mjpg/video.cgi'
+  apiUrl: '',
+  socketUrl: '',
+  telemetrySource: 'device' as 'device' | 'operational',
 };
