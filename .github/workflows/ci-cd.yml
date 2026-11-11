@@ -98,10 +98,6 @@ jobs:
           context: ./frontend
           file: ./frontend/Dockerfile
           push: true
-          build-args: |
-            API_URL=${{ vars.FRONTEND_API_URL || 'http://localhost:3000' }}
-            CAMERA_1_URL=${{ vars.FRONTEND_CAMERA_1_URL || 'http://localhost:3000/camera/stream' }}
-            CAMERA_2_URL=${{ vars.FRONTEND_CAMERA_2_URL || 'http://live1.tusten.no:8080/axis-cgi/mjpg/video.cgi' }}
           tags: |
             ghcr.io/aleisistan/clustercontrol-frontend:${{ github.sha }}
             ghcr.io/aleisistan/clustercontrol-frontend:latest
