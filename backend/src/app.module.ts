@@ -22,7 +22,10 @@ import { AlertsModule } from './alerts/alerts.module';
     LoggerModule,
     ConfigModule.forRoot({
       isGlobal: true,
-      envFilePath: '.env',
+      envFilePath:
+        process.env.NODE_ENV === 'production'
+          ? '../.env'
+          : '../.env.development.local',
       load: [configuration],
     }),
 
