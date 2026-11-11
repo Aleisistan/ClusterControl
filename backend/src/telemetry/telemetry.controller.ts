@@ -26,6 +26,11 @@ export class TelemetryController {
     return this.telemetryService.getLatestDevice(clusterId);
   }
 
+  @Get('latest-operational')
+  getLatestOperational(@Query('clusterId', ParseIntPipe) clusterId: number) {
+    return this.telemetryService.getLatestOperational(clusterId);
+  }
+
   @Get('history')
   getHistory(
     @Query('clusterId', ParseIntPipe) clusterId: number,

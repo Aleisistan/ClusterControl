@@ -13,7 +13,7 @@ export class SocketService {
 
   constructor(private authService: AuthService) {
 
-    this.socket = io(environment.apiUrl, {
+    this.socket = io(environment.socketUrl || undefined, {
       // 'auth' como función: socket.io la ejecuta en CADA intento de
       // conexión/reconexión, así que siempre manda el token más
       // reciente (importante porque este service es singleton y se

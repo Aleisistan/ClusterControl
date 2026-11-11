@@ -13,6 +13,11 @@ export class UserSeedService implements OnModuleInit {
   ) {}
 
   async onModuleInit() {
+    if (process.env.SEED_DEFAULT_USER !== 'true') {
+      console.log('Seed del usuario inicial deshabilitado.');
+      return;
+    }
+
     const cantidad = await this.userRepository.count();
 
     if (cantidad > 0) {
@@ -20,10 +25,17 @@ export class UserSeedService implements OnModuleInit {
       return;
     }
 
-    const password = await bcrypt.hash('admin123', 10);
+    const username = process.env.INITIAL_ADMIN_USERNAME;
+    const initialPassword = process.env.INITIAL_ADMIN_PASSWORD;
+    if (!username || !initialPassword) {
+      throw new Error(
+        'INITIAL_ADMIN_USERNAME e INITIAL_ADMIN_PASSWORD son obligatorios para crear el usuario inicial.',
+      );
+    }
 
+    const password = await bcrypt.hash(initialPassword, 10);
     const admin = this.userRepository.create({
-      username: 'admin',
+      username,
       password,
       role: 'ADMIN',
     });

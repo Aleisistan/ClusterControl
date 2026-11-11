@@ -15,6 +15,8 @@ describe('TelemetryService', () => {
     create: jest.Mock;
     findLatest: jest.Mock;
     findLatestDevice: jest.Mock;
+    findLatestOperational: jest.Mock;
+    findHistory: jest.Mock;
     save: jest.Mock;
     findStateChanges: jest.Mock;
     findOutages: jest.Mock;
@@ -39,6 +41,8 @@ describe('TelemetryService', () => {
       create: jest.fn((data) => ({ id: 24, ...data })),
       findLatest: jest.fn().mockResolvedValue(null),
       findLatestDevice: jest.fn().mockResolvedValue(null),
+      findLatestOperational: jest.fn().mockResolvedValue(null),
+      findHistory: jest.fn().mockResolvedValue([]),
       save: jest.fn().mockImplementation(async (telemetry) => telemetry),
       findStateChanges: jest.fn().mockResolvedValue([]),
       findOutages: jest.fn().mockResolvedValue([]),
@@ -83,6 +87,20 @@ describe('TelemetryService', () => {
 
   it('should be defined', () => {
     expect(service).toBeDefined();
+  });
+
+  it('returns the latest operational telemetry for development dashboards', async () => {
+    const telemetry = {
+      id: 8,
+      source: 'simulator',
+    };
+    telemetryRepository.findLatestOperational.mockResolvedValue(telemetry);
+
+    await expect(service.getLatestOperational(12)).resolves.toMatchObject({
+      id: 8,
+      source: 'simulator',
+    });
+    expect(telemetryRepository.findLatestOperational).toHaveBeenCalledWith(12);
   });
 
   it('captures and stores an image when the door changes from closed to open', async () => {
@@ -251,5 +269,20 @@ describe('TelemetryService', () => {
     await expect(
       service.getStateHistory(12, '2026-10-06T13:00:00.000Z', '2026-10-06T12:00:00.000Z'),
     ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('accepts operational telemetry history as device and simulator data', async () => {
+    const from = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+    const to = new Date().toISOString();
+    await expect(
+      service.getHistory(12, from, to, '100', 'operational'),
+    ).resolves.toEqual([]);
+    expect(telemetryRepository.findHistory).toHaveBeenCalledWith(
+      12,
+      new Date(from),
+      new Date(to),
+      100,
+      'operational',
+    );
   });
 });

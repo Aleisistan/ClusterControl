@@ -13,6 +13,11 @@ export class ClusterSeedService implements OnModuleInit {
   ) {}
 
   async onModuleInit(): Promise<void> {
+    if (process.env.SEED_DEFAULT_CLUSTERS !== 'true') {
+      this.logger.log('Seed de clusters de ejemplo deshabilitado');
+      return;
+    }
+
     let created = 0;
 
     for (const data of DEFAULT_CLUSTERS) {

@@ -35,12 +35,25 @@ export class TelemetryRepository {
     });
   }
 
+  async findLatestOperational(
+    clusterId: number,
+  ): Promise<Telemetry | null> {
+    return this.repository.findOne({
+      where: {
+        cluster: { id: clusterId },
+        source: In(['device', 'simulator']),
+      },
+      relations: { cluster: true },
+      order: { created_at: 'DESC' },
+    });
+  }
+
   async findHistory(
     clusterId: number,
     from: Date,
     to: Date,
     limit: number,
-    source?: Telemetry['source'],
+    source?: Telemetry['source'] | 'operational',
   ) {
     const sampledIds: Array<{ id: number }> = await this.repository.query(
       `
@@ -53,7 +66,14 @@ export class TelemetryRepository {
           WHERE cluster_id = $1
             AND created_at >= $2
             AND created_at <= $3
-            AND ($5::varchar IS NULL OR source = $5)
+            AND (
+              $5::varchar IS NULL
+              OR source = $5
+              OR (
+                $5::varchar = 'operational'
+                AND source IN ('device', 'simulator')
+              )
+            )
         )
         SELECT DISTINCT ON (bucket) id
         FROM buckets

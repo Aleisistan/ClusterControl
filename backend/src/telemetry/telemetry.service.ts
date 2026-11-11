@@ -152,6 +152,14 @@ export class TelemetryService implements OnModuleInit, OnModuleDestroy {
     return telemetry ? new TelemetryResponseDto(telemetry) : null;
   }
 
+  async getLatestOperational(
+    clusterId: number,
+  ): Promise<TelemetryResponseDto | null> {
+    const telemetry =
+      await this.telemetryRepository.findLatestOperational(clusterId);
+    return telemetry ? new TelemetryResponseDto(telemetry) : null;
+  }
+
   async getHistory(
     clusterId: number,
     fromParam?: string,
@@ -165,10 +173,12 @@ export class TelemetryService implements OnModuleInit, OnModuleDestroy {
     if (
       sourceParam !== undefined &&
       sourceParam !== 'device' &&
+      sourceParam !== 'simulator' &&
+      sourceParam !== 'operational' &&
       sourceParam !== 'industrial-test'
     ) {
       throw new BadRequestException(
-        'Telemetry source must be "device" or "industrial-test"',
+        'Invalid telemetry source',
       );
     }
 

@@ -105,7 +105,7 @@ export class TelemetryService {
       from?: string;
       to?: string;
       limit?: number;
-      source?: 'device' | 'industrial-test';
+      source?: 'device' | 'simulator' | 'operational' | 'industrial-test';
     },
   ) {
     return this.http.get(`${this.apiUrl}/history`, {
@@ -135,6 +135,12 @@ export class TelemetryService {
     });
   }
 
+  getLatestOperational(clusterId: number) {
+    return this.http.get<any>(`${this.apiUrl}/latest-operational`, {
+      params: new HttpParams().set('clusterId', clusterId),
+    });
+  }
+
   getIndustrialTestStatus() {
     return this.http.get<IndustrialTestStatus>(
       `${environment.apiUrl}/industrial-tests/status`,
@@ -154,7 +160,7 @@ export class TelemetryService {
       from?: string;
       to?: string;
       limit?: number;
-      source?: 'device' | 'industrial-test';
+      source?: 'device' | 'simulator' | 'operational' | 'industrial-test';
     },
   ): HttpParams {
     let params = new HttpParams().set('clusterId', clusterId);

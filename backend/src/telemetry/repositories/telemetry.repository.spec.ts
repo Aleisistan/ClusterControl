@@ -1,4 +1,4 @@
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { Telemetry } from '../telemetry.entity';
 import { TelemetryRepository } from './telemetry.repository';
 
@@ -13,6 +13,26 @@ describe('TelemetryRepository', () => {
     await expect(telemetryRepository.findLatestDevice(4)).resolves.toBe(latest);
     expect(repository.findOne).toHaveBeenCalledWith({
       where: { cluster: { id: 4 }, source: 'device' },
+      relations: { cluster: true },
+      order: { created_at: 'DESC' },
+    });
+  });
+
+  it('queries the latest device or simulator reading, excluding industrial tests', async () => {
+    const latest = { id: 9 } as Telemetry;
+    const repository = {
+      findOne: jest.fn().mockResolvedValue(latest),
+    } as unknown as Repository<Telemetry>;
+    const telemetryRepository = new TelemetryRepository(repository);
+
+    await expect(telemetryRepository.findLatestOperational(4)).resolves.toBe(
+      latest,
+    );
+    expect(repository.findOne).toHaveBeenCalledWith({
+      where: {
+        cluster: { id: 4 },
+        source: In(['device', 'simulator']),
+      },
       relations: { cluster: true },
       order: { created_at: 'DESC' },
     });
@@ -45,6 +65,28 @@ describe('TelemetryRepository', () => {
     expect(result.map((item) => item.created_at)).toEqual([
       chronological[0].created_at,
       chronological[1].created_at,
+    ]);
+  });
+
+  it('limits operational history to device and simulator sources', async () => {
+    const repository = {
+      query: jest.fn().mockResolvedValue([]),
+    } as unknown as Repository<Telemetry>;
+    const telemetryRepository = new TelemetryRepository(repository);
+    const from = new Date('2026-10-05T12:00:00Z');
+    const to = new Date('2026-10-06T12:00:00Z');
+
+    await telemetryRepository.findHistory(1, from, to, 100, 'operational');
+
+    expect(repository.query.mock.calls[0][0]).toContain(
+      "source IN ('device', 'simulator')",
+    );
+    expect(repository.query.mock.calls[0][1]).toEqual([
+      1,
+      from,
+      to,
+      100,
+      'operational',
     ]);
   });
 
