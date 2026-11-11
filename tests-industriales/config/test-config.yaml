@@ -17,4 +17,4 @@ thresholds:
 test:
   username: ""
   password: ""
-  target_device_id: "36"
+  target_device_id: "34"
