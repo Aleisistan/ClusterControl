@@ -63,6 +63,7 @@
         <tr>
           <th>Cluster</th>
           <th>Device</th>
+          <th>Cámaras (máx. 2)</th>
           <th>Zona</th>
           <th class="text-end">Acciones</th>
         </tr>
@@ -74,6 +75,50 @@
             <div class="muted">{{ cluster.location || 'Sin ubicación' }}</div>
           </td>
           <td>{{ cluster.deviceId || 'Sin device' }}</td>
+          <td>
+            <div
+              class="camera-edit-form mb-2"
+              *ngFor="let cameraForm of cameraForms[cluster.id]; let cameraIndex = index"
+            >
+              <strong class="small">{{ cameraForm.name || ('Cámara ' + (cameraIndex + 1)) }}</strong>
+              <input
+                class="form-control form-control-sm"
+                type="text"
+                [name]="'cameraName' + cluster.id + '-' + cameraIndex"
+                [(ngModel)]="cameraForm.name"
+                maxlength="100"
+                placeholder="Nombre de la cámara"
+                [attr.aria-label]="'Nombre de la cámara ' + (cameraIndex + 1) + ' de ' + cluster.name"
+              />
+              <input
+                class="form-control form-control-sm"
+                type="text"
+                [name]="'cameraIp' + cluster.id + '-' + cameraIndex"
+                [(ngModel)]="cameraForm.ip"
+                placeholder="URL/IP del stream (ej. 192.168.1.50)"
+                [attr.aria-label]="'IP o URL de la cámara ' + (cameraIndex + 1) + ' de ' + cluster.name"
+              />
+              <div class="camera-actions">
+                <button
+                  class="btn btn-sm btn-outline-info"
+                  type="button"
+                  [disabled]="cameraSaving[cameraFormKey(cluster.id, cameraIndex)]"
+                  (click)="saveCamera(cluster, cameraIndex)"
+                >
+                  {{ cameraSaving[cameraFormKey(cluster.id, cameraIndex)] ? 'Guardando...' : cameraForm.id ? 'Guardar cámara' : 'Agregar cámara' }}
+                </button>
+                <button
+                  *ngIf="cameraForm.id"
+                  class="btn btn-sm btn-outline-danger"
+                  type="button"
+                  [disabled]="cameraSaving[cameraFormKey(cluster.id, cameraIndex)]"
+                  (click)="deleteCamera(cluster, cameraIndex)"
+                >
+                  Quitar
+                </button>
+              </div>
+            </div>
+          </td>
           <td>{{ cluster.timezone || 'Sin timezone' }}</td>
           <td class="text-end">
             <button class="btn btn-sm btn-outline-info me-2" type="button" (click)="editCluster(cluster)">Editar</button>

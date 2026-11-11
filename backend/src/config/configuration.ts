@@ -30,10 +30,6 @@ export default () => ({
 
     database: process.env.DB_NAME,
   },
-  camera: {
-    url: process.env.CAMERA_URL,
-  },
-
   mail: {
     host: process.env.MAIL_HOST,
     port: parseInt(process.env.MAIL_PORT || '587'),

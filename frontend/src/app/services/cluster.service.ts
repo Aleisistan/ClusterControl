@@ -13,9 +13,11 @@ export interface ClusterRecord {
   lon?: number | null;
   deviceId?: string | null;
   timezone?: string | null;
-  camera?: {
+  cameras?: Array<{
+    id: number;
+    name: string;
     ip?: string | null;
-  } | null;
+  }>;
 }
 
 export interface ClusterPayload {

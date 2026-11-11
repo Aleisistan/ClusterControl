@@ -55,6 +55,17 @@ export class CameraRepository {
     });
   }
 
+  async findAllByClusterId(clusterId: number) {
+    return this.repository.find({
+      where: {
+        cluster: {
+          id: clusterId,
+        },
+      },
+      order: { id: 'ASC' },
+    });
+  }
+
   async remove(camera: Camera) {
     return this.repository.remove(camera);
   }

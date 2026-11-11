@@ -57,6 +57,14 @@ export class CameraService {
         return;
       }
 
+      const clusterCameras = await this.cameraRepository.findAllByClusterId(cluster.id);
+      if (clusterCameras.length >= 2) {
+        this.logger.warn(
+          `No se puede registrar una tercera cámara para el cluster ${cluster.id}`,
+        );
+        return;
+      }
+
       const newCamera = this.cameraRepository.create({
         name: `Cámara ${cluster.name}`,
         ip: data.ip,
@@ -104,16 +112,18 @@ export class CameraService {
       throw new NotFoundException('Cluster no encontrado');
     }
 
-    const existingCamera = await this.cameraRepository.findByDeviceId(
-      data.deviceId,
-    );
-
-    if (existingCamera) {
+    const clusterCameras = await this.cameraRepository.findAllByClusterId(cluster.id);
+    if (clusterCameras.length >= 2) {
       this.logger.warn(
-        `Intento de crear segunda cámara para cluster ${data.deviceId}`,
+        `Intento de crear una tercera cámara para cluster ${data.deviceId}`,
       );
 
-      throw new ConflictException('El cluster ya tiene una cámara');
+      throw new ConflictException('El cluster ya tiene el máximo de 2 cámaras');
+    }
+
+    const existingAddress = await this.cameraRepository.findByIp(data.ip);
+    if (existingAddress) {
+      throw new ConflictException('La dirección ya está asignada a otra cámara');
     }
 
     const camera = this.cameraRepository.create({
@@ -143,6 +153,11 @@ export class CameraService {
     }
 
     if (data.ip !== undefined) {
+      const existingIp = await this.cameraRepository.findByIp(data.ip);
+      if (existingIp && existingIp.id !== camera.id) {
+        throw new ConflictException('La IP ya está asignada a otra cámara');
+      }
+
       camera.ip = data.ip;
     }
 

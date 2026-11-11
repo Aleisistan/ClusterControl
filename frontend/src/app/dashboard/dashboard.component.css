@@ -606,10 +606,6 @@ details[open] .alert-settings-content {
   min-width: 0;
 }
 
-.camera-capture-title {
-  margin: 0 0 8px;
-}
-
 .camera-wrapper {
   position: relative;
   width: 100%;

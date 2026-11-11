@@ -24,6 +24,16 @@ El acceso de los dashboards se diseñó como un relay:
 4. Al desconectarse el último dashboard, el backend cierra la conexión con la
    cámara.
 
+Las cámaras se configuran desde **Clusters** en la web: cada cluster admite
+hasta dos cámaras, cada una con nombre y dirección. En el campo se puede
+ingresar la IP de una ESP32-CAM (por ejemplo, `192.168.1.50`) o una URL
+HTTP/HTTPS de un stream.
+Las URLs con IP como host se envían a la API, que retransmite MJPEG y actúa
+como proxy de playlists HLS y sus segmentos; se conserva el puerto, la ruta y
+la query configurados. Una IP simple usa el valor predeterminado
+`http://<IP>:81/stream`. Las URLs con nombre de dominio se abren desde su origen.
+No se configura la cámara en una variable de entorno.
+
 Se detectó además un error al admitir espectadores tardíos: el backend copiaba
 el encabezado `Content-Type` de la cámara solo a los espectadores que ya estaban
 conectados cuando se establecía la conexión upstream. Los siguientes recibían
@@ -40,6 +50,9 @@ cada espectador nuevo.
 - El dashboard usa la ruta del backend y no debe conectarse directamente a la
   IP de la cámara:
   [`frontend/src/app/dashboard/dashboard.component.ts`](../frontend/src/app/dashboard/dashboard.component.ts).
+- La pantalla administrativa permite agregar, actualizar o quitar la cámara de
+  cada cluster desde la tabla de Clusters:
+  [`frontend/src/app/pages/admin-clusters-page.component.ts`](../frontend/src/app/pages/admin-clusters-page.component.ts).
 - La prueba de relay comprueba que un espectador que se conecta después del
   primero recibe el `Content-Type` MJPEG y comparte la misma conexión upstream:
   [`backend/src/camera/camera-stream.service.spec.ts`](../backend/src/camera/camera-stream.service.spec.ts).
@@ -51,7 +64,7 @@ cada espectador nuevo.
    entorno de desarrollo Docker:
 
    ```powershell
-   docker compose -f .\docker-compose.dev.yml restart backend
+   docker compose --env-file .env.development.local -f .\docker-compose.dev.yml restart backend
    ```
 
 3. Abrir el dashboard en el primer dispositivo y después en el segundo.
@@ -69,7 +82,7 @@ cada espectador nuevo.
 Para seguir los logs:
 
 ```powershell
-docker compose -f .\docker-compose.dev.yml logs -f --since=2m backend
+docker compose --env-file .env.development.local -f .\docker-compose.dev.yml logs -f --since=2m backend
 ```
 
 La ruta está autenticada. No compartir el valor del parámetro `token` que pueda

@@ -109,6 +109,22 @@
   --bs-table-bg: rgba(6, 12, 18, 0);
 }
 
+.camera-edit-form {
+  display: grid;
+  min-width: 230px;
+  gap: 6px;
+}
+
+.camera-edit-form input::placeholder {
+  color: rgba(232, 240, 249, 0.72);
+  opacity: 1;
+}
+
+.camera-actions {
+  display: flex;
+  gap: 6px;
+}
+
 .loading-state {
   padding: 18px;
   color: rgba(232, 240, 249, 0.72);

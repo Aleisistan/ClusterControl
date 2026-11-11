@@ -3,7 +3,6 @@ import {
   PrimaryGeneratedColumn,
   Column,
   OneToMany,
-  OneToOne,
 } from 'typeorm';
 
 import { Telemetry } from '../../telemetry/telemetry.entity';
@@ -35,8 +34,8 @@ export class Cluster {
   @Column({ nullable: true })
   timezone: string;
 
-  @OneToOne(() => Camera, (camera) => camera.cluster)
-  camera: Camera;
+  @OneToMany(() => Camera, (camera) => camera.cluster)
+  cameras: Camera[];
 
   @OneToMany(() => Telemetry, (telemetry) => telemetry.cluster)
   telemetries: Telemetry[];

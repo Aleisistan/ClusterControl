@@ -1,5 +1,14 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, OnDestroy, OnInit, ViewChild } from '@angular/core';
+import {
+  AfterViewChecked,
+  Component,
+  ElementRef,
+  OnDestroy,
+  OnInit,
+  QueryList,
+  ViewChild,
+  ViewChildren,
+} from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Chart, ChartConfiguration } from 'chart.js';
 import { BaseChartDirective } from 'ng2-charts';
@@ -7,6 +16,7 @@ import zoomPlugin from 'chartjs-plugin-zoom';
 import { CommonModule } from '@angular/common';
 import { Subscription } from 'rxjs';
 import { FormsModule } from '@angular/forms';
+import type Hls from 'hls.js';
 
 import { SocketService } from '../services/socket.service';
 import {
@@ -30,6 +40,15 @@ import { environment } from '../../environments/environment';
 
 Chart.register(zoomPlugin);
 
+interface DashboardCameraView {
+  id: number;
+  name: string;
+  ip: string;
+  streamUrl: string;
+  isHls: boolean;
+  loaded: boolean;
+}
+
 @Component({
   selector: 'app-dashboard',
   standalone: true,
@@ -37,7 +56,7 @@ Chart.register(zoomPlugin);
   templateUrl: './dashboard.component.html',
   styleUrls: ['./dashboard.component.css'],
 })
-export class DashboardComponent implements OnInit, OnDestroy {
+export class DashboardComponent implements OnInit, OnDestroy, AfterViewChecked {
   private static readonly TELEMETRY_INTERVAL_MS = 15_000;
   private static readonly OUTAGE_GAP_MS = 60_000;
   private static readonly CHART_MIN_RANGE_MS = 5 * 60_000;
@@ -48,6 +67,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
   private static readonly CAMERA_RETRY_INTERVAL_MS = 15_000;
 
   @ViewChild(BaseChartDirective) telemetryChart?: BaseChartDirective;
+  @ViewChildren('hlsVideo') private hlsVideos?: QueryList<ElementRef<HTMLVideoElement>>;
+  @ViewChild('hlsVideo') private hlsVideo?: ElementRef<HTMLVideoElement>;
 
   telemetry: any[] = [];
   latest: any;
@@ -64,6 +85,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
   clusterTime = '';
   clusterDate = '';
   cameraStreamUrl: string = '';
+  cameraIsHls = false;
+  cameraIsDirectUrl = false;
+  cameraViews: DashboardCameraView[] = [];
   selectedCluster: any;
   clusters: any[] = [];
   selectedClusterId = 1;
@@ -110,8 +134,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
   
   lastWsTime: number = 0;
   camera1Loaded = false;
-  camera2Loaded = false;
-  camera2StreamUrl = environment.camera2Url;
   private routeSubscription?: Subscription;
   private pendingClusterId: number | null = null;
   private unsubscribeTelemetry?: () => void;
@@ -119,14 +141,17 @@ export class DashboardComponent implements OnInit, OnDestroy {
   private telemetryHistoryRequestId = 0;
   private periodTelemetry: any[] = [];
   private cameraHistorySequence = 0;
+  private hlsPlayers = new Map<number, Hls>();
+  private hlsVideoElements = new Map<number, HTMLVideoElement>();
+  private hlsInitializationIds = new Map<number, number>();
   private industrialTestRefreshInterval?: ReturnType<typeof setInterval>;
-  private cameraLoadTimeouts = new Map<1 | 2, ReturnType<typeof setTimeout>>();
-  private cameraRetryTimeouts = new Map<1 | 2, ReturnType<typeof setTimeout>>();
+  private cameraLoadTimeouts = new Map<number, ReturnType<typeof setTimeout>>();
+  private cameraRetryTimeouts = new Map<number, ReturnType<typeof setTimeout>>();
   private snapshotImageUrls = new Map<number, string>();
   private snapshotPreviewRequests = new Map<number, Subscription>();
   private snapshotPreviewFailures = new Set<number>();
-  private pendingCameraChecks = new Set<1 | 2>();
-  private unavailableCameras = new Set<1 | 2>();
+  private pendingCameraChecks = new Set<number>();
+  private unavailableCameras = new Set<number>();
   private historyDaysPointerId: number | null = null;
   private historyDaysStartX = 0;
   private historyDaysStartScrollLeft = 0;
@@ -295,12 +320,11 @@ export class DashboardComponent implements OnInit, OnDestroy {
   ) {}
 
   ngOnInit(): void {
-    this.refreshCameraSource(2);
     this.refreshIndustrialTestStatus();
     this.industrialTestRefreshInterval = setInterval(
       () => {
         this.refreshIndustrialTestStatus();
-        this.refreshLatestDeviceTelemetry();
+        this.refreshLatestDashboardTelemetry();
       },
       15_000,
     );
@@ -363,6 +387,73 @@ export class DashboardComponent implements OnInit, OnDestroy {
     }
     for (const timeout of this.cameraLoadTimeouts.values()) clearTimeout(timeout);
     for (const timeout of this.cameraRetryTimeouts.values()) clearTimeout(timeout);
+    this.destroyHlsPlayer();
+  }
+
+  ngAfterViewChecked(): void {
+    const activeVideos = new Set<number>();
+    for (const reference of this.hlsVideos?.toArray() || []) {
+      const video = reference.nativeElement;
+      const cameraId = Number(video.dataset['cameraId']);
+      const camera = this.cameraViews.find((item) => item.id === cameraId);
+      if (!camera || !camera.isHls || !camera.streamUrl) continue;
+
+      activeVideos.add(cameraId);
+      if (this.hlsVideoElements.get(cameraId) === video) continue;
+
+      this.destroyHlsPlayer(cameraId);
+      this.hlsVideoElements.set(cameraId, video);
+      const initializationId = this.hlsInitializationIds.get(cameraId) || 0;
+      this.initializeHlsPlayer(
+        video,
+        camera.streamUrl,
+        cameraId,
+        initializationId,
+      );
+    }
+
+    for (const cameraId of this.hlsVideoElements.keys()) {
+      if (!activeVideos.has(cameraId)) this.destroyHlsPlayer(cameraId);
+    }
+  }
+
+  private async initializeHlsPlayer(
+    video: HTMLVideoElement,
+    source: string,
+    cameraId: number,
+    initializationId: number,
+  ): Promise<void> {
+    try {
+      const { default: HlsLibrary } = await import('hls.js');
+      if (
+        initializationId !== (this.hlsInitializationIds.get(cameraId) || 0) ||
+        this.hlsVideoElements.get(cameraId) !== video ||
+        this.cameraViews.find((camera) => camera.id === cameraId)?.streamUrl !== source
+      ) {
+        return;
+      }
+
+      if (HlsLibrary.isSupported()) {
+        const player = new HlsLibrary();
+        this.hlsPlayers.set(cameraId, player);
+        player.loadSource(source);
+        player.attachMedia(video);
+        player.on(HlsLibrary.Events.ERROR, (_event, data) => {
+          if (data.fatal) this.onCameraError(cameraId);
+        });
+        return;
+      }
+
+      if (video.canPlayType('application/vnd.apple.mpegurl')) {
+        video.src = source;
+        return;
+      }
+
+      this.onCameraError(cameraId);
+    } catch (error) {
+      console.error('No se pudo inicializar el reproductor HLS:', error);
+      this.onCameraError(cameraId);
+    }
   }
 
   onClusterChange(clusterId: number): void {
@@ -583,31 +674,31 @@ private setAlertConfiguration(configuration: AlertConfiguration): void {
   this.alertRecipientsInput = '';
 }
 
-  onCameraLoad(cameraId: 1 | 2): void {
+  onCameraLoad(cameraId: number): void {
     this.clearCameraLoadTimeout(cameraId);
     this.clearCameraRetryTimeout(cameraId);
     this.pendingCameraChecks.delete(cameraId);
     const wasInactive = this.unavailableCameras.delete(cameraId);
-    if (cameraId === 1) {
-      this.camera1Loaded = true;
-    } else {
-      this.camera2Loaded = true;
-    }
+    this.cameraViews = this.cameraViews.map((camera) =>
+      camera.id === cameraId ? { ...camera, loaded: true } : camera,
+    );
+    if (cameraId === (this.cameraViews[0]?.id ?? 1)) this.camera1Loaded = true;
 
     if (wasInactive) {
       this.recordCameraStateChange(cameraId, 'Inactiva', 'Activa');
     }
   }
 
-  onCameraError(cameraId: 1 | 2): void {
+  onCameraError(cameraId: number): void {
     this.clearCameraLoadTimeout(cameraId);
     this.pendingCameraChecks.delete(cameraId);
-    const wasActive = cameraId === 1 ? this.camera1Loaded : this.camera2Loaded;
-    if (cameraId === 1) {
-      this.camera1Loaded = false;
-    } else {
-      this.camera2Loaded = false;
-    }
+    const wasActive =
+      this.cameraViews.find((camera) => camera.id === cameraId)?.loaded ??
+      this.camera1Loaded;
+    this.cameraViews = this.cameraViews.map((camera) =>
+      camera.id === cameraId ? { ...camera, loaded: false } : camera,
+    );
+    if (cameraId === (this.cameraViews[0]?.id ?? 1)) this.camera1Loaded = false;
 
     if (wasActive) {
       this.unavailableCameras.add(cameraId);
@@ -618,7 +709,7 @@ private setAlertConfiguration(configuration: AlertConfiguration): void {
   }
 
   private recordCameraStateChange(
-    cameraId: 1 | 2,
+    cameraId: number,
     from: 'Activa' | 'Inactiva',
     to: 'Activa' | 'Inactiva',
   ): void {
@@ -629,7 +720,9 @@ private setAlertConfiguration(configuration: AlertConfiguration): void {
       id: `camera-${cameraId}-${++this.cameraHistorySequence}`,
       eventType: 'camera-state-change',
       createdAt: createdAt.toISOString(),
-      cameraName: cameraId === 1 ? 'Cámara Datacenter' : 'Cámara Exterior',
+      cameraName:
+        this.cameraViews.find((camera) => camera.id === cameraId)?.name ||
+        'Cámara del cluster',
       from,
       to,
     };
@@ -670,29 +763,32 @@ private setAlertConfiguration(configuration: AlertConfiguration): void {
     this.stateHistoryError = '';
 
     // 1. Obtener telemetría inicial
-    this.telemetryService
-      .getLatestDevice(clusterId)
-      .subscribe({
-        next: (data: any) => {
-          if (Number(this.selectedClusterId) !== clusterId) return;
-          this.latest = data ?? undefined;
-          this.latestDeviceTelemetry = data ?? undefined;
-          this.latestDeviceTelemetryError = false;
-          this.avgTemperature = data
-            ? (data.temperature1 + data.temperature2) / 2
-            : 0;
-          this.avgHumidity = data
-            ? (data.humidity1 + data.humidity2) / 2
-            : 0;
-        },
-        error: () => {
-          if (Number(this.selectedClusterId) === clusterId) {
-            this.latest = undefined;
-            this.latestDeviceTelemetry = undefined;
-            this.latestDeviceTelemetryError = true;
-          }
-        },
-      });
+    const latestRequest =
+      environment.telemetrySource === 'operational'
+        ? this.telemetryService.getLatestOperational(clusterId)
+        : this.telemetryService.getLatestDevice(clusterId);
+    latestRequest.subscribe({
+      next: (data: any) => {
+        if (Number(this.selectedClusterId) !== clusterId) return;
+        this.latest = data ?? undefined;
+        this.latestDeviceTelemetry =
+          data?.source === 'device' ? data : undefined;
+        this.latestDeviceTelemetryError = false;
+        this.avgTemperature = data
+          ? (data.temperature1 + data.temperature2) / 2
+          : 0;
+        this.avgHumidity = data
+          ? (data.humidity1 + data.humidity2) / 2
+          : 0;
+      },
+      error: () => {
+        if (Number(this.selectedClusterId) === clusterId) {
+          this.latest = undefined;
+          this.latestDeviceTelemetry = undefined;
+          this.latestDeviceTelemetryError = true;
+        }
+      },
+    });
 
     // 2. Obtener historial para el gráfico
     this.telemetryService
@@ -700,7 +796,7 @@ private setAlertConfiguration(configuration: AlertConfiguration): void {
         from: range.from.toISOString(),
         to: range.to.toISOString(),
         limit: DashboardComponent.CHART_HISTORY_LIMIT,
-        source: 'device',
+        source: environment.telemetrySource,
       })
       .subscribe((data: any) => {
         if (
@@ -771,11 +867,15 @@ private setAlertConfiguration(configuration: AlertConfiguration): void {
 
       if (data && Number(payloadClusterId) === clusterId &&
           Number(this.selectedClusterId) === clusterId &&
-          data.source === 'device') {
+          this.acceptsDashboardTelemetrySource(data.source)) {
         this.lastWsTime = Date.now();
         this.addTelemetrySample(data);
         const previous = this.latest;
-        if (previous && Number(previous.id) !== Number(data.id)) {
+        if (
+          data.source === 'device' &&
+          previous?.source === 'device' &&
+          Number(previous.id) !== Number(data.id)
+        ) {
           if (
             this.hasTelemetryGap(previous, data) &&
             this.isWithinHistoryRange(data.createdAt)
@@ -810,7 +910,9 @@ private setAlertConfiguration(configuration: AlertConfiguration): void {
           }
         }
         this.latest = data;
-      
+        if (data.source === 'device') {
+          this.latestDeviceTelemetry = data;
+        }
         this.avgTemperature = (data.temperature1 + data.temperature2) / 2;
         this.avgHumidity = (data.humidity1 + data.humidity2) / 2;
       }
@@ -1051,7 +1153,7 @@ private setAlertConfiguration(configuration: AlertConfiguration): void {
         from: bucket.start.toISOString(),
         to: bucket.end.toISOString(),
         limit: DashboardComponent.CHART_HISTORY_LIMIT,
-        source: 'device',
+        source: environment.telemetrySource,
       })
       .subscribe({
         next: (data: any) => {
@@ -1221,6 +1323,13 @@ private setAlertConfiguration(configuration: AlertConfiguration): void {
     return 'Telemetría del dispositivo';
   }
 
+  private acceptsDashboardTelemetrySource(source: unknown): boolean {
+    return (
+      source === 'device' ||
+      (environment.telemetrySource === 'operational' && source === 'simulator')
+    );
+  }
+
   getDeviceTelemetryStatus(): string {
     const timestamp = new Date(this.latestDeviceTelemetry?.createdAt).getTime();
     if (!Number.isFinite(timestamp)) return 'Hora de lectura no disponible';
@@ -1364,14 +1473,19 @@ private setAlertConfiguration(configuration: AlertConfiguration): void {
   }
 
 
-  private refreshLatestDeviceTelemetry(
+  private refreshLatestDashboardTelemetry(
     clusterId = Number(this.selectedClusterId),
   ): void {
     if (!clusterId) return;
-    this.telemetryService.getLatestDevice(clusterId).subscribe({
+    const latestRequest =
+      environment.telemetrySource === 'operational'
+        ? this.telemetryService.getLatestOperational(clusterId)
+        : this.telemetryService.getLatestDevice(clusterId);
+    latestRequest.subscribe({
       next: (telemetry) => {
         if (Number(this.selectedClusterId) === clusterId) {
-          this.latestDeviceTelemetry = telemetry;
+          this.latestDeviceTelemetry =
+            telemetry?.source === 'device' ? telemetry : undefined;
           this.latest = telemetry ?? undefined;
           if (telemetry) {
             this.avgTemperature =
@@ -1748,7 +1862,10 @@ loadWeather(): void {
     error: (err) => console.error('[WEATHER] Error al llamar al backend:', err)
   });
 }
-  buildCameraStreamUrl(clusterId: number | null = this.selectedClusterId): string {
+  buildCameraStreamUrl(
+    clusterId: number | null = this.selectedClusterId,
+    cameraId?: number,
+  ): string {
     if (!clusterId) {
       return '';
     }
@@ -1759,27 +1876,70 @@ loadWeather(): void {
     if (token) {
       query.set('token', token);
     }
+    if (cameraId !== undefined) query.set('cameraId', String(cameraId));
 
-    return `${environment.apiUrl}${environment.camera1Url}/${clusterId}?${query.toString()}`;
+    return `${environment.apiUrl}/camera/stream/${clusterId}?${query.toString()}`;
   }
 
   private updateCameraStream(): void {
-    const clusterId = Number(this.selectedClusterId);
-    this.clearCameraRetryTimeout(1);
-    this.unavailableCameras.delete(1);
+    for (const cameraId of this.cameraLoadTimeouts.keys()) {
+      this.clearCameraLoadTimeout(cameraId);
+    }
+    for (const cameraId of this.cameraRetryTimeouts.keys()) {
+      this.clearCameraRetryTimeout(cameraId);
+    }
+    this.pendingCameraChecks.clear();
+    this.unavailableCameras.clear();
+    this.destroyHlsPlayer();
     this.camera1Loaded = false;
-    this.refreshCameraSource(1, clusterId || null);
+    const configuredCameras = this.selectedCluster?.cameras?.length
+      ? this.selectedCluster.cameras
+      : this.selectedCluster?.camera
+        ? [this.selectedCluster.camera]
+        : [];
+    this.cameraViews = configuredCameras.slice(0, 2).map((camera: any, index: number) => ({
+      id: Number(camera.id) || index + 1,
+      name: camera.name || `Cámara ${index + 1}`,
+      ip: camera.ip?.trim() || '',
+      streamUrl: '',
+      isHls: this.isHlsStreamUrl(camera.ip?.trim() || ''),
+      loaded: false,
+    }));
+
+    if (this.cameraViews.length === 0) {
+      this.cameraStreamUrl = '';
+      return;
+    }
+
+    const clusterId = Number(this.selectedClusterId) || null;
+    for (const camera of this.cameraViews) {
+      this.refreshCameraSource(camera.id, clusterId);
+    }
   }
 
   private refreshCameraSource(
-    cameraId: 1 | 2,
+    cameraId: number,
     clusterId: number | null = Number(this.selectedClusterId) || null,
   ): void {
     this.clearCameraRetryTimeout(cameraId);
-    const source =
-      cameraId === 1
-        ? this.buildCameraStreamUrl(clusterId)
-        : environment.camera2Url;
+    const camera = this.cameraViews.find((item) => item.id === cameraId);
+    const cameraAddress =
+      camera?.ip ||
+      (cameraId === 1 ? this.selectedCluster?.camera?.ip?.trim() : '') ||
+      '';
+    const isHls = this.isHlsStreamUrl(cameraAddress);
+    const isDirectUrl =
+      this.isHttpStreamUrl(cameraAddress) && !this.isIpCameraUrl(cameraAddress);
+    if (camera) camera.isHls = isHls;
+    if (cameraId === (this.cameraViews[0]?.id ?? 1)) {
+      this.cameraIsHls = isHls;
+      this.cameraIsDirectUrl = isDirectUrl;
+    }
+    if (isHls) this.destroyHlsPlayer(cameraId);
+
+    const source = isDirectUrl
+      ? cameraAddress
+      : this.buildCameraStreamUrl(clusterId, cameraId);
     if (!source) return;
 
     this.clearCameraLoadTimeout(cameraId);
@@ -1793,22 +1953,75 @@ loadWeather(): void {
     );
 
     const separator = source.includes('?') ? '&' : '?';
-    const refreshedSource =
-      `${source}${separator}_camera_check=${Date.now()}-${++this.cameraHistorySequence}`;
-    if (cameraId === 1) {
+    const refreshedSource = isDirectUrl
+      ? source
+      : `${source}${separator}_camera_check=${Date.now()}-${++this.cameraHistorySequence}`;
+    if (camera) camera.streamUrl = refreshedSource;
+    if (cameraId === (this.cameraViews[0]?.id ?? 1)) {
       this.cameraStreamUrl = refreshedSource;
-    } else {
-      this.camera2StreamUrl = refreshedSource;
     }
   }
 
-  private clearCameraLoadTimeout(cameraId: 1 | 2): void {
+  private isHttpStreamUrl(address: string): boolean {
+    try {
+      const url = new URL(address);
+      return url.protocol === 'http:' || url.protocol === 'https:';
+    } catch {
+      return false;
+    }
+  }
+
+  private isIpCameraUrl(address: string): boolean {
+    try {
+      const hostname = new URL(address).hostname.replace(/^\[|\]$/g, '');
+      if (hostname.includes(':')) return true;
+
+      const octets = hostname.split('.');
+      return (
+        octets.length === 4 &&
+        octets.every(
+          (octet) =>
+            /^\d{1,3}$/.test(octet) &&
+            Number(octet) >= 0 &&
+            Number(octet) <= 255,
+        )
+      );
+    } catch {
+      return false;
+    }
+  }
+
+  private isHlsStreamUrl(address: string): boolean {
+    try {
+      return new URL(address).pathname.toLowerCase().endsWith('.m3u8');
+    } catch {
+      return false;
+    }
+  }
+
+  private destroyHlsPlayer(cameraId?: number): void {
+    const cameraIds =
+      cameraId === undefined
+        ? [...new Set([...this.hlsPlayers.keys(), ...this.hlsVideoElements.keys()])]
+        : [cameraId];
+    for (const id of cameraIds) {
+      this.hlsInitializationIds.set(
+        id,
+        (this.hlsInitializationIds.get(id) || 0) + 1,
+      );
+      this.hlsPlayers.get(id)?.destroy();
+      this.hlsPlayers.delete(id);
+      this.hlsVideoElements.delete(id);
+    }
+  }
+
+  private clearCameraLoadTimeout(cameraId: number): void {
     const timeout = this.cameraLoadTimeouts.get(cameraId);
     if (timeout) clearTimeout(timeout);
     this.cameraLoadTimeouts.delete(cameraId);
   }
 
-  private scheduleCameraRetry(cameraId: 1 | 2): void {
+  private scheduleCameraRetry(cameraId: number): void {
     if (this.cameraRetryTimeouts.has(cameraId)) return;
 
     const timeout = setTimeout(() => {
@@ -1818,7 +2031,7 @@ loadWeather(): void {
     this.cameraRetryTimeouts.set(cameraId, timeout);
   }
 
-  private clearCameraRetryTimeout(cameraId: 1 | 2): void {
+  private clearCameraRetryTimeout(cameraId: number): void {
     const timeout = this.cameraRetryTimeouts.get(cameraId);
     if (timeout) clearTimeout(timeout);
     this.cameraRetryTimeouts.delete(cameraId);

@@ -8,7 +8,15 @@ import { CameraStreamService } from './camera-stream.service';
 
 describe('CameraService', () => {
   let service: CameraService;
-  let cameraRepository: { findByClusterId: jest.Mock };
+  let cameraRepository: {
+    findByClusterId: jest.Mock;
+    findAllByClusterId: jest.Mock;
+    findByDeviceId: jest.Mock;
+    findByIp: jest.Mock;
+    create: jest.Mock;
+    save: jest.Mock;
+  };
+  let clusterRepository: { findByDeviceId: jest.Mock };
   let cameraStreamService: {
     getLatestFrame: jest.Mock;
     isStreaming: jest.Mock;
@@ -20,6 +28,14 @@ describe('CameraService', () => {
         id: 5,
         ip: 'http://192.168.1.50/camera',
       }),
+      findAllByClusterId: jest.fn().mockResolvedValue([]),
+      findByDeviceId: jest.fn(),
+      findByIp: jest.fn(),
+      create: jest.fn(),
+      save: jest.fn(),
+    };
+    clusterRepository = {
+      findByDeviceId: jest.fn(),
     };
     cameraStreamService = {
       getLatestFrame: jest.fn().mockResolvedValue(null),
@@ -28,9 +44,12 @@ describe('CameraService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         CameraService,
-        { provide: LoggerService, useValue: { log: jest.fn() } },
+        {
+          provide: LoggerService,
+          useValue: { log: jest.fn(), warn: jest.fn() },
+        },
         { provide: CameraRepository, useValue: cameraRepository },
-        { provide: ClusterRepository, useValue: {} },
+        { provide: ClusterRepository, useValue: clusterRepository },
         { provide: CameraStreamService, useValue: cameraStreamService },
       ],
     }).compile();
@@ -40,6 +59,57 @@ describe('CameraService', () => {
 
   it('should be defined', () => {
     expect(service).toBeDefined();
+  });
+
+  it('creates a camera for a cluster without a configured camera', async () => {
+    const cluster = { id: 7, deviceId: '7', name: 'Cluster 7' };
+    const camera = {
+      id: 12,
+      name: 'Entrada',
+      ip: '192.168.1.50',
+      cluster,
+    };
+    clusterRepository.findByDeviceId.mockResolvedValue(cluster);
+    cameraRepository.findByIp.mockResolvedValue(null);
+    cameraRepository.create.mockReturnValue(camera);
+    cameraRepository.save.mockResolvedValue(camera);
+
+    await expect(
+      service.create({
+        name: 'Entrada',
+        ip: '192.168.1.50',
+        deviceId: '7',
+      }),
+    ).resolves.toEqual(camera);
+    expect(cameraRepository.findAllByClusterId).toHaveBeenCalledWith(7);
+    expect(cameraRepository.save).toHaveBeenCalledWith(camera);
+  });
+
+  it('allows a second camera but rejects a third camera for the same cluster', async () => {
+    const cluster = { id: 7, deviceId: '7', name: 'Cluster 7' };
+    clusterRepository.findByDeviceId.mockResolvedValue(cluster);
+    cameraRepository.findAllByClusterId
+      .mockResolvedValueOnce([{ id: 11 }])
+      .mockResolvedValueOnce([{ id: 11 }, { id: 12 }]);
+    cameraRepository.findByIp.mockResolvedValue(null);
+    cameraRepository.create.mockReturnValue({ id: 12 });
+    cameraRepository.save.mockResolvedValue({ id: 12 });
+
+    await expect(
+      service.create({
+        name: 'Salida',
+        ip: '192.168.1.52',
+        deviceId: '7',
+      }),
+    ).resolves.toEqual({ id: 12 });
+
+    await expect(
+      service.create({
+        name: 'Techo',
+        ip: '192.168.1.53',
+        deviceId: '7',
+      }),
+    ).rejects.toThrow('máximo de 2 cámaras');
   });
 
   it('captures a JPEG from the configured camera for its cluster', async () => {

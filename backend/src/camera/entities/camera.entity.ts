@@ -2,7 +2,7 @@ import {
   Entity,
   PrimaryGeneratedColumn,
   Column,
-  OneToOne,
+  ManyToOne,
   JoinColumn,
   CreateDateColumn,
   UpdateDateColumn,
@@ -33,7 +33,7 @@ export class Camera {
   })
   lastSeen: Date;
 
-  @OneToOne(() => Cluster, (cluster) => cluster.camera, {
+  @ManyToOne(() => Cluster, (cluster) => cluster.cameras, {
     eager: true,
     onDelete: 'CASCADE',
   })

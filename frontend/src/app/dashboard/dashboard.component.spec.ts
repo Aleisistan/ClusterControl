@@ -33,6 +33,16 @@ describe('DashboardComponent', () => {
     expect(component).toBeTruthy();
   });
 
+  it('accepts simulator telemetry for the development dashboard', () => {
+    expect(component['acceptsDashboardTelemetrySource']('device')).toBeTrue();
+    expect(component['acceptsDashboardTelemetrySource']('simulator')).toBe(
+      environment.telemetrySource === 'operational',
+    );
+    expect(
+      component['acceptsDashboardTelemetrySource']('industrial-test'),
+    ).toBeFalse();
+  });
+
   it('should classify temperature using the datacenter ranges', () => {
     component.latest = { temperature1: 20, temperature2: 20 };
 
@@ -86,12 +96,81 @@ describe('DashboardComponent', () => {
     expect(url).not.toContain(':81/stream');
   });
 
-  it('should build the camera 1 URL from the environment configuration', () => {
+  it('should build the camera URL from the backend proxy', () => {
     const url = component.buildCameraStreamUrl(7);
 
     expect(url).toContain(
-      `${environment.apiUrl}${environment.camera1Url}/7`,
+      `${environment.apiUrl}/camera/stream/7`,
     );
+  });
+
+  it('should play a hostname HLS URL directly', () => {
+    const streamUrl =
+      'https://hoktastream3.webcamera.pl/krakow_cam_6f3258/krakow_cam_6f3258.stream/playlist.m3u8';
+    component.selectedClusterId = 7;
+    component.selectedCluster = {
+      id: 7,
+      camera: { ip: streamUrl },
+    };
+
+    component['updateCameraStream']();
+
+    expect(component.cameraIsHls).toBeTrue();
+    expect(component.cameraIsDirectUrl).toBeTrue();
+    expect(component.cameraStreamUrl).toBe(streamUrl);
+    component.ngOnDestroy();
+  });
+
+  it('should send an IP-based HLS URL through the API relay', () => {
+    const streamUrl = 'http://192.168.1.50:8080/cam/live.m3u8?channel=1';
+    component.selectedClusterId = 7;
+    component.selectedCluster = {
+      id: 7,
+      camera: { ip: streamUrl },
+    };
+
+    component['updateCameraStream']();
+
+    expect(component.cameraIsHls).toBeTrue();
+    expect(component.cameraIsDirectUrl).toBeFalse();
+    expect(component.cameraStreamUrl).toContain(
+      `${environment.apiUrl}/camera/stream/7`,
+    );
+    component.ngOnDestroy();
+  });
+
+  it('should send an IP-based MJPEG URL with a custom path through the API relay', () => {
+    component.selectedClusterId = 7;
+    component.selectedCluster = {
+      id: 7,
+      camera: { ip: 'http://192.168.1.50:8080/camera/live?channel=2' },
+    };
+
+    component['updateCameraStream']();
+
+    expect(component.cameraIsDirectUrl).toBeFalse();
+    expect(component.cameraStreamUrl).toContain(
+      `${environment.apiUrl}/camera/stream/7`,
+    );
+    component.ngOnDestroy();
+  });
+
+  it('should build separate API stream URLs for two cameras in one cluster', () => {
+    component.selectedClusterId = 7;
+    component.selectedCluster = {
+      id: 7,
+      cameras: [
+        { id: 21, name: 'Entrada', ip: '192.168.1.50' },
+        { id: 22, name: 'Salida', ip: '192.168.1.51' },
+      ],
+    };
+
+    component['updateCameraStream']();
+
+    expect(component.cameraViews).toHaveSize(2);
+    expect(component.cameraViews[0].streamUrl).toContain('cameraId=21');
+    expect(component.cameraViews[1].streamUrl).toContain('cameraId=22');
+    component.ngOnDestroy();
   });
 
   it('should mark a camera inactive and record it when a refreshed stream times out', () => {
@@ -110,7 +189,7 @@ describe('DashboardComponent', () => {
     expect(component.stateHistory[0]).toEqual(
       jasmine.objectContaining({
         eventType: 'camera-state-change',
-        cameraName: 'Cámara Datacenter',
+        cameraName: 'Cámara del cluster',
         from: 'Activa',
         to: 'Inactiva',
       }),
@@ -120,7 +199,7 @@ describe('DashboardComponent', () => {
     expect(component.stateHistory).toHaveSize(2);
     expect(component.stateHistory[0]).toEqual(
       jasmine.objectContaining({
-        cameraName: 'Cámara Datacenter',
+        cameraName: 'Cámara del cluster',
         from: 'Inactiva',
         to: 'Activa',
       }),

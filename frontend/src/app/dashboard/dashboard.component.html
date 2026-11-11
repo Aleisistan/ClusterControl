@@ -73,42 +73,46 @@
 </div>
   </div>
  <div class="cameradiv">
-  <div class="camera-container">
-    <h2>Cámara Datacenter</h2>
+  <div class="camera-container" *ngFor="let camera of cameraViews">
+    <h2>{{ camera.name }}</h2>
 
     <div class="camera-wrapper">
-      <div class="camera-inactive" *ngIf="!camera1Loaded" role="status" aria-live="polite">
+      <div class="camera-inactive" *ngIf="!camera.loaded" role="status" aria-live="polite">
         <i class="bi bi-camera-video-off" aria-hidden="true"></i>
         <span>Cámara inactiva</span>
         <small>La señal no está disponible</small>
       </div>
 
-       <img *ngIf="cameraStreamUrl"
-         [src]="cameraStreamUrl"
+       <img *ngIf="camera.streamUrl && !camera.isHls"
+         [src]="camera.streamUrl"
            class="camera-stream"
-           [class.hidden]="!camera1Loaded"
-           (load)="onCameraLoad(1)"
-           (error)="onCameraError(1)"
-           alt="Vista de la cámara del datacenter"/>
+           [class.hidden]="!camera.loaded"
+           (load)="onCameraLoad(camera.id)"
+           (error)="onCameraError(camera.id)"
+           [alt]="'Vista de ' + camera.name"/>
+       <video *ngIf="camera.isHls && camera.streamUrl"
+         #hlsVideo
+         [attr.data-camera-id]="camera.id"
+         class="camera-stream"
+         [class.hidden]="!camera.loaded"
+         controls
+         autoplay
+         muted
+         playsinline
+         (loadeddata)="onCameraLoad(camera.id)"
+         (error)="onCameraError(camera.id)">
+         Tu navegador no puede reproducir este stream HLS.
+       </video>
     </div>
   </div>
-
-  <div class="camera-container">
-    <h2 class="camera-capture-title">Cámara Exterior</h2>
-
+  <div class="camera-container" *ngIf="cameraViews.length === 0">
+    <h2>Cámara del cluster</h2>
     <div class="camera-wrapper">
-      <div class="camera-inactive" *ngIf="!camera2Loaded" role="status" aria-live="polite">
+      <div class="camera-inactive" role="status" aria-live="polite">
         <i class="bi bi-camera-video-off" aria-hidden="true"></i>
-        <span>Cámara inactiva</span>
-        <small>La señal no está disponible</small>
+        <span>Sin cámara configurada</span>
+        <small>Agrega una cámara desde el menú de clusters</small>
       </div>
-
-      <img [src]="camera2StreamUrl"
-           class="camera-stream"
-           [class.hidden]="!camera2Loaded"
-           (load)="onCameraLoad(2)"
-           (error)="onCameraError(2)"
-           alt="Vista de la cámara exterior" />
     </div>
   </div>
 </div>

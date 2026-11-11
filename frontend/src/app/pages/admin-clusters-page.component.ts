@@ -3,9 +3,24 @@ import { Component, OnDestroy, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 
-import { Subject, catchError, debounceTime, distinctUntilChanged, finalize, of, switchMap } from 'rxjs';
+import {
+  Observable,
+  Subject,
+  catchError,
+  debounceTime,
+  distinctUntilChanged,
+  finalize,
+  of,
+  switchMap,
+} from 'rxjs';
 
 import { AuthService, AuthUser } from '../services/auth.service';
+import {
+  CameraPayload,
+  CameraRecord,
+  CameraService,
+  CameraUpdatePayload,
+} from '../services/camera.service';
 import { ClusterPayload, ClusterRecord, ClusterService } from '../services/cluster.service';
 import { LocationSearchResult, LocationSearchService } from '../services/location-search.service';
 
@@ -19,6 +34,8 @@ import { LocationSearchResult, LocationSearchService } from '../services/locatio
 export class AdminClustersPageComponent implements OnInit, OnDestroy {
   currentUser: AuthUser | null = null;
   clusters: ClusterRecord[] = [];
+  cameraForms: Record<number, Array<{ id?: number; name: string; ip: string }>> = {};
+  cameraSaving: Record<string, boolean> = {};
   locationOptions: LocationSearchResult[] = [];
   isSearchingLocations = false;
 
@@ -41,6 +58,7 @@ export class AdminClustersPageComponent implements OnInit, OnDestroy {
   constructor(
     private authService: AuthService,
     private clusterService: ClusterService,
+    private cameraService: CameraService,
     private locationSearchService: LocationSearchService,
     private router: Router,
   ) {}
@@ -90,6 +108,19 @@ export class AdminClustersPageComponent implements OnInit, OnDestroy {
       .subscribe({
         next: (clusters) => {
           this.clusters = clusters;
+          this.cameraForms = Object.fromEntries(
+            clusters.map((cluster) => [
+              cluster.id,
+              Array.from({ length: 2 }, (_, index) => {
+                const camera = cluster.cameras?.[index];
+                return {
+                  id: camera?.id,
+                  name: camera?.name || `Cámara ${index + 1}`,
+                  ip: camera?.ip || '',
+                };
+              }),
+            ]),
+          );
         },
         error: (error) => {
           this.clusterMessage = this.extractErrorMessage(error, 'No se pudieron cargar los clusters.');
@@ -163,6 +194,77 @@ export class AdminClustersPageComponent implements OnInit, OnDestroy {
         this.clusterMessage = this.extractErrorMessage(error, 'No se pudo eliminar el cluster.');
       },
     });
+  }
+
+  saveCamera(cluster: ClusterRecord, index: number): void {
+    const form = this.cameraForms[cluster.id]?.[index];
+    const name = form?.name.trim() || '';
+    const ip = form?.ip.trim() || '';
+
+    if (!name || name.length > 100 || !ip) {
+      this.clusterMessage =
+        'Indica el nombre y la dirección IP o URL de la cámara.';
+      return;
+    }
+
+    this.clusterMessage = '';
+    const savingKey = this.cameraFormKey(cluster.id, index);
+    this.cameraSaving[savingKey] = true;
+
+    let request: Observable<CameraRecord>;
+    if (form?.id) {
+      const payload: CameraUpdatePayload = { name, ip };
+      request = this.cameraService.updateCamera(form.id, payload);
+    } else {
+      const deviceId = cluster.deviceId?.trim();
+      if (!deviceId) {
+        this.clusterMessage = 'El cluster no tiene un device ID asignado.';
+        this.cameraSaving[cluster.id] = false;
+        return;
+      }
+
+      const payload: CameraPayload = { name, ip, deviceId };
+      request = this.cameraService.createCamera(payload);
+    }
+
+    request
+      .pipe(finalize(() => (this.cameraSaving[savingKey] = false)))
+      .subscribe({
+        next: () => {
+          this.clusterMessage = 'Cámara guardada correctamente.';
+          this.loadClusters();
+        },
+        error: (error) => {
+          this.clusterMessage = this.extractErrorMessage(
+            error,
+            'No se pudo guardar la cámara. Comprueba la IP o URL del stream.',
+          );
+        },
+      });
+  }
+
+  deleteCamera(cluster: ClusterRecord, index: number): void {
+    const camera = this.cameraForms[cluster.id]?.[index];
+    if (!camera?.id || !confirm(`¿Eliminar ${camera.name} de ${cluster.name}?`)) {
+      return;
+    }
+
+    this.cameraService.deleteCamera(camera.id).subscribe({
+      next: () => {
+        this.clusterMessage = 'Cámara eliminada correctamente.';
+        this.loadClusters();
+      },
+      error: (error) => {
+        this.clusterMessage = this.extractErrorMessage(
+          error,
+          'No se pudo eliminar la cámara.',
+        );
+      },
+    });
+  }
+
+  cameraFormKey(clusterId: number, index: number): string {
+    return `${clusterId}-${index}`;
   }
 
   resetClusterForm(): void {

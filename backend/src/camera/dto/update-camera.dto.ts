@@ -1,10 +1,14 @@
+import { Transform } from 'class-transformer';
 import {
-  IsIP,
   IsNotEmpty,
   IsOptional,
   IsString,
   MaxLength,
 } from 'class-validator';
+import {
+  IsCameraAddress,
+  normalizeCameraAddress,
+} from './normalize-camera-address';
 
 export class UpdateCameraDto {
   @IsOptional()
@@ -14,7 +18,10 @@ export class UpdateCameraDto {
   name?: string;
 
   @IsOptional()
-  @IsIP()
+  @IsCameraAddress()
   @IsNotEmpty()
+  @IsString()
+  @MaxLength(255)
+  @Transform(({ value }) => normalizeCameraAddress(value))
   ip?: string;
 }
