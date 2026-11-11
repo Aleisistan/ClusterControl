@@ -1,59 +1,30 @@
 # Frontend
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 19.2.26.
+Interfaz Angular para administrar clusters, cámaras y consultar telemetría. En
+desarrollo se sirve con Angular CLI en el puerto 4200; en producción, Nginx
+sirve los archivos compilados y hace de proxy para la API y Socket.IO.
+El Compose de desarrollo monta el código local y usa polling para detectar
+cambios; Angular actualiza la página al guardar archivos.
 
-## Development server
-
-To start a local development server, run:
-
-```bash
-ng serve
-```
-
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
-
-## Code scaffolding
-
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
+La forma recomendada de iniciar el frontend integrado con el backend es usar
+el [Compose de desarrollo](../README.MD#desarrollo). Para ejecutarlo por
+separado (requiere Node.js 20), desde este directorio:
 
 ```bash
-ng generate component component-name
+npm ci
+npm start
 ```
 
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
+La ejecución local espera que la API esté disponible en `localhost:3000`.
+
+Para compilar o ejecutar las pruebas unitarias:
 
 ```bash
-ng generate --help
+npm run build
+npm test -- --watch=false --browsers=ChromeHeadless
 ```
 
-## Building
-
-To build the project run:
-
-```bash
-ng build
-```
-
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
-
-## Running unit tests
-
-To execute unit tests with the [Karma](https://karma-runner.github.io) test runner, use the following command:
-
-```bash
-ng test
-```
-
-## Running end-to-end tests
-
-For end-to-end (e2e) testing, run:
-
-```bash
-ng e2e
-```
-
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
-
-## Additional Resources
-
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+En producción, `apiUrl` usa `/api`; el proxy de Nginx enruta las peticiones al
+backend. La imagen productiva es compilada y no monta el código local; para
+publicar cambios se construye y despliega una nueva imagen. No configures una
+URL de API pública en el frontend productivo.
