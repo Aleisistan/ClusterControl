@@ -27,9 +27,8 @@ export class ClusterService {
     const deviceId = data.deviceId?.trim();
 
     if (deviceId) {
-      const existingDevice = await this.clusterRepository.findByDeviceId(
-        deviceId,
-      );
+      const existingDevice =
+        await this.clusterRepository.findByDeviceId(deviceId);
 
       if (existingDevice) {
         throw new ConflictException('No se puede crear el cluster');
@@ -78,9 +77,7 @@ export class ClusterService {
 
     if (data.deviceId !== undefined && data.deviceId !== cluster.deviceId) {
       const deviceId = data.deviceId.trim();
-      const existing = await this.clusterRepository.findByDeviceId(
-        deviceId,
-      );
+      const existing = await this.clusterRepository.findByDeviceId(deviceId);
 
       if (existing && existing.id !== id) {
         throw new ConflictException('No se puede actualizar el cluster');
@@ -123,7 +120,17 @@ export class ClusterService {
       throw new NotFoundException('Cluster no encontrado');
     }
 
-    await this.clusterRepository.delete(id);
+    try {
+      await this.clusterRepository.delete(id);
+    } catch (error) {
+      if (this.isForeignKeyViolation(error)) {
+        throw new ConflictException(
+          'No se puede eliminar el cluster porque tiene datos relacionados.',
+        );
+      }
+
+      throw error;
+    }
   }
 
   private async generateDeviceId(clusterId: number): Promise<string> {
@@ -137,11 +144,19 @@ export class ClusterService {
   }
 
   private isUniqueViolation(error: unknown): boolean {
+    return this.getDriverErrorCode(error) === '23505';
+  }
+
+  private isForeignKeyViolation(error: unknown): boolean {
+    return this.getDriverErrorCode(error) === '23503';
+  }
+
+  private getDriverErrorCode(error: unknown): string | undefined {
     if (!(error instanceof QueryFailedError)) {
-      return false;
+      return undefined;
     }
 
     const driverError = error.driverError as { code?: string };
-    return driverError.code === '23505';
+    return driverError.code;
   }
 }

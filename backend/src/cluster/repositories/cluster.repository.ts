@@ -14,13 +14,40 @@ export class ClusterRepository {
   async findById(id: number) {
     return this.repository.findOne({
       where: { id },
-      relations: ['cameras'],
+      relations: { cameras: true },
     });
   }
 
   async findAll() {
-    return this.repository.find({
-      relations: ['cameras'],
+    const clusters = await this.repository.find({
+      relations: { cameras: true },
+    });
+
+    if (clusters.length === 0) {
+      return clusters;
+    }
+
+    const lastSeenRows = await this.repository.query<
+      Array<{ clusterId: number; lastSeenAt: Date | string }>
+    >(
+      `
+        SELECT cluster_id AS "clusterId", MAX(created_at) AS "lastSeenAt"
+        FROM telemetry
+        WHERE source = $1 AND cluster_id = ANY($2)
+        GROUP BY cluster_id
+      `,
+      ['device', clusters.map(({ id }) => id)],
+    );
+    const lastSeenByCluster = new Map(
+      lastSeenRows.map(({ clusterId, lastSeenAt }) => [
+        Number(clusterId),
+        new Date(lastSeenAt).toISOString(),
+      ]),
+    );
+
+    return clusters.map((cluster) => {
+      cluster.lastSeenAt = lastSeenByCluster.get(cluster.id) ?? null;
+      return cluster;
     });
   }
   async findByName(name: string): Promise<Cluster | null> {

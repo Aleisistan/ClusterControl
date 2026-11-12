@@ -34,6 +34,8 @@ export class Cluster {
   @Column({ nullable: true })
   timezone: string;
 
+  lastSeenAt?: string | null;
+
   @OneToMany(() => Camera, (camera) => camera.cluster)
   cameras: Camera[];
 
