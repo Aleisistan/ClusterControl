@@ -1,5 +1,5 @@
-import { CommonModule } from '@angular/common';
-import { Component, OnInit } from '@angular/core';
+
+import { Component, OnInit, ChangeDetectionStrategy } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 
@@ -10,8 +10,9 @@ import { AuthService, LoginPayload } from '../services/auth.service';
 @Component({
   selector: 'app-login-page',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [FormsModule],
   templateUrl: './login-page.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './login-page.component.css',
 })
 export class LoginPageComponent implements OnInit {

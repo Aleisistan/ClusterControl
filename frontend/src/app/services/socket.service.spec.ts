@@ -1,5 +1,5 @@
 import { TestBed } from '@angular/core/testing';
-import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClient, withXhr } from '@angular/common/http';
 
 import { SocketService } from './socket.service';
 
@@ -8,7 +8,7 @@ describe('SocketService', () => {
 
   beforeEach(() => {
     TestBed.configureTestingModule({
-      providers: [provideHttpClient()],
+      providers: [provideHttpClient(withXhr())],
     });
     service = TestBed.inject(SocketService);
   });

@@ -1,6 +1,6 @@
 <section class="hero-card">
   <div class="hero-copy">
-    
+
 
     <h2>Bienvenido</h2>
     <p>
@@ -17,9 +17,15 @@
       <input class="form-control" type="password" name="loginPassword" [(ngModel)]="loginForm.password"
         autocomplete="current-password" minlength="6" maxlength="100" required />
 
-      <div class="validation-hint" *ngIf="shouldShowLoginValidationMessage">{{ loginValidationMessage }}</div>
-      <div class="alert alert-danger mt-3" *ngIf="loginError">{{ loginError }}</div>
-      <div class="alert alert-success mt-3" *ngIf="sessionMessage">{{ sessionMessage }}</div>
+      @if (shouldShowLoginValidationMessage) {
+        <div class="validation-hint">{{ loginValidationMessage }}</div>
+      }
+      @if (loginError) {
+        <div class="alert alert-danger mt-3">{{ loginError }}</div>
+      }
+      @if (sessionMessage) {
+        <div class="alert alert-success mt-3">{{ sessionMessage }}</div>
+      }
 
       <button class="btn btn-primary w-100 submit-button" type="submit" [disabled]="isLoggingIn">
         {{ isLoggingIn ? 'Ingresando...' : 'Entrar' }}

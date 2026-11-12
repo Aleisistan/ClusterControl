@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnDestroy, OnInit } from '@angular/core';
+import { Component, OnDestroy, OnInit, ChangeDetectionStrategy } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 
@@ -9,9 +9,12 @@ import {
   catchError,
   debounceTime,
   distinctUntilChanged,
+  exhaustMap,
   finalize,
+  interval,
   of,
   switchMap,
+  takeUntil,
 } from 'rxjs';
 
 import { AuthService, AuthUser } from '../services/auth.service';
@@ -24,11 +27,15 @@ import {
 import { ClusterPayload, ClusterRecord, ClusterService } from '../services/cluster.service';
 import { LocationSearchResult, LocationSearchService } from '../services/location-search.service';
 
+const DEVICE_ONLINE_WINDOW_MS = 60_000;
+const CLUSTER_STATUS_REFRESH_INTERVAL_MS = 15_000;
+
 @Component({
   selector: 'app-admin-clusters-page',
   standalone: true,
   imports: [CommonModule, FormsModule],
   templateUrl: './admin-clusters-page.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './admin-clusters-page.component.css',
 })
 export class AdminClustersPageComponent implements OnInit, OnDestroy {
@@ -37,6 +44,7 @@ export class AdminClustersPageComponent implements OnInit, OnDestroy {
   cameraForms: Record<number, Array<{ id?: number; name: string; ip: string }>> = {};
   cameraSaving: Record<string, boolean> = {};
   locationOptions: LocationSearchResult[] = [];
+  deviceSetupCluster: ClusterRecord | null = null;
   isSearchingLocations = false;
 
   clusterForm: ClusterPayload & { id: number | null } = {
@@ -53,6 +61,7 @@ export class AdminClustersPageComponent implements OnInit, OnDestroy {
   clusterAttempted = false;
   isLoadingClusters = false;
   private readonly locationSearchSubject = new Subject<string>();
+  private readonly destroyed$ = new Subject<void>();
   private selectedLocationLabel = '';
 
   constructor(
@@ -80,6 +89,7 @@ export class AdminClustersPageComponent implements OnInit, OnDestroy {
       .pipe(
         debounceTime(300),
         distinctUntilChanged(),
+        takeUntil(this.destroyed$),
         switchMap((query) => {
           this.isSearchingLocations = query.length >= 3;
           return query.length >= 3
@@ -93,9 +103,31 @@ export class AdminClustersPageComponent implements OnInit, OnDestroy {
       });
 
     this.loadClusters();
+    interval(CLUSTER_STATUS_REFRESH_INTERVAL_MS)
+      .pipe(
+        takeUntil(this.destroyed$),
+        exhaustMap(() =>
+          this.clusterService.getClusters().pipe(
+            catchError((error) => {
+              this.clusterMessage = this.extractErrorMessage(
+                error,
+                'No se pudo actualizar el estado de los dispositivos.',
+              );
+              return of(null);
+            }),
+          ),
+        ),
+      )
+      .subscribe((clusters) => {
+        if (clusters) {
+          this.clusters = clusters;
+        }
+      });
   }
 
   ngOnDestroy(): void {
+    this.destroyed$.next();
+    this.destroyed$.complete();
     this.locationSearchSubject.complete();
   }
 
@@ -154,10 +186,12 @@ export class AdminClustersPageComponent implements OnInit, OnDestroy {
       : this.clusterService.createCluster(payload);
 
     request.subscribe({
-      next: () => {
-        this.clusterMessage = this.clusterForm.id
+      next: (cluster) => {
+        const isEditing = this.clusterForm.id !== null;
+        this.clusterMessage = isEditing
           ? 'Cluster actualizado correctamente.'
           : 'Cluster creado correctamente.';
+        this.deviceSetupCluster = isEditing ? null : cluster;
         this.resetClusterForm();
         this.loadClusters();
       },
@@ -219,7 +253,7 @@ export class AdminClustersPageComponent implements OnInit, OnDestroy {
       const deviceId = cluster.deviceId?.trim();
       if (!deviceId) {
         this.clusterMessage = 'El cluster no tiene un device ID asignado.';
-        this.cameraSaving[cluster.id] = false;
+        this.cameraSaving[savingKey] = false;
         return;
       }
 
@@ -279,6 +313,25 @@ export class AdminClustersPageComponent implements OnInit, OnDestroy {
     };
     this.locationOptions = [];
     this.selectedLocationLabel = '';
+  }
+
+  dismissDeviceSetup(): void {
+    this.deviceSetupCluster = null;
+  }
+
+  deviceStatus(cluster: ClusterRecord): 'online' | 'offline' | 'never' {
+    if (!cluster.lastSeenAt) {
+      return 'never';
+    }
+
+    const lastSeenTime = Date.parse(cluster.lastSeenAt);
+    if (!Number.isFinite(lastSeenTime)) {
+      return 'never';
+    }
+
+    return Date.now() - lastSeenTime <= DEVICE_ONLINE_WINDOW_MS
+      ? 'online'
+      : 'offline';
   }
 
   onLocationInput(): void {

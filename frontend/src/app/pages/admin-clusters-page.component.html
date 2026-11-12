@@ -6,9 +6,59 @@
     </div>
   </div>
 
-  <p class="section-note">Escribe al menos 3 caracteres y selecciona una ubicación mundial para cargar sus coordenadas y zona horaria. El device ID se asigna automáticamente.</p>
+  <p class="section-note">La ubicación registra dónde está el cluster; no conecta el hardware. Al crearlo se asigna un device ID que debes configurar en la placa para que publique telemetría por MQTT.</p>
 
-  <div class="alert alert-info" *ngIf="clusterMessage">{{ clusterMessage }}</div>
+  @if (clusterMessage) {
+    <div class="alert alert-info">{{ clusterMessage }}</div>
+  }
+
+  @if (deviceSetupCluster; as createdCluster) {
+    <section class="device-setup-card">
+      <div class="device-setup-heading">
+        <div>
+          <p class="eyebrow">Siguiente paso</p>
+          <h3>Conecta {{ createdCluster.name }}</h3>
+        </div>
+        <button
+          class="btn btn-sm btn-outline-light"
+          type="button"
+          aria-label="Cerrar instrucciones de conexión"
+          (click)="dismissDeviceSetup()"
+          >
+          Cerrar
+        </button>
+      </div>
+      <p>
+        El registro ya existe, pero todavía no está conectado. Configura la placa
+        con este device ID y envíala al broker MQTT del servidor:
+      </p>
+      <pre><code>#define MQTT_HOST "IP_O_DNS_DEL_SERVIDOR"
+        #define MQTT_PORT 1883
+      #define DEVICE_ID "{{ createdCluster.deviceId }}"</code></pre>
+      <ol>
+        <li>El servidor debe tener el backend y Mosquitto en ejecución.</li>
+        <li>
+          Usa una IP o DNS que la placa pueda alcanzar; no uses
+          <code>localhost</code> ni el nombre Docker <code>mosquitto</code> en el
+          firmware.
+        </li>
+        <li>
+          Carga el firmware, completa Wi-Fi, credenciales MQTT y adapta las
+          lecturas a los sensores conectados a la placa.
+        </li>
+        <li>
+          La placa debe publicar cada 15 segundos en
+          <code>datacenter/ambiente</code>. El estado cambiará cuando llegue la
+          primera telemetría.
+        </li>
+      </ol>
+      <p class="mb-0">
+        En el broker incluido, usa el puerto publicado por Docker (1883 por
+        defecto). Para instrucciones completas de servidor, firewall, Mosquitto y
+        firmware, consulta <code>docs/conectar-dispositivo-mqtt.md</code>.
+      </p>
+    </section>
+  }
 
   <form class="stack-form" (ngSubmit)="saveCluster()">
     <input type="hidden" name="clusterId" [(ngModel)]="clusterForm.id" />
@@ -21,7 +71,7 @@
       [(ngModel)]="clusterForm.name"
       maxlength="100"
       required
-    />
+      />
 
     <label class="form-label mt-3">Ubicación</label>
     <input
@@ -33,19 +83,24 @@
       maxlength="200"
       placeholder="Escribe para buscar una ubicación"
       (input)="onLocationInput()"
-    />
-    <div class="location-search-state" *ngIf="isSearchingLocations">Buscando ubicaciones...</div>
-    <div class="location-results" *ngIf="locationOptions.length > 0">
-      <button
-        class="location-result"
-        type="button"
-        *ngFor="let option of locationOptions"
-        (click)="selectLocation(option)"
-      >
-        <strong>{{ option.label }}</strong>
-        <span>{{ option.timezone }}</span>
-      </button>
-    </div>
+      />
+    @if (isSearchingLocations) {
+      <div class="location-search-state">Buscando ubicaciones...</div>
+    }
+    @if (locationOptions.length > 0) {
+      <div class="location-results">
+        @for (option of locationOptions; track option) {
+          <button
+            class="location-result"
+            type="button"
+            (click)="selectLocation(option)"
+            >
+            <strong>{{ option.label }}</strong>
+            <span>{{ option.timezone }}</span>
+          </button>
+        }
+      </div>
+    }
 
     <div class="action-row">
       <button class="btn btn-primary" type="submit">
@@ -57,79 +112,110 @@
     </div>
   </form>
 
-  <div class="table-wrap mt-4" *ngIf="!isLoadingClusters; else clustersLoading">
-    <table class="table table-dark table-sm align-middle mb-0">
-      <thead>
-        <tr>
-          <th>Cluster</th>
-          <th>Device</th>
-          <th>Cámaras (máx. 2)</th>
-          <th>Zona</th>
-          <th class="text-end">Acciones</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr *ngFor="let cluster of clusters">
-          <td>
-            <strong>{{ cluster.name }}</strong>
-            <div class="muted">{{ cluster.location || 'Sin ubicación' }}</div>
-          </td>
-          <td>{{ cluster.deviceId || 'Sin device' }}</td>
-          <td>
-            <div
-              class="camera-edit-form mb-2"
-              *ngFor="let cameraForm of cameraForms[cluster.id]; let cameraIndex = index"
-            >
-              <strong class="small">{{ cameraForm.name || ('Cámara ' + (cameraIndex + 1)) }}</strong>
-              <input
-                class="form-control form-control-sm"
-                type="text"
-                [name]="'cameraName' + cluster.id + '-' + cameraIndex"
-                [(ngModel)]="cameraForm.name"
-                maxlength="100"
-                placeholder="Nombre de la cámara"
-                [attr.aria-label]="'Nombre de la cámara ' + (cameraIndex + 1) + ' de ' + cluster.name"
-              />
-              <input
-                class="form-control form-control-sm"
-                type="text"
-                [name]="'cameraIp' + cluster.id + '-' + cameraIndex"
-                [(ngModel)]="cameraForm.ip"
-                placeholder="URL/IP del stream (ej. 192.168.1.50)"
-                [attr.aria-label]="'IP o URL de la cámara ' + (cameraIndex + 1) + ' de ' + cluster.name"
-              />
-              <div class="camera-actions">
-                <button
-                  class="btn btn-sm btn-outline-info"
-                  type="button"
-                  [disabled]="cameraSaving[cameraFormKey(cluster.id, cameraIndex)]"
-                  (click)="saveCamera(cluster, cameraIndex)"
-                >
-                  {{ cameraSaving[cameraFormKey(cluster.id, cameraIndex)] ? 'Guardando...' : cameraForm.id ? 'Guardar cámara' : 'Agregar cámara' }}
-                </button>
-                <button
-                  *ngIf="cameraForm.id"
-                  class="btn btn-sm btn-outline-danger"
-                  type="button"
-                  [disabled]="cameraSaving[cameraFormKey(cluster.id, cameraIndex)]"
-                  (click)="deleteCamera(cluster, cameraIndex)"
-                >
-                  Quitar
-                </button>
-              </div>
-            </div>
-          </td>
-          <td>{{ cluster.timezone || 'Sin timezone' }}</td>
-          <td class="text-end">
-            <button class="btn btn-sm btn-outline-info me-2" type="button" (click)="editCluster(cluster)">Editar</button>
-            <button class="btn btn-sm btn-outline-danger" type="button" (click)="deleteCluster(cluster)">Eliminar</button>
-          </td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
-
-  <ng-template #clustersLoading>
+  @if (!isLoadingClusters) {
+    <div class="table-wrap mt-4">
+      <table class="table table-dark table-sm align-middle mb-0">
+        <thead>
+          <tr>
+            <th>Cluster</th>
+            <th>Dispositivo MQTT</th>
+            <th>Cámaras (máx. 2)</th>
+            <th>Zona</th>
+            <th class="text-end">Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (cluster of clusters; track cluster) {
+            <tr>
+              <td>
+                <strong>{{ cluster.name }}</strong>
+                <div class="muted">{{ cluster.location || 'Sin ubicación' }}</div>
+              </td>
+              <td>
+                <code>{{ cluster.deviceId || 'Sin device' }}</code>
+                <div [ngClass]="['device-status', deviceStatus(cluster)]">
+                  <span class="status-dot"></span>
+                  @switch (deviceStatus(cluster)) {
+                    @case ('online') {
+                      <span>Conectado</span>
+                    }
+                    @case ('offline') {
+                      <span>Desconectado</span>
+                    }
+                    @default {
+                      <span>Sin datos</span>
+                    }
+                  }
+                </div>
+                @if (cluster.lastSeenAt) {
+                  <div class="muted">
+                    Último mensaje: {{ cluster.lastSeenAt | date: 'short' }}
+                  </div>
+                }
+                @if (!cluster.lastSeenAt) {
+                  <div class="muted">
+                    Esperando primera telemetría física
+                  </div>
+                }
+              </td>
+              <td>
+                @for (cameraForm of cameraForms[cluster.id]; track cameraForm; let cameraIndex = $index) {
+                  <div
+                    class="camera-edit-form mb-2"
+                    >
+                    <strong class="small">{{ cameraForm.name || ('Cámara ' + (cameraIndex + 1)) }}</strong>
+                    <input
+                      class="form-control form-control-sm"
+                      type="text"
+                      [name]="'cameraName' + cluster.id + '-' + cameraIndex"
+                      [(ngModel)]="cameraForm.name"
+                      maxlength="100"
+                      placeholder="Nombre de la cámara"
+                      [attr.aria-label]="'Nombre de la cámara ' + (cameraIndex + 1) + ' de ' + cluster.name"
+                      />
+                    <input
+                      class="form-control form-control-sm"
+                      type="text"
+                      [name]="'cameraIp' + cluster.id + '-' + cameraIndex"
+                      [(ngModel)]="cameraForm.ip"
+                      placeholder="URL/IP del stream (ej. 192.168.1.50)"
+                      [attr.aria-label]="'IP o URL de la cámara ' + (cameraIndex + 1) + ' de ' + cluster.name"
+                      />
+                    <div class="camera-actions">
+                      <button
+                        class="btn btn-sm btn-outline-info"
+                        type="button"
+                        [disabled]="cameraSaving[cameraFormKey(cluster.id, cameraIndex)]"
+                        (click)="saveCamera(cluster, cameraIndex)"
+                        >
+                        {{ cameraSaving[cameraFormKey(cluster.id, cameraIndex)] ? 'Guardando...' : cameraForm.id ? 'Guardar cámara' : 'Agregar cámara' }}
+                      </button>
+                      @if (cameraForm.id) {
+                        <button
+                          class="btn btn-sm btn-outline-danger"
+                          type="button"
+                          [disabled]="cameraSaving[cameraFormKey(cluster.id, cameraIndex)]"
+                          (click)="deleteCamera(cluster, cameraIndex)"
+                          >
+                          Quitar
+                        </button>
+                      }
+                    </div>
+                  </div>
+                }
+              </td>
+              <td>{{ cluster.timezone || 'Sin timezone' }}</td>
+              <td class="text-end">
+                <button class="btn btn-sm btn-outline-info me-2" type="button" (click)="editCluster(cluster)">Editar</button>
+                <button class="btn btn-sm btn-outline-danger" type="button" (click)="deleteCluster(cluster)">Eliminar</button>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  } @else {
     <div class="loading-state">Cargando clusters...</div>
-  </ng-template>
+  }
+
 </section>

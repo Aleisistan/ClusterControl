@@ -8,6 +8,7 @@ import {
   QueryList,
   ViewChild,
   ViewChildren,
+  ChangeDetectionStrategy
 } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Chart, ChartConfiguration } from 'chart.js';
@@ -54,6 +55,7 @@ interface DashboardCameraView {
   standalone: true,
   imports: [CommonModule, BaseChartDirective, FormsModule],
   templateUrl: './dashboard.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrls: ['./dashboard.component.css'],
 })
 export class DashboardComponent implements OnInit, OnDestroy, AfterViewChecked {

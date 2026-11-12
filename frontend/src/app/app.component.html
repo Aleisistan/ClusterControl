@@ -9,39 +9,44 @@
         </div>
       </div>
 
-      <nav class="route-tabs" *ngIf="currentUser; else guestState">
-        <button type="button" class="route-tab" routerLink="/dashboard"
-          [class.active]="isActive('/dashboard')"
-          [class.route-tab-current]="isActive('/dashboard')"
-          routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
-          Dashboard
-        </button>
-        <button *ngIf="isAdmin" type="button" class="route-tab" [class.active]="isActive('/admin/users')" (click)="navigate('/admin/users')">
-          Usuarios
-        </button>
-        <button *ngIf="isAdmin" type="button" class="route-tab" [class.active]="isActive('/admin/clusters')" (click)="navigate('/admin/clusters')">
-          Clusters
-        </button>
-        <div class="session-pill" [class.session-hidden]="sessionHidden">
-          <span class="session-status"></span>
-          <div>
-            <strong>{{ currentUser.username }}</strong>
-            <small>Rol: {{ currentUser.role }}</small>
-          </div>
-          <button class="btn btn-sm btn-outline-light" type="button" (click)="logout()">
-            Salir
+      @if (currentUser) {
+        <nav class="route-tabs">
+          <button type="button" class="route-tab" routerLink="/dashboard"
+            [class.active]="isActive('/dashboard')"
+            [class.route-tab-current]="isActive('/dashboard')"
+            routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
+            Dashboard
           </button>
-        </div>
-      </nav>
-
-      <ng-template #guestState>
+          @if (isAdmin) {
+            <button type="button" class="route-tab" [class.active]="isActive('/admin/users')" (click)="navigate('/admin/users')">
+              Usuarios
+            </button>
+          }
+          @if (isAdmin) {
+            <button type="button" class="route-tab" [class.active]="isActive('/admin/clusters')" (click)="navigate('/admin/clusters')">
+              Clusters
+            </button>
+          }
+          <div class="session-pill" [class.session-hidden]="sessionHidden">
+            <span class="session-status"></span>
+            <div>
+              <strong>{{ currentUser.username }}</strong>
+              <small>Rol: {{ currentUser.role }}</small>
+            </div>
+            <button class="btn btn-sm btn-outline-light" type="button" (click)="logout()">
+              Salir
+            </button>
+          </div>
+        </nav>
+      } @else {
         <div class="session-pill guest-pill" [class.session-hidden]="sessionHidden">
           <span class="session-guest">Acceso restringido</span>
           <button class="btn btn-sm btn-primary" type="button" (click)="navigate('/login')">
             Login
           </button>
         </div>
-      </ng-template>
+      }
+
     </div>
   </header>
 

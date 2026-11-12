@@ -8,7 +8,8 @@ cambios; Angular actualiza la página al guardar archivos.
 
 La forma recomendada de iniciar el frontend integrado con el backend es usar
 el [Compose de desarrollo](../README.MD#desarrollo). Para ejecutarlo por
-separado (requiere Node.js 20), desde este directorio:
+separado (requiere Node.js 22.22.3 o una versión compatible más reciente),
+desde este directorio:
 
 ```bash
 npm ci

@@ -27,6 +27,63 @@
   color: rgba(232, 240, 249, 0.72);
 }
 
+.device-setup-card {
+  margin-top: 18px;
+  padding: 18px;
+  border: 1px solid rgba(147, 197, 253, 0.3);
+  border-radius: 18px;
+  background: rgba(59, 130, 246, 0.1);
+}
+
+.device-setup-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.device-setup-heading h3 {
+  margin: 0 0 12px;
+}
+
+.device-setup-card pre {
+  overflow-x: auto;
+  padding: 12px;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.25);
+  color: #bfdbfe;
+}
+
+.device-setup-card ol {
+  padding-left: 22px;
+}
+
+.device-setup-card li + li {
+  margin-top: 6px;
+}
+
+.device-status {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 5px;
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #94a3b8;
+}
+
+.device-status.online .status-dot {
+  background: #4ade80;
+}
+
+.device-status.offline .status-dot {
+  background: #f87171;
+}
+
 .validation-hint {
   margin-top: 8px;
   padding: 10px 12px;
