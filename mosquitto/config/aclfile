@@ -1,0 +1,7 @@
+user clustercontrol-backend
+topic read datacenter/ambiente
+topic read datacenter/camera/ip
+
+user clustercontrol-device
+topic write datacenter/ambiente
+topic write datacenter/camera/ip

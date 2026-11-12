@@ -4,6 +4,7 @@ services:
   mosquitto:
     image: eclipse-mosquitto:2
     restart: unless-stopped
+    command: ["mosquitto", "-c", "/mosquitto/config/mosquitto.production.conf"]
     ports:
       - "${MQTT_HOST_PORT:-1883}:1883"
     volumes:
@@ -25,7 +26,7 @@ services:
       retries: 10
 
   backend:
-    image: ghcr.io/aleisistan/clustercontrol-backend:latest
+    image: ${BACKEND_IMAGE:-ghcr.io/aleisistan/clustercontrol-backend:latest}
     pull_policy: always
     restart: unless-stopped
     env_file:
@@ -44,7 +45,7 @@ services:
         condition: service_started
 
   frontend:
-    image: ghcr.io/aleisistan/clustercontrol-frontend:latest
+    image: ${FRONTEND_IMAGE:-ghcr.io/aleisistan/clustercontrol-frontend:latest}
     pull_policy: always
     restart: unless-stopped
     environment:

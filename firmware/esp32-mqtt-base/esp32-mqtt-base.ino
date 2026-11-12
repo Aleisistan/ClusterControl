@@ -15,6 +15,8 @@ WiFiClient wifiClient;
 PubSubClient mqttClient(wifiClient);
 unsigned long lastTelemetryAt = 0;
 unsigned long lastConnectionAttemptAt = 0;
+unsigned long lastCameraAnnouncementAt = 0;
+bool cameraAnnouncementPending = false;
 
 bool deviceIdIsValid() {
   const char* deviceId = DEVICE_ID;
@@ -80,15 +82,16 @@ void connectMqtt() {
         MQTT_PASSWORD);
 
   if (connected) {
+    cameraAnnouncementPending = CAMERA_IP[0] != '\0';
     Serial.println("MQTT conectado.");
   } else {
     Serial.printf("MQTT no disponible. Estado: %d\n", mqttClient.state());
   }
 }
 
-void publishCameraIp() {
+bool publishCameraIp() {
   if (CAMERA_IP[0] == '\0') {
-    return;
+    return true;
   }
 
   JsonDocument document;
@@ -97,7 +100,7 @@ void publishCameraIp() {
 
   String payload;
   serializeJson(document, payload);
-  mqttClient.publish(cameraTopic, payload.c_str());
+  return mqttClient.publish(cameraTopic, payload.c_str());
 }
 
 void publishTelemetry() {
@@ -149,7 +152,6 @@ void setup() {
   mqttClient.setServer(MQTT_HOST, MQTT_PORT);
   connectWifi();
   connectMqtt();
-  publishCameraIp();
 }
 
 void loop() {
@@ -162,6 +164,17 @@ void loop() {
   }
 
   const unsigned long now = millis();
+  if (
+    cameraAnnouncementPending &&
+    now - lastCameraAnnouncementAt >= CONNECTION_RETRY_MS
+  ) {
+    lastCameraAnnouncementAt = now;
+    cameraAnnouncementPending = !publishCameraIp();
+    if (cameraAnnouncementPending) {
+      Serial.println("No se pudo anunciar la camara por MQTT; se reintentara.");
+    }
+  }
+
   if (now - lastTelemetryAt >= TELEMETRY_INTERVAL_MS) {
     lastTelemetryAt = now;
     publishTelemetry();
