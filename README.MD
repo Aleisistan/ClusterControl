@@ -96,13 +96,17 @@ volúmenes de desarrollo y la base de datos.
    ```
 
    Si las imágenes son privadas, inicia sesión con `docker login ghcr.io`.
+   El backend aplica las migraciones al iniciar; antes de actualizar una
+   instalación existente, realiza una copia de seguridad de PostgreSQL.
 
 El workflow de CI ejecuta pruebas en pull requests y publica las imágenes en
 pushes a `main` o a etiquetas `v*` ([workflow](./.github/workflows/ci-cd.yml)).
-El Compose usa la etiqueta `latest` y fuerza la consulta de las imágenes en
-cada `up`; cuando CI publique una nueva versión, vuelve a ejecutar el comando
-para actualizar los contenedores. Producción no monta el código fuente ni lo
-recarga automáticamente.
+Publica etiquetas `latest`, de commit y de versión para los tags `v*`. Por
+defecto Compose usa `latest`; para fijar una versión, configura
+`BACKEND_IMAGE` y `FRONTEND_IMAGE` en `.env` con sus etiquetas, por ejemplo
+`ghcr.io/aleisistan/clustercontrol-backend:v1.0.0`. Compose consulta las
+imágenes en cada `up`. Producción no monta el código fuente ni lo recarga
+automáticamente.
 La aplicación queda disponible en el puerto `FRONTEND_HOST_PORT` (80 por
 defecto). Nginx sirve el frontend y pasa `/api` y Socket.IO al backend por la
 red interna. Producción no incluye pgAdmin, simulador, clusters de muestra ni
@@ -111,25 +115,27 @@ runner de pruebas industriales. El administrador inicial se define mediante
 seguir visible, pero sin runner no tendrá resultados y mostrará el estado
 desconocido/inactivo.
 
-Antes de exponer el servidor, configura HTTPS/firewall y asegura Mosquitto:
-el broker incluido permite conexiones anónimas por defecto. Consulta
-[`.env.example`](./.env.example) y [docker-compose.yml](./docker-compose.yml).
+El Compose de producción usa un listener MQTT autenticado. Antes de iniciar los
+servicios, crea el archivo de contraseñas del broker y configura las credenciales
+del backend en `.env`; la guía de conexión explica cómo preparar el servidor,
+el firewall y las placas.
 
 ## Clusters, dispositivos y cámaras
 
-Los administradores crean y gestionan clusters desde **Clusters** en la web.
-Cada dispositivo debe publicar su `deviceId` en el tópico MQTT
-`datacenter/ambiente`; este identificador no es el ID interno del cluster.
-Los clusters de demostración se crean solo en desarrollo.
+Los administradores crean clusters desde **Clusters**. El alta registra el
+cluster y asigna su `deviceId`; no descubre ni conecta una placa automáticamente.
+Para emparejar el dispositivo, configura ese identificador y el broker MQTT en
+su firmware, y verifica que llegue telemetría. Consulta la
+[guía de conexión de dispositivos](./docs/conectar-dispositivo-mqtt.md). Los
+clusters de demostración se crean solo en desarrollo.
 
 En el mismo menú se pueden asociar hasta dos cámaras a cada cluster, con nombre
 y dirección IP o URL de stream.
 Una misma instancia del backend retransmite el stream a todos los dashboards
 conectados para compartir una conexión con la cámara. No configures la cámara
 en una variable de entorno ni abras el stream directamente desde cada
-navegador. Consulta
-[la guía del relay de cámaras](./docs/camera-stream-multicliente.md) y
-[la guía del firmware](./firmware/esp32-mqtt-base/README.md).
+navegador. Consulta la
+[guía del relay de cámaras](./docs/camera-stream-multicliente.md).
 Como opción, un dispositivo que publique su IP de cámara por MQTT también
 puede crear o actualizar ese registro.
 

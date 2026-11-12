@@ -1,7 +1,13 @@
 node_modules/
 .env
 /.env.development.local
+/mosquitto/config/password_file
 frontend/public/runtime-config.json
 .venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+firmware/esp32-mqtt-base/config.h
+firmware/esp32-mqtt-base/.pio/
 tests-industriales/reports/*
 !tests-industriales/reports/.gitkeep
