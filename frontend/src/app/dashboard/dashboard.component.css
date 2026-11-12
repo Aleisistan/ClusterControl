@@ -571,6 +571,11 @@ details[open] .alert-settings-content {
 
 }
 
+.kpicard.offline {
+  background: #1e293b;
+  border-left: 6px solid #64748b;
+}
+
 .light-on {
   border: 2px solid #ffc107;
 }

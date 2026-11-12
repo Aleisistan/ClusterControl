@@ -33,6 +33,34 @@ describe('DashboardComponent', () => {
     expect(component).toBeTruthy();
   });
 
+  it('shows disconnected state on every KPI instead of stale values', () => {
+    component.lastWsTime = 0;
+    component.latest = {
+      temperature1: 21,
+      temperature2: 23,
+      humidity1: 40,
+      humidity2: 50,
+      extractor: true,
+      aire: true,
+      puerta: true,
+      luzEncendida: true,
+    };
+    component.avgTemperature = 22;
+    component.avgHumidity = 45;
+    fixture.detectChanges();
+
+    const cards: NodeListOf<HTMLElement> =
+      fixture.nativeElement.querySelectorAll('.kpicard');
+    const values: NodeListOf<HTMLElement> =
+      fixture.nativeElement.querySelectorAll('.kpicard h2');
+
+    expect(cards.length).toBe(5);
+    expect(Array.from(cards).every((card) => card.classList.contains('offline')))
+      .toBeTrue();
+    expect(Array.from(values).map((value) => value.textContent?.trim()))
+      .toEqual(Array(6).fill('Sin conexión'));
+  });
+
   it('accepts simulator telemetry for the development dashboard', () => {
     expect(component['acceptsDashboardTelemetrySource']('device')).toBeTrue();
     expect(component['acceptsDashboardTelemetrySource']('simulator')).toBe(

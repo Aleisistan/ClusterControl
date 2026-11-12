@@ -126,7 +126,7 @@
 
   <div class="col-12 col-sm-6 col-md-4 col-lg-2">
 
-    <div class="card kpicard" [ngClass]="getTemperatureClass()">
+    <div class="card kpicard" [ngClass]="isClusterOnline() ? getTemperatureClass() : 'offline'">
       <div class="card-content">
         <div class="top">
           <span class="name"><i class="bi bi-thermometer-half" aria-hidden="true"></i> Temperatura</span>
@@ -137,7 +137,8 @@
           </select>
         </div>
         <div class="bottom">
-          <h2>{{ displayedTemperature | number:'1.1-1' }} °C</h2>
+          <h2 *ngIf="isClusterOnline(); else temperatureDisconnected">{{ displayedTemperature | number:'1.1-1' }} °C</h2>
+          <ng-template #temperatureDisconnected><h2>Sin conexión</h2></ng-template>
           <span class="date">
             {{ temperatureView === 'avg' ? 'Promedio' :
             temperatureView === 's1' ? 'Sensor 1' :
@@ -151,7 +152,7 @@
 
   <div class="col-12 col-sm-6 col-md-4 col-lg-2">
 
-    <div class="card kpicard" [ngClass]="getHumidityClass()">
+    <div class="card kpicard" [ngClass]="isClusterOnline() ? getHumidityClass() : 'offline'">
       <div class="card-content">
         <div class="top">
           <span class="name"><i class="bi bi-droplet-half" aria-hidden="true"></i> Humedad</span>
@@ -162,7 +163,8 @@
           </select>
         </div>
         <div class="bottom">
-          <h2>{{ displayedHumidity | number:'1.1-1' }} %</h2>
+          <h2 *ngIf="isClusterOnline(); else humidityDisconnected">{{ displayedHumidity | number:'1.1-1' }} %</h2>
+          <ng-template #humidityDisconnected><h2>Sin conexión</h2></ng-template>
           <span class="date">
             {{ humidityView === 'avg' ? 'Promedio' :
             humidityView === 's1' ? 'Sensor 1' :
@@ -176,14 +178,16 @@
 
   <div class="col-12 col-sm-6 col-md-4 col-lg-2">
 
-    <div class="card kpicard" [ngClass]="getExtractorClass()">
+    <div class="card kpicard" [ngClass]="isClusterOnline() ? getExtractorClass() : 'offline'">
       <div class="card-content">
         <div class="top">
           <span class="name"><i class="bi bi-fan" aria-hidden="true"></i> Extractor</span>
         </div>
         <div class="bottom">
           <h2>
-            {{ latest?.extractor
+            {{ !isClusterOnline()
+            ? 'Sin conexión'
+            : latest?.extractor
             ? 'ENCENDIDO'
             : 'APAGADO'
             }}
@@ -196,14 +200,16 @@
 
   <div class="col-12 col-sm-6 col-md-4 col-lg-2">
 
-    <div class="card kpicard" [ngClass]="getAirClass()">
+    <div class="card kpicard" [ngClass]="isClusterOnline() ? getAirClass() : 'offline'">
       <div class="card-content">
         <div class="top">
           <span class="name"><i class="bi bi-snow2" aria-hidden="true"></i> Aire</span>
         </div>
         <div class="bottom">
           <h2>
-            {{ latest?.aire
+            {{ !isClusterOnline()
+            ? 'Sin conexión'
+            : latest?.aire
             ? 'ENCENDIDO'
             : 'APAGADO'
             }}
@@ -216,7 +222,7 @@
 
   <div class="col-12 col-sm-6 col-md-4 col-lg-2">
 
-  <div class="card kpicard" [ngClass]="getDoorClass()">
+  <div class="card kpicard" [ngClass]="isClusterOnline() ? getDoorClass() : 'offline'">
 
     <div class="card-content">
 
@@ -227,7 +233,7 @@
       <div class="bottom">
 
         <h2>
-          {{ latest?.puerta ? 'ABIERTA' : 'CERRADA' }}
+          {{ !isClusterOnline() ? 'Sin conexión' : latest?.puerta ? 'ABIERTA' : 'CERRADA' }}
         </h2>
 
         <span class="date">
@@ -238,9 +244,9 @@
 
 
     <div class="state-divider" aria-hidden="true"></div>
-    <div class="state-row" [ngClass]="getLightClass()">
+    <div class="state-row" [ngClass]="isClusterOnline() ? getLightClass() : 'off'">
       <span class="name"><i class="bi bi-lightbulb" aria-hidden="true"></i> Luz</span>
-      <h2>{{ isLightOn() ? 'ENCENDIDA' : 'APAGADA' }}</h2>
+      <h2>{{ isClusterOnline() ? (isLightOn() ? 'ENCENDIDA' : 'APAGADA') : 'Sin conexión' }}</h2>
     </div>
     <span class="date">Estado de la luz</span>
   </div>
