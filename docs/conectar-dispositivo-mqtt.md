@@ -56,7 +56,9 @@ que deshabilita clientes anónimos y requiere contraseña y ACL. Antes del prime
 `up`, desde la raíz del proyecto:
 
 1. Configura en `.env` un `MQTT_USER=clustercontrol-backend` y una
-   `MQTT_PASSWORD` segura. Esos valores autentican al backend con Mosquitto.
+   `MQTT_PASSWORD` segura. El usuario debe coincidir con el usuario del
+   `aclfile`; la contraseña debe ser la misma que se ingrese para ese usuario
+   al generar el `password_file`.
 2. Genera el archivo de contraseñas en el directorio montado por el broker:
 
    ```powershell
@@ -65,9 +67,14 @@ que deshabilita clientes anónimos y requiere contraseña y ACL. Antes del prime
    docker run --rm -it --mount "type=bind,source=$configPath,target=/mosquitto/config" eclipse-mosquitto:2 mosquitto_passwd /mosquitto/config/password_file clustercontrol-device
    ```
 
-   Ingresa para cada usuario la misma contraseña que configuraste para el
-   backend y la contraseña que usarán las placas, respectivamente. El archivo
-   `password_file` es local y está excluido de Git.
+   La primera orden crea el archivo y la segunda agrega el usuario del
+   dispositivo. Ingresa la misma contraseña configurada en `MQTT_PASSWORD`
+   para `clustercontrol-backend`; para `clustercontrol-device`, usa una
+   contraseña independiente y configúrala también en cada placa. El
+   [`password_file.example`](../mosquitto/config/password_file.example) solo
+   documenta los usuarios esperados: no lo copies como archivo operativo ni
+   pongas contraseñas en texto plano allí. El archivo real `password_file` es
+   local y está excluido de Git.
 3. Inicia los servicios con Compose como indica el
    [README principal](../README.MD#producción). Comprueba los logs de Mosquitto
    y del backend antes de conectar una placa.
