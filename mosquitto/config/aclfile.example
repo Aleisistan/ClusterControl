@@ -1,0 +1,7 @@
+# Plantilla de ACL de produccion. Copiar como aclfile en el servidor.
+# Los nombres despues de "user" deben coincidir con MQTT_USER en .env,
+# el usuario de cada dispositivo y las entradas generadas con mosquitto_passwd.
+
+user clustercontrol-backend
+topic read datacenter/ambiente
+topic read datacenter/camera/ip

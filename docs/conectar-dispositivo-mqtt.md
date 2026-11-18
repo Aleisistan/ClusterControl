@@ -53,7 +53,15 @@ necesite. No hagas port-forward de un broker anónimo a Internet.
 El Compose de producción usa el archivo
 [`mosquitto.production.conf`](../mosquitto/config/mosquitto.production.conf),
 que deshabilita clientes anónimos y requiere contraseña y ACL. Antes del primer
-`up`, desde la raíz del proyecto:
+`up`, desde la raíz del proyecto, copia la plantilla de ACL a su nombre
+operativo (el ACL contiene permisos, no contraseñas):
+
+```powershell
+Copy-Item .\mosquitto\config\aclfile.example .\mosquitto\config\aclfile
+```
+
+El archivo `aclfile` operativo es local y está excluido de Git; edita el
+`aclfile` del servidor, no solo el `.example`.
 
 1. Configura en `.env` un `MQTT_USER=clustercontrol-backend` y una
    `MQTT_PASSWORD` segura. El usuario debe coincidir con el usuario del
@@ -69,8 +77,16 @@ que deshabilita clientes anónimos y requiere contraseña y ACL. Antes del prime
 
    La primera orden crea el archivo y la segunda agrega el usuario del
    dispositivo. Ingresa la misma contraseña configurada en `MQTT_PASSWORD`
-   para `clustercontrol-backend`; para `clustercontrol-device`, usa una
-   contraseña independiente y configúrala también en cada placa. El
+   para el usuario del backend; para el usuario del dispositivo, usa una
+   contraseña independiente y configúrala también en cada placa. Los nombres
+   de usuario de los comandos son los valores por defecto: si los cambias,
+   actualiza el nombre correspondiente en `.env` (`MQTT_USER`), en
+   `mosquitto/config/aclfile` (después de `user`) y en el comando
+   `mosquitto_passwd`; para el dispositivo actualízalo también en el firmware.
+   El [`aclfile.example`](../mosquitto/config/aclfile.example) versionado
+   muestra los permisos por defecto. El nombre tras `user` en el `aclfile`
+   operativo debe coincidir exactamente con el que se usa al crear la entrada
+   del `password_file`. El
    [`password_file.example`](../mosquitto/config/password_file.example) solo
    documenta los usuarios esperados: no lo copies como archivo operativo ni
    pongas contraseñas en texto plano allí. El archivo real `password_file` es

@@ -116,9 +116,13 @@ seguir visible, pero sin runner no tendrá resultados y mostrará el estado
 desconocido/inactivo.
 
 El Compose de producción usa un listener MQTT autenticado. Antes de iniciar los
-servicios, crea el archivo de contraseñas del broker y configura las credenciales
-del backend en `.env`; la guía de conexión explica cómo preparar el servidor,
-el firewall y las placas.
+servicios, copia `mosquitto/config/aclfile.example` como `aclfile` en el
+servidor, crea el archivo de contraseñas del broker y configura las credenciales
+del backend en `.env`. El `aclfile` operativo y `password_file` son locales y
+están excluidos de Git. Si cambias `MQTT_USER` o el usuario del dispositivo,
+actualiza también los nombres en el `aclfile` operativo y al generar el
+`password_file`; la guía de conexión explica cómo preparar el servidor, el
+firewall y las placas.
 
 ## Clusters, dispositivos y cámaras
 
