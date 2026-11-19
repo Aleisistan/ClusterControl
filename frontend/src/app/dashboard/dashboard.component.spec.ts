@@ -520,4 +520,62 @@ describe('DashboardComponent', () => {
     expect(component.historyBuckets.every((bucket) => !bucket.hasRecords)).toBeTrue();
     jasmine.clock().uninstall();
   });
+
+  it('should preserve day-button clicks and capture the pointer only while dragging', () => {
+    const element = document.createElement('div');
+    const setPointerCapture = spyOn(element, 'setPointerCapture');
+    const releasePointerCapture = spyOn(element, 'releasePointerCapture');
+    const bucket = {
+      label: 'mar 17-11',
+      start: new Date('2026-11-17T00:00:00'),
+      end: new Date('2026-11-17T23:59:59.999'),
+      hasRecords: true,
+    };
+    const selectHistoryBucket = spyOn(component, 'selectHistoryBucket');
+
+    component.onHistoryDaysPointerDown(
+      new PointerEvent('pointerdown', {
+        pointerId: 1,
+        pointerType: 'mouse',
+        button: 0,
+        clientX: 100,
+      }),
+      element,
+    );
+    component.onHistoryDaysPointerUp(
+      new PointerEvent('pointerup', { pointerId: 1, clientX: 100 }),
+      element,
+    );
+    component.onHistoryDayClick(new MouseEvent('click'), bucket);
+
+    expect(setPointerCapture).not.toHaveBeenCalled();
+    expect(selectHistoryBucket).toHaveBeenCalledOnceWith(bucket);
+
+    component.onHistoryDaysPointerDown(
+      new PointerEvent('pointerdown', {
+        pointerId: 2,
+        pointerType: 'mouse',
+        button: 0,
+        clientX: 100,
+      }),
+      element,
+    );
+    component.onHistoryDaysPointerMove(
+      new PointerEvent('pointermove', { pointerId: 2, clientX: 90 }),
+      element,
+    );
+    component.onHistoryDaysPointerUp(
+      new PointerEvent('pointerup', { pointerId: 2, clientX: 90 }),
+      element,
+    );
+
+    expect(setPointerCapture).toHaveBeenCalledOnceWith(2);
+    expect(releasePointerCapture).toHaveBeenCalledOnceWith(2);
+
+    component.onHistoryDayClick(new MouseEvent('click', { detail: 1 }), bucket);
+    expect(selectHistoryBucket).toHaveBeenCalledOnceWith(bucket);
+
+    component.onHistoryDayClick(new MouseEvent('click'), bucket);
+    expect(selectHistoryBucket).toHaveBeenCalledTimes(2);
+  });
 });

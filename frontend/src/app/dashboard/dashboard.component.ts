@@ -158,6 +158,7 @@ export class DashboardComponent implements OnInit, OnDestroy, AfterViewChecked {
   private historyDaysStartX = 0;
   private historyDaysStartScrollLeft = 0;
   private historyDaysDragged = false;
+  private historyDaysPointerCaptured = false;
   private historyDaysSuppressClick = false;
   historyDaysDragging = false;
 
@@ -1087,8 +1088,9 @@ private setAlertConfiguration(configuration: AlertConfiguration): void {
     this.historyDaysStartX = event.clientX;
     this.historyDaysStartScrollLeft = element.scrollLeft;
     this.historyDaysDragged = false;
+    this.historyDaysPointerCaptured = false;
+    this.historyDaysSuppressClick = false;
     this.historyDaysDragging = true;
-    element.setPointerCapture(event.pointerId);
   }
 
   onHistoryDaysPointerMove(event: PointerEvent, element: HTMLElement): void {
@@ -1097,6 +1099,10 @@ private setAlertConfiguration(configuration: AlertConfiguration): void {
     const distance = event.clientX - this.historyDaysStartX;
     if (Math.abs(distance) > 4) {
       this.historyDaysDragged = true;
+      if (!this.historyDaysPointerCaptured) {
+        element.setPointerCapture(event.pointerId);
+        this.historyDaysPointerCaptured = true;
+      }
     }
 
     if (this.historyDaysDragged) {
@@ -1111,7 +1117,10 @@ private setAlertConfiguration(configuration: AlertConfiguration): void {
     this.historyDaysSuppressClick = this.historyDaysDragged;
     this.historyDaysPointerId = null;
     this.historyDaysDragging = false;
-    element.releasePointerCapture(event.pointerId);
+    if (this.historyDaysPointerCaptured) {
+      element.releasePointerCapture(event.pointerId);
+      this.historyDaysPointerCaptured = false;
+    }
   }
 
   onHistoryDaysPointerCancel(event: PointerEvent, element: HTMLElement): void {
@@ -1120,19 +1129,23 @@ private setAlertConfiguration(configuration: AlertConfiguration): void {
     this.historyDaysPointerId = null;
     this.historyDaysDragging = false;
     this.historyDaysDragged = false;
-    element.releasePointerCapture(event.pointerId);
+    if (this.historyDaysPointerCaptured) {
+      element.releasePointerCapture(event.pointerId);
+      this.historyDaysPointerCaptured = false;
+    }
   }
 
   onHistoryDayClick(
     event: MouseEvent,
     bucket: { label: string; start: Date; end: Date; hasRecords: boolean },
   ): void {
-    if (this.historyDaysSuppressClick) {
+    if (this.historyDaysSuppressClick && event.detail > 0) {
       event.preventDefault();
       this.historyDaysSuppressClick = false;
       return;
     }
 
+    this.historyDaysSuppressClick = false;
     this.selectHistoryBucket(bucket);
   }
 
