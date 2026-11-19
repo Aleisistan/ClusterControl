@@ -4,6 +4,8 @@ services:
   mosquitto:
     image: eclipse-mosquitto:2
     restart: unless-stopped
+    environment:
+      TZ: America/Argentina/Buenos_Aires
     command: ["mosquitto", "-c", "/mosquitto/config/mosquitto.production.conf"]
     ports:
       - "${MQTT_HOST_PORT:-1883}:1883"
@@ -33,6 +35,7 @@ services:
       - ./.env
     environment:
       NODE_ENV: production
+      TZ: America/Argentina/Buenos_Aires
       INITIAL_ADMIN_USERNAME: ${INITIAL_ADMIN_USERNAME:?Set INITIAL_ADMIN_USERNAME in .env}
       INITIAL_ADMIN_PASSWORD: ${INITIAL_ADMIN_PASSWORD:?Set INITIAL_ADMIN_PASSWORD in .env}
       SEED_DEFAULT_CLUSTERS: "false"
@@ -52,6 +55,7 @@ services:
       API_URL: ${API_URL:-/api}
       SOCKET_URL: ${SOCKET_URL:-}
       BACKEND_URL: ${BACKEND_URL:-http://backend:3000}
+      TZ: America/Argentina/Buenos_Aires
       NGINX_ENVSUBST_FILTER: BACKEND_URL
     depends_on:
       backend:

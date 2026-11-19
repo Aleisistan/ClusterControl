@@ -12,3 +12,6 @@ firmware/esp32-mqtt-base/config.h
 firmware/esp32-mqtt-base/.pio/
 tests-industriales/reports/*
 !tests-industriales/reports/.gitkeep
+# Archivos de respaldo locales
+*.backup
+*.bak
