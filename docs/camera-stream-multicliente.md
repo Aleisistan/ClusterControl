@@ -1,133 +1,84 @@
-# Incidente: acceso simultáneo al stream de la cámara
+# Cámaras: streams compartidos y capturas de puerta
 
-## Síntoma
+## Configurar una cámara
 
-Al abrir el stream MJPEG de la cámara directamente y, al mismo tiempo, cargarlo
-en el dashboard, el video podía quedar disponible solo para uno de los clientes.
-También se observó que el primer dashboard mostraba video, pero un segundo
-dashboard no, aunque ambos alcanzaban el backend.
+En **Clusters**, un administrador puede asignar hasta dos cámaras por cluster,
+cada una con nombre e IP o URL de stream.
 
-## Causa
+- Si ingresas solo una IP, el sistema usa `http://<IP>:81/stream`, el endpoint
+  predeterminado de la ESP32-CAM.
+- Si ingresas una URL completa con una IP como host, el backend la retransmite.
+  Los streams MJPEG comparten una conexión de cámara entre los dashboards
+  conectados a esa instancia; las URL HLS y sus recursos pasan por el proxy.
+- Si la URL usa un nombre de dominio, el navegador abre el stream directamente
+  desde su origen. En ese caso no se usa el relay compartido.
 
-La cámara ESP32-CAM entrega un stream MJPEG en
-`http://<IP_DE_CAMARA>:81/stream`. Una conexión abierta directamente desde el
-navegador consume una conexión de la cámara y puede impedir que el backend abra
-su propia conexión. Por eso, durante el uso compartido, el stream directo debe
-permanecer cerrado.
+Ver el dashboard requiere iniciar sesión. Las rutas de stream servidas por el
+backend también están autenticadas. Las URL con dominio se cargan directamente
+desde el navegador: el inicio de sesión de la aplicación no protege ese origen,
+que debe ser accesible y contar con su propia protección. No configures la
+cámara en una variable de entorno.
 
-El acceso de los dashboards se diseñó como un relay:
+Para compartir la conexión de una ESP32-CAM, no abras su URL directa
+(`http://<IP>:81/stream`) en paralelo desde otro cliente: la cámara podría no
+aceptar ambas conexiones.
 
-1. Cada dashboard solicita `GET /camera/stream/:clusterId` al backend.
-2. El backend abre una conexión al stream de la cámara.
-3. `CameraStreamService` distribuye los mismos bytes a todos los dashboards
-   conectados a esa cámara.
-4. Al desconectarse el último dashboard, el backend cierra la conexión con la
-   cámara.
+## Comprobar el relay MJPEG
 
-Las cámaras se configuran desde **Clusters** en la web: cada cluster admite
-hasta dos cámaras, cada una con nombre y dirección. En el campo se puede
-ingresar la IP de una ESP32-CAM (por ejemplo, `192.168.1.50`) o una URL
-HTTP/HTTPS de un stream.
-Las URLs con IP como host se envían a la API, que retransmite MJPEG y actúa
-como proxy de playlists HLS y sus segmentos; se conserva el puerto, la ruta y
-la query configurados. Una IP simple usa el valor predeterminado
-`http://<IP>:81/stream`. Las URLs con nombre de dominio se abren desde su origen.
-No se configura la cámara en una variable de entorno.
+1. Inicia el entorno siguiendo el [README principal](../README.MD#desarrollo).
+2. Cierra cualquier acceso directo al stream de la cámara.
+3. Abre el dashboard y después otro dashboard para el mismo cluster.
+4. En los logs del backend verifica que el contador de `Viewer conectado`
+   aumente, mientras haya una sola `Conexión upstream activa` para esa cámara.
+   Al cerrar el último dashboard, el backend cierra esa conexión.
+5. En DevTools → Network, busca `camera/stream/<clusterId>`. Una respuesta
+   `200` que queda abierta es normal para un stream continuo; los bytes
+   recibidos deben aumentar.
 
-Se detectó además un error al admitir espectadores tardíos: el backend copiaba
-el encabezado `Content-Type` de la cámara solo a los espectadores que ya estaban
-conectados cuando se establecía la conexión upstream. Los siguientes recibían
-los bytes MJPEG sin ese encabezado, por lo que el navegador no los interpretaba
-como imagen. El relay ahora guarda el tipo de contenido y lo aplica también a
-cada espectador nuevo.
+El relay mantiene su estado en memoria dentro de una instancia del backend. Si
+se ejecutan varias réplicas, cada una puede abrir su propia conexión a la
+cámara.
 
-## Cambios
+El dashboard puede enviar un token en la URL de la petición al backend; no
+compartas ni registres ese valor.
 
-- El relay compartido está implementado en
-  [`backend/src/camera/camera-stream.service.ts`](../backend/src/camera/camera-stream.service.ts).
-- La ruta autenticada por cluster está en
-  [`backend/src/camera/camera.controller.ts`](../backend/src/camera/camera.controller.ts).
-- El dashboard usa la ruta del backend y no debe conectarse directamente a la
-  IP de la cámara:
-  [`frontend/src/app/dashboard/dashboard.component.ts`](../frontend/src/app/dashboard/dashboard.component.ts).
-- La pantalla administrativa permite agregar, actualizar o quitar la cámara de
-  cada cluster desde la tabla de Clusters:
-  [`frontend/src/app/pages/admin-clusters-page.component.ts`](../frontend/src/app/pages/admin-clusters-page.component.ts).
-- La prueba de relay comprueba que un espectador que se conecta después del
-  primero recibe el `Content-Type` MJPEG y comparte la misma conexión upstream:
-  [`backend/src/camera/camera-stream.service.spec.ts`](../backend/src/camera/camera-stream.service.spec.ts).
+## Capturas al abrir la puerta
 
-## Procedimiento de uso y verificación
+Cuando una telemetría de un dispositivo real registra un cambio de puerta
+cerrada a abierta, el backend intenta guardar una imagen JPEG en PostgreSQL y
+la agrega al historial del cluster. Si la cámara no responde, conserva la
+telemetría y registra el error. No toma capturas repetidas mientras la puerta
+sigue abierta: debe recibirse un cierre y una nueva apertura.
 
-1. Cerrar la URL directa `http://<IP_DE_CAMARA>:81/stream`.
-2. Reiniciar o actualizar el backend para que ejecute el código actual. En el
-   entorno de desarrollo Docker:
+La captura automática está pensada para una ESP32-CAM con IP simple y los
+endpoints predeterminados en el puerto `81`: `/stream` y `/capture`. Si ya hay
+un stream compatible activo, se reutiliza el último frame JPEG completo; si no
+hay un stream activo, el backend solicita `/capture`. Si el stream activo no
+entrega un frame a tiempo, la captura falla. Si hay dos cámaras, no se puede
+elegir cuál usa la captura automática. URLs con rutas, puertos personalizados o
+cámaras que no implementen esos endpoints pueden mostrar el video y aun así no
+generar capturas.
 
-   ```powershell
-   docker compose --env-file .env.development.local -f .\docker-compose.dev.yml restart backend
-   ```
-
-3. Abrir el dashboard en el primer dispositivo y después en el segundo.
-4. En los logs del backend comprobar:
-   - `Viewer conectado a cámara ... (1 viewer(s))` y después un contador de
-     viewers que aumenta al abrir otro dashboard.
-   - Una sola línea `Conexión upstream activa para cámara ...` mientras los
-     dashboards comparten esa conexión.
-   - `Viewer desconectado ...` cuando una pestaña se cierra. El stream upstream
-     solo se cierra cuando ya no queda ningún espectador.
-5. En DevTools → Network, seleccionar **All** o **Img** y buscar la petición
-   `camera/stream/<clusterId>`. Un estado `200` que permanece pendiente es
-   normal para un stream continuo; los bytes recibidos deben aumentar.
-
-Para seguir los logs:
-
-```powershell
-docker compose --env-file .env.development.local -f .\docker-compose.dev.yml logs -f --since=2m backend
-```
-
-La ruta está autenticada. No compartir el valor del parámetro `token` que pueda
-aparecer en la URL o en DevTools.
+El endpoint autenticado para descargar una imagen es
+`GET /telemetry/door-snapshots/:id/image`.
 
 ## Diagnóstico
 
-- **No aparece `Viewer conectado`:** el navegador no está llegando a esta
-  instancia del backend o el dashboard no solicitó la ruta de stream.
-- **Aparece `Error conectando cluster`:** revisar conectividad desde el
-  contenedor backend hacia la IP de la cámara.
-- **Hay varios viewers y una conexión upstream, pero un dashboard no muestra
-  imagen:** verificar que el backend desplegado incluya el reenvío del
-  `Content-Type` también al espectador tardío; revisar el estado, bytes y
-  encabezados de esa petición en DevTools.
-- **La prueba a `http://<IP_DE_CAMARA>:81/stream` desde el contenedor devuelve
-  `HTTP 200` y `multipart/x-mixed-replace`:** el contenedor puede alcanzar la
-  cámara. Esta comprobación abre una conexión real; cerrarla antes de probar los
-  dashboards para evitar competir por la conexión.
-- **Una petición de stream devuelve `401`:** volver a iniciar sesión y comprobar
-  la autenticación de esa petición. No registrar ni compartir tokens.
+- **No aparece `Viewer conectado`:** confirma que el dashboard solicitó el
+  stream y que la petición llegó a esta instancia del backend. Las URL con
+  nombre de dominio no usan este relay.
+- **El log muestra `Error conectando cluster`:** revisa que el contenedor del
+  backend pueda alcanzar la IP, puerto y ruta configurados.
+- **El stream no aparece en el dashboard:** revisa en DevTools el estado HTTP,
+  los encabezados y el aumento de bytes. Un `401` requiere iniciar sesión de
+  nuevo.
+- **Hay video pero no captura de puerta:** confirma que la telemetría sea de un
+  dispositivo real, que exista una transición de cerrada a abierta y que la
+  cámara admita `/stream` o `/capture` en el puerto `81`.
 
-La prueba automatizada se ejecuta con:
+La prueba unitaria del relay se ejecuta desde la raíz del repositorio en
+PowerShell:
 
 ```powershell
 npm.cmd --prefix backend test -- --runInBand camera-stream.service.spec.ts
 ```
-
-## Alcance
-
-La conexión compartida vive en memoria en una instancia del backend. Si se
-ejecutan varias instancias o réplicas, cada instancia podría abrir su propia
-conexión a la cámara; en ese despliegue se necesita un relay único o una capa
-compartida entre instancias.
-
-## Capturas al abrir la puerta
-
-Cuando la telemetría detecta el cambio de puerta cerrada a abierta, el backend
-guarda el último frame JPEG completo recibido por el relay MJPEG compartido y
-lo conserva en PostgreSQL. Esto evita abrir `/capture` en paralelo con el stream
-activo, ya que algunas cámaras no admiten ambas conexiones simultáneamente. La
-captura se agrega al historial de cambios de estado y se puede descargar desde
-el dashboard. El proceso no vuelve a capturar mientras la puerta siga abierta;
-debe registrarse un cierre y una apertura nuevos para generar otra imagen.
-
-Las imágenes usan la tabla `door_snapshots` y el endpoint autenticado
-`GET /telemetry/door-snapshots/:id/image`. Si la cámara no responde, la lectura
-de telemetría se conserva igualmente y el backend registra el error de captura.

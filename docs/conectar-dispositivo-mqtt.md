@@ -53,15 +53,17 @@ necesite. No hagas port-forward de un broker anónimo a Internet.
 El Compose de producción usa el archivo
 [`mosquitto.production.conf`](../mosquitto/config/mosquitto.production.conf),
 que deshabilita clientes anónimos y requiere contraseña y ACL. Antes del primer
-`up`, desde la raíz del proyecto, copia la plantilla de ACL a su nombre
-operativo (el ACL contiene permisos, no contraseñas):
+`up`, desde la raíz del proyecto, crea el archivo operativo de ACL solo si aún
+no existe. El ACL contiene permisos, no contraseñas:
 
 ```powershell
-Copy-Item .\mosquitto\config\aclfile.example .\mosquitto\config\aclfile
+if (-not (Test-Path .\mosquitto\config\aclfile)) {
+  Copy-Item .\mosquitto\config\aclfile.example .\mosquitto\config\aclfile
+}
 ```
 
-El archivo `aclfile` operativo es local y está excluido de Git; edita el
-`aclfile` del servidor, no solo el `.example`.
+El archivo `aclfile` operativo es local y está excluido de Git. Si ya existe,
+edita ese archivo; no lo reemplaces con la plantilla.
 
 1. Configura en `.env` un `MQTT_USER=clustercontrol-backend` y una
    `MQTT_PASSWORD` segura. El usuario debe coincidir con el usuario del
@@ -69,20 +71,35 @@ El archivo `aclfile` operativo es local y está excluido de Git; edita el
    al generar el `password_file`.
 2. Genera el archivo de contraseñas en el directorio montado por el broker:
 
+   La opción `-c` crea o reemplaza el archivo y sus usuarios. Úsala solo al
+   configurarlo por primera vez; para agregar o cambiar usuarios después,
+   vuelve a ejecutar `mosquitto_passwd` sin `-c`.
+
    ```powershell
    $configPath = (Resolve-Path .\mosquitto\config).Path
-   docker run --rm -it --mount "type=bind,source=$configPath,target=/mosquitto/config" eclipse-mosquitto:2 mosquitto_passwd -c /mosquitto/config/password_file clustercontrol-backend
-   docker run --rm -it --mount "type=bind,source=$configPath,target=/mosquitto/config" eclipse-mosquitto:2 mosquitto_passwd /mosquitto/config/password_file clustercontrol-device
+   $configMount = "type=bind,source=$configPath,target=/mosquitto/config"
+   docker run --rm -it --mount $configMount eclipse-mosquitto:2 mosquitto_passwd -c /mosquitto/config/password_file clustercontrol-backend
+   docker run --rm -it --mount $configMount eclipse-mosquitto:2 mosquitto_passwd /mosquitto/config/password_file clustercontrol-device
    ```
 
-   La primera orden crea el archivo y la segunda agrega el usuario del
-   dispositivo. Ingresa la misma contraseña configurada en `MQTT_PASSWORD`
-   para el usuario del backend; para el usuario del dispositivo, usa una
-   contraseña independiente y configúrala también en cada placa. Los nombres
-   de usuario de los comandos son los valores por defecto: si los cambias,
-   actualiza el nombre correspondiente en `.env` (`MQTT_USER`), en
-   `mosquitto/config/aclfile` (después de `user`) y en el comando
-   `mosquitto_passwd`; para el dispositivo actualízalo también en el firmware.
+   `mosquitto_passwd` crea el archivo como `root`, pero el broker lee los
+   archivos como el usuario `mosquitto`. Después de crear ambos archivos,
+   asigna el propietario y limita sus permisos antes de iniciar Compose:
+
+   ```powershell
+   docker run --rm --mount $configMount --entrypoint chown eclipse-mosquitto:2 mosquitto:mosquitto /mosquitto/config/password_file /mosquitto/config/aclfile
+   docker run --rm --mount $configMount --entrypoint chmod eclipse-mosquitto:2 600 /mosquitto/config/password_file /mosquitto/config/aclfile
+   ```
+
+   En los comandos de generación, el primero crea el archivo y el segundo
+   agrega el usuario del dispositivo. Ingresa la misma contraseña configurada
+   en `MQTT_PASSWORD` para el usuario del backend; para el usuario del
+   dispositivo, usa una contraseña independiente y configúrala también en cada
+   placa. Los nombres de usuario de los comandos son los valores por defecto:
+   si los cambias, actualiza el nombre correspondiente en `.env`
+   (`MQTT_USER`), en `mosquitto/config/aclfile` (después de `user`) y en el
+   comando `mosquitto_passwd`; para el dispositivo actualízalo también en el
+   firmware.
    El [`aclfile.example`](../mosquitto/config/aclfile.example) versionado
    muestra los permisos por defecto. El nombre tras `user` en el `aclfile`
    operativo debe coincidir exactamente con el que se usa al crear la entrada
@@ -114,9 +131,9 @@ una autenticación criptográfica del equipo.
 
 ## 3. Configurar el firmware y la placa
 
-La plantilla disponible está en
-[`firmware/esp32-mqtt-base`](../firmware/esp32-mqtt-base/README.md). Copia
-`config.h.example` como `config.h` y define:
+Sigue el [README del firmware](../firmware/ClusterControl_ESP32/README.md) para
+crear `config.h`, compilar y cargar la placa. Para asociarla al sistema,
+configura estos valores:
 
 ```cpp
 #define WIFI_SSID "nombre-de-la-red"
@@ -132,21 +149,9 @@ En desarrollo anónimo deja `MQTT_USERNAME` y `MQTT_PASSWORD` vacíos. En
 producción usa las credenciales creadas para `clustercontrol-device`. No subas
 `config.h` ni credenciales al repositorio.
 
-La plantilla de firmware apunta a una placa ESP32 Dev Module y usa PlatformIO,
-Arduino, PubSubClient y ArduinoJson. Compila y carga desde el directorio del
-firmware:
-
-```powershell
-pio run
-pio run --target upload
-pio device monitor
-```
-
-Conecta sensores y actuadores respetando el pinout, alimentación y niveles
-lógicos de tu placa. Adapta `sensor_adapter.h`: sus funciones de sensores
-devuelven `NAN` inicialmente, por lo que el ejemplo no publicará telemetría
-hasta que implementes lecturas válidas. Las salidas de actuadores también son
-adaptadores de ejemplo; el backend todavía no envía comandos de control.
+Si hay una cámara con IP fija, define `CAMERA_IP`; el dispositivo anuncia su
+IP en `datacenter/camera/ip` al conectarse. Si no hay cámara, deja el valor
+vacío.
 
 ## 4. Verificar el flujo
 

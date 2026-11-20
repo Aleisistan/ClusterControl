@@ -8,19 +8,20 @@ cambios; Angular actualiza la página al guardar archivos.
 
 La forma recomendada de iniciar el frontend integrado con el backend es usar
 el [Compose de desarrollo](../README.MD#desarrollo). Para ejecutarlo por
-separado (requiere Node.js 22.22.3 o una versión compatible más reciente),
-desde este directorio:
+separado, requiere Node.js 22.22.3 (la versión usada por Docker y CI). Desde
+este directorio:
 
-```bash
+```powershell
 npm ci
 npm start
 ```
 
-La ejecución local espera que la API esté disponible en `localhost:3000`.
+La ejecución local espera que la API esté disponible en `localhost:3000`; para
+usar otro host, define `API_URL` antes de ejecutar `npm start`.
 
 Para compilar o ejecutar las pruebas unitarias:
 
-```bash
+```powershell
 npm run build
 npm test -- --watch=false --browsers=ChromeHeadless
 ```

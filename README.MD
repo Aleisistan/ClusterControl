@@ -24,12 +24,22 @@ No necesitas instalar Node.js ni Python para iniciar la aplicación con Docker.
 
    `.env.development.local` es local y no se sube a Git. El Compose de desarrollo
    usa credenciales de prueba `admin` / `admin123` y crea clusters de ejemplo.
-   No sobrescribas un archivo local que ya tenga tu configuración. Cambia las
-   credenciales antes de conectar hardware real. Configura `API_URL` con una
-   URL accesible desde el navegador (por ejemplo, `http://localhost:3000` o la
-   IP del servidor); `SOCKET_URL` puede quedar vacío para usar la misma URL de
-   API. Es el único archivo de entorno de desarrollo; el backend también lo usa
-   al ejecutarse directamente.
+   No sobrescribas un archivo local que ya tenga tu configuración. No expongas
+   este entorno ni uses esas credenciales en producción. El broker de desarrollo
+   permite conexiones MQTT anónimas; mantenlo en una red local de confianza.
+   Como `.env.example` contiene valores de producción, en
+   `.env.development.local` cambia `API_URL` por una dirección accesible desde
+   el navegador. Con los puertos locales predeterminados, usa:
+
+   ```dotenv
+   API_URL=http://localhost:3000
+   SOCKET_URL=
+   ```
+
+   Si accedes desde otro equipo, reemplaza `localhost` por la IP o el DNS del
+   servidor. `SOCKET_URL` vacío hace que Socket.IO use ese mismo host. Este es
+   el único archivo de entorno de desarrollo; el backend también lo usa al
+   ejecutarse directamente.
 
 2. Desde la raíz del repositorio, inicia los servicios:
 
@@ -40,7 +50,8 @@ No necesitas instalar Node.js ni Python para iniciar la aplicación con Docker.
 3. Abre <http://localhost:4200> e inicia sesión. Otros accesos locales:
 
    - API: <http://localhost:3000>
-   - pgAdmin: <http://localhost:5050>
+   - pgAdmin: <http://localhost:5050> (por defecto, `admin@example.com` /
+     `development-only-change-me`)
    - MQTT: `localhost:1883`
 
 El código fuente del backend y frontend está montado desde el host. Al guardar
@@ -52,11 +63,11 @@ dependencias o Dockerfiles sí requieren reconstrucción:
 docker compose --env-file .env.development.local -f docker-compose.dev.yml up --build -d backend frontend
 ```
 
-El entorno incluye PostgreSQL, Mosquitto, el simulador MQTT y herramientas
-opcionales para pruebas industriales. El simulador publica telemetría de
-ejemplo para China y Alemania; el dashboard de desarrollo muestra esas lecturas
-junto con las de dispositivos reales, pero excluye los datos de pruebas
-industriales. Si cambias la configuración del clima, agrega tu
+El entorno incluye PostgreSQL, Mosquitto, el simulador MQTT y un contenedor de
+pruebas industriales que queda en espera hasta que lo uses. El simulador
+publica telemetría de ejemplo para China y Alemania; el dashboard de desarrollo
+muestra esas lecturas junto con las de dispositivos reales, pero excluye los
+datos de pruebas industriales. Si cambias la configuración del clima, agrega tu
 `OPENWEATHER_API_KEY` a `.env.development.local` y recrea el backend:
 
 ```powershell
@@ -83,7 +94,8 @@ volúmenes de desarrollo y la base de datos.
 
 ## Producción
 
-1. Copia `.env.example` como `.env` en el servidor.
+1. En la primera instalación, copia `.env.example` como `.env` en el servidor.
+   No reemplaces un `.env` que ya contenga la configuración de producción.
 2. Reemplaza todos los valores `REEMPLAZAR_*` por valores seguros. Configura
    `API_URL=/api` (para que Angular use el proxy Nginx) y, si el backend no es
    accesible como `backend` en la red de Compose, ajusta `BACKEND_URL`.
@@ -107,6 +119,7 @@ defecto Compose usa `latest`; para fijar una versión, configura
 `ghcr.io/aleisistan/clustercontrol-backend:v1.0.0`. Compose consulta las
 imágenes en cada `up`. Producción no monta el código fuente ni lo recarga
 automáticamente.
+
 La aplicación queda disponible en el puerto `FRONTEND_HOST_PORT` (80 por
 defecto). Nginx sirve el frontend y pasa `/api` y Socket.IO al backend por la
 red interna. Producción no incluye pgAdmin, simulador, clusters de muestra ni
@@ -119,10 +132,12 @@ El Compose de producción usa un listener MQTT autenticado. Antes de iniciar los
 servicios, copia `mosquitto/config/aclfile.example` como `aclfile` en el
 servidor, crea el archivo de contraseñas del broker y configura las credenciales
 del backend en `.env`. El `aclfile` operativo y `password_file` son locales y
-están excluidos de Git. Si cambias `MQTT_USER` o el usuario del dispositivo,
-actualiza también los nombres en el `aclfile` operativo y al generar el
-`password_file`; la guía de conexión explica cómo preparar el servidor, el
-firewall y las placas.
+están excluidos de Git. Antes de iniciar el broker, asígnalos al usuario
+`mosquitto` y restringe sus permisos según la
+[guía de conexión](./docs/conectar-dispositivo-mqtt.md). Si cambias `MQTT_USER`
+o el usuario del dispositivo, actualiza también los nombres en el `aclfile`
+operativo y al generar `password_file`; la guía de conexión explica cómo
+preparar el servidor, el firewall y las placas.
 
 ## Clusters, dispositivos y cámaras
 
@@ -135,30 +150,25 @@ clusters de demostración se crean solo en desarrollo.
 
 En el mismo menú se pueden asociar hasta dos cámaras a cada cluster, con nombre
 y dirección IP o URL de stream.
-Una misma instancia del backend retransmite el stream a todos los dashboards
-conectados para compartir una conexión con la cámara. No configures la cámara
-en una variable de entorno ni abras el stream directamente desde cada
-navegador. Consulta la
-[guía del relay de cámaras](./docs/camera-stream-multicliente.md).
-Como opción, un dispositivo que publique su IP de cámara por MQTT también
-puede crear o actualizar ese registro.
+
+Para streams MJPEG con host IP, el backend comparte una conexión de cámara
+entre los dashboards de esa instancia; las URL HLS con host IP se retransmiten
+por proxy. Las URL con nombre de dominio se abren desde su origen y no usan el
+relay compartido. No configures la cámara en una variable de entorno. Consulta
+la [guía de cámaras](./docs/camera-stream-multicliente.md). Como alternativa,
+un dispositivo que publique la IP de su cámara por MQTT puede crear o
+actualizar ese registro.
+
+## Hardware
+
+Los esquemas y la placa están en [hardware/esp32/KiCad](./hardware/esp32/KiCad/)
+y se describen en su [README](./hardware/esp32/KiCad/readme.md). El pinout,
+los umbrales y la configuración del ESP32 están en la
+[guía del firmware](./firmware/ClusterControl_ESP32/README.md).
 
 ## Pruebas
 
-Desde `backend` o `frontend`, instala dependencias con `npm ci`; luego usa:
-
-```bash
-# backend
-npm test -- --runInBand
-npm run build
-
-# frontend
-npm test -- --watch=false --browsers=ChromeHeadless
-npm run build
-```
-
-Las pruebas industriales requieren el entorno de desarrollo. Consulta
-[tests-industriales/README.md](./tests-industriales/README.md).
-
-Más detalles de cada componente: [backend](./backend/README.md) y
-[frontend](./frontend/README.md).
+Para instalar dependencias, compilar y ejecutar pruebas unitarias, sigue los
+README de [backend](./backend/README.md) y [frontend](./frontend/README.md).
+Las pruebas industriales requieren el entorno de desarrollo; consulta su
+[guía](./tests-industriales/README.md).

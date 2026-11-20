@@ -27,10 +27,12 @@ O especifica la duración y el intervalo entre ciclos:
 docker compose --env-file .env.development.local -f docker-compose.dev.yml exec industrial-tests python runner/endurance.py --hours 8 --interval-seconds 60
 ```
 
-El simulador debe estar activo para las pruebas MQTT con datos sintéticos. Para
-comprobar hardware real, detén el simulador, configura `test.target_device_id`
-en `config/test-config.yaml` y asegúrate de que el dispositivo esté encendido y
-publicando telemetría.
+Por defecto, `test.target_device_id` en `config/test-config.yaml` apunta al
+simulador de China (ID `34`), por lo que este debe estar activo para comprobar
+la llegada de esa telemetría. Para probar hardware, detén el simulador, cambia
+ese valor por el ID de la placa y declara ese ID como físico
+(`simulated: false`) en `config/devices.yaml`. La placa debe estar encendida y
+publicando telemetría durante la prueba.
 
 Las pruebas con endpoints protegidos usan un usuario de prueba. En Compose de
 desarrollo se pasan por defecto `admin` / `admin123`; puedes reemplazarlos con
