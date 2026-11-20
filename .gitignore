@@ -8,8 +8,8 @@ frontend/public/runtime-config.json
 __pycache__/
 *.py[cod]
 .pytest_cache/
-firmware/esp32-mqtt-base/config.h
-firmware/esp32-mqtt-base/.pio/
+firmware/ClusterControl_ESP32/config.h
+firmware/ClusterControl_ESP32/.pio/
 tests-industriales/reports/*
 !tests-industriales/reports/.gitkeep
 # Archivos de respaldo locales

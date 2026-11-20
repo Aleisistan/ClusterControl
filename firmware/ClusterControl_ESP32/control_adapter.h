@@ -43,9 +43,7 @@ inline void setExtractor(bool state) {
 inline void setAire(bool encender) {
   if (encender == aireEncendido) return;
 
-  // Se conserva el comando POWER del firmware original.
-  // Es un comando toggle: validar el estado real del equipo en la prueba.
-  irsend.sendCOOLIX(IR_POWER);
+  irsend.sendCOOLIX(encender ? IR_POWER_ON : IR_POWER_OFF);
   aireEncendido = encender;
   Serial.printf("[CONTROL] Aire %s\n", encender ? "ENCENDIDO" : "APAGADO");
 }

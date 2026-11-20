@@ -31,8 +31,8 @@ inline bool readDoorState() {
 
 inline bool sensorsAreValid(float t1, float h1, float t2, float h2) {
   return isfinite(t1) && isfinite(h1) && isfinite(t2) && isfinite(h2)
-      && t1 >= -40.0f && t1 <= 80.0f
-      && t2 >= -40.0f && t2 <= 80.0f
+      && t1 >= -40.0f && t1 <= 100.0f
+      && t2 >= -40.0f && t2 <= 100.0f
       && h1 >= 0.0f && h1 <= 100.0f
       && h2 >= 0.0f && h2 <= 100.0f;
 }

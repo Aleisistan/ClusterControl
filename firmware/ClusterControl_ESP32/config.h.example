@@ -3,6 +3,9 @@
 // Copia este archivo como config.h y completa los valores del sitio.
 #define WIFI_SSID "cambiar-ssid"
 #define WIFI_PASSWORD "cambiar-password"
+#define WIFI_USE_BSSID 0
+#define WIFI_CHANNEL 1
+#define WIFI_BSSID {0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
 
 #define MQTT_HOST "192.168.1.50"
 #define MQTT_PORT 1883
@@ -20,3 +23,14 @@
 
 // Tiempo maximo de espera por conexion Wi-Fi/MQTT.
 #define CONNECTION_RETRY_MS 5000UL
+
+// Histeresis para extractor y aire acondicionado.
+#define TEMP_ON 28.0f
+#define TEMP_OFF 25.0f
+#define HUM_ON 65.0f
+#define HUM_OFF 60.0f
+
+// Codigos COOLIX: encendido por defecto (25 C, automatico) y apagado.
+// Verifica o reemplaza estos codigos para el modelo de aire acondicionado.
+#define IR_POWER_ON 0xB21FC8UL
+#define IR_POWER_OFF 0xB27BE0UL
