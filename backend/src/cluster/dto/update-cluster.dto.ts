@@ -3,6 +3,7 @@ import {
   IsOptional,
   IsString,
   IsNotEmpty,
+  Matches,
   MaxLength,
 } from 'class-validator';
 
@@ -28,6 +29,7 @@ export class UpdateClusterDto {
 
   @IsOptional()
   @IsString()
+  @Matches(/^[0-9]+$/)
   @MaxLength(100)
   deviceId?: string;
 

@@ -26,7 +26,7 @@ setInterval(() => {
     source: "simulator",
   };
 
-  const saopaulo = {
+  const germany = {
     deviceId: 35,
     temp1: 18 + Math.random() * 7,
     hum1: 65 + Math.random() * 15,
@@ -40,5 +40,5 @@ setInterval(() => {
   };
 
   client.publish("datacenter/ambiente", JSON.stringify(china));
-  client.publish("datacenter/ambiente", JSON.stringify(saopaulo));
+  client.publish("datacenter/ambiente", JSON.stringify(germany));
 }, 15000);

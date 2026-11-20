@@ -12,7 +12,10 @@ def test_api_becomes_available_within_recovery_window(config):
                 f'{config["api"]["base_url"]}/',
                 timeout=config["api"]["timeout_seconds"],
             )
-            if response.status_code == 200 and response.text == "Hello World!":
+            if (
+                response.status_code == 200
+                and "API funcionando correctamente." in response.text
+            ):
                 return
             last_error = f"HTTP {response.status_code}: {response.text[:200]}"
         except requests.RequestException as error:
