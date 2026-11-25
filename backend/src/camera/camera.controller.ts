@@ -150,7 +150,7 @@ export class CameraController {
         }
 
         const host = ipVersion === 6 ? `[${camera.ip}]` : camera.ip;
-        streamUrl = new URL(`http://${host}:81/stream`);
+        streamUrl = new URL(`http://${host}`);
       }
 
       const hostname = streamUrl.hostname.replace(/^\[|\]$/g, '');

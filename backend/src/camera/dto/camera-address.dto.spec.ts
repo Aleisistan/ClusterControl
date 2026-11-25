@@ -5,15 +5,15 @@ import { UpdateCameraDto } from './update-camera.dto';
 
 describe('camera address DTOs', () => {
   it('accepts and preserves a full HTTP stream URL when creating a camera', () => {
+    const cameraUrl =
+      'HTTP://192.168.1.50:8080/Cam/Live?Channel=2';
     const dto = plainToInstance(CreateCameraDto, {
       name: 'Entrada',
-      ip: 'https://hoktastream3.webcamera.pl/krakow_cam_6f3258/krakow_cam_6f3258.stream/playlist.m3u8',
+      ip: cameraUrl,
       deviceId: '34',
     });
 
-    expect(dto.ip).toBe(
-      'https://hoktastream3.webcamera.pl/krakow_cam_6f3258/krakow_cam_6f3258.stream/playlist.m3u8',
-    );
+    expect(dto.ip).toBe(cameraUrl);
     expect(validateSync(dto)).toHaveLength(0);
   });
 

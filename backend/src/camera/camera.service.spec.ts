@@ -61,6 +61,12 @@ describe('CameraService', () => {
     expect(service).toBeDefined();
   });
 
+  it('returns the configured camera address without adding a stream path', async () => {
+    await expect(service.getStreamUrl(7)).resolves.toBe(
+      'http://192.168.1.50/camera',
+    );
+  });
+
   it('creates a camera for a cluster without a configured camera', async () => {
     const cluster = { id: 7, deviceId: '7', name: 'Cluster 7' };
     const camera = {
@@ -143,7 +149,7 @@ describe('CameraService', () => {
     await expect(service.captureForCluster(7)).resolves.toEqual(frame);
     expect(cameraStreamService.getLatestFrame).toHaveBeenCalledWith(
       5,
-      'http://192.168.1.50:81/stream',
+      'http://192.168.1.50/camera',
     );
     expect(request).not.toHaveBeenCalled();
 

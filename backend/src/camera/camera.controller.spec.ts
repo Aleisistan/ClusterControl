@@ -83,7 +83,7 @@ describe('CameraController', () => {
     expect(cameraStreamService.stream).not.toHaveBeenCalled();
   });
 
-  it('keeps IP-based ESP32 streams on the shared relay', async () => {
+  it('relays a bare IP without adding a port or stream path', async () => {
     cameraService.findAll.mockResolvedValue([
       { id: 1, ip: '192.168.1.50', cluster: { id: 3 } },
     ]);
@@ -100,7 +100,7 @@ describe('CameraController', () => {
 
     expect(cameraStreamService.stream).toHaveBeenCalledWith(
       1,
-      'http://192.168.1.50:81/stream',
+      'http://192.168.1.50/',
       response,
     );
     expect(response.redirect).not.toHaveBeenCalled();
@@ -117,7 +117,7 @@ describe('CameraController', () => {
 
     expect(cameraStreamService.stream).toHaveBeenCalledWith(
       2,
-      'http://192.168.1.51:81/stream',
+      'http://192.168.1.51/',
       response,
     );
   });

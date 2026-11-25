@@ -5,8 +5,9 @@
 En **Clusters**, un administrador puede asignar hasta dos cámaras por cluster,
 cada una con nombre e IP o URL de stream.
 
-- Si ingresas solo una IP, el sistema usa `http://<IP>:81/stream`, el endpoint
-  predeterminado de la ESP32-CAM.
+- Si ingresas solo una IP, el relay usa `http://<IP>` sin añadir puerto ni
+  ruta. Para cámaras que requieran un puerto o una ruta específicos, ingresa
+  la URL completa, por ejemplo `http://<IP>:81/stream`.
 - Si ingresas una URL completa con una IP como host, el backend la retransmite.
   Los streams MJPEG comparten una conexión de cámara entre los dashboards
   conectados a esa instancia; las URL HLS y sus recursos pasan por el proxy.
@@ -50,14 +51,12 @@ la agrega al historial del cluster. Si la cámara no responde, conserva la
 telemetría y registra el error. No toma capturas repetidas mientras la puerta
 sigue abierta: debe recibirse un cierre y una nueva apertura.
 
-La captura automática está pensada para una ESP32-CAM con IP simple y los
-endpoints predeterminados en el puerto `81`: `/stream` y `/capture`. Si ya hay
-un stream compatible activo, se reutiliza el último frame JPEG completo; si no
-hay un stream activo, el backend solicita `/capture`. Si el stream activo no
+La captura automática está pensada para una ESP32-CAM y, cuando no hay un
+stream activo, solicita `/capture` en el puerto `81`. Si ya hay un stream
+compatible activo, se reutiliza el último frame JPEG completo; si el stream no
 entrega un frame a tiempo, la captura falla. Si hay dos cámaras, no se puede
-elegir cuál usa la captura automática. URLs con rutas, puertos personalizados o
-cámaras que no implementen esos endpoints pueden mostrar el video y aun así no
-generar capturas.
+elegir cuál usa la captura automática. Cámaras con rutas o puertos
+personalizados pueden mostrar el video y aun así no generar capturas.
 
 El endpoint autenticado para descargar una imagen es
 `GET /telemetry/door-snapshots/:id/image`.

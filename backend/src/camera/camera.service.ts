@@ -203,7 +203,7 @@ export class CameraService {
       `[CAMERA] Cluster ${clusterId} -> cámara ${camera.id} -> IP ${camera.ip}`,
     );
 
-    return `http://${camera.ip}:81/stream`;
+    return camera.ip;
   }
 
   async captureForCluster(clusterId: number): Promise<Buffer> {
@@ -221,10 +221,10 @@ export class CameraService {
       );
     }
 
-    const cleanIp = camera.ip
-      .replace(/^https?:\/\//, '')
-      .split('/')[0];
-    const streamUrl = `http://${cleanIp}:81/stream`;
+    const streamAddress = /^https?:\/\//i.test(camera.ip)
+      ? camera.ip
+      : `http://${camera.ip.includes(':') ? `[${camera.ip}]` : camera.ip}`;
+    const streamUrl = new URL(streamAddress).toString();
     if (this.cameraStreamService.isStreaming(camera.id, streamUrl)) {
       const streamFrame = await this.cameraStreamService.getLatestFrame(
         camera.id,
@@ -237,6 +237,9 @@ export class CameraService {
       );
     }
 
+    const cleanIp = camera.ip
+      .replace(/^https?:\/\//i, '')
+      .split('/')[0];
     const response = await axios.get<ArrayBuffer>(
       `http://${cleanIp}:81/capture`,
       {

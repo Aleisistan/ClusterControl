@@ -23,7 +23,7 @@ export function normalizeCameraAddress(value: unknown): unknown {
       return address;
     }
 
-    return url.toString();
+    return address;
   } catch {
     return address;
   }
