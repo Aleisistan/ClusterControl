@@ -56,6 +56,17 @@ export class CameraRepository {
     });
   }
 
+  async findByClusterSlot(clusterId: number, slot: number) {
+    return this.repository.findOne({
+      where: {
+        cluster: {
+          id: clusterId,
+        },
+        slot,
+      },
+    });
+  }
+
   async findAllByClusterId(clusterId: number) {
     return this.repository.find({
       where: {
@@ -63,7 +74,7 @@ export class CameraRepository {
           id: clusterId,
         },
       },
-      order: { id: 'ASC' },
+      order: { slot: 'ASC', id: 'ASC' },
     });
   }
 

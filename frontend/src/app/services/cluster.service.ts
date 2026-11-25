@@ -18,6 +18,7 @@ export interface ClusterRecord {
     id: number;
     name: string;
     ip?: string | null;
+    slot: number;
   }>;
 }
 

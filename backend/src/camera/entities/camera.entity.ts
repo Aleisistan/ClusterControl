@@ -6,11 +6,13 @@ import {
   JoinColumn,
   CreateDateColumn,
   UpdateDateColumn,
+  Index,
 } from 'typeorm';
 
 import { Cluster } from '../../cluster/entities/cluster.entity';
 
 @Entity('cameras')
+@Index('UQ_camera_cluster_slot', ['cluster', 'slot'], { unique: true })
 export class Camera {
   @PrimaryGeneratedColumn()
   id: number;
@@ -20,6 +22,9 @@ export class Camera {
 
   @Column({ unique: true })
   ip: string;
+
+  @Column({ type: 'smallint' })
+  slot: number;
 
   @Column({ default: true })
   status: boolean;

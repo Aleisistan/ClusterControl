@@ -41,7 +41,10 @@ const CLUSTER_STATUS_REFRESH_INTERVAL_MS = 15_000;
 export class AdminClustersPageComponent implements OnInit, OnDestroy {
   currentUser: AuthUser | null = null;
   clusters: ClusterRecord[] = [];
-  cameraForms: Record<number, Array<{ id?: number; name: string; ip: string }>> = {};
+  cameraForms: Record<
+    number,
+    Array<{ id?: number; slot: number; name: string; ip: string }>
+  > = {};
   cameraSaving: Record<string, boolean> = {};
   locationOptions: LocationSearchResult[] = [];
   deviceSetupCluster: ClusterRecord | null = null;
@@ -143,14 +146,7 @@ export class AdminClustersPageComponent implements OnInit, OnDestroy {
           this.cameraForms = Object.fromEntries(
             clusters.map((cluster) => [
               cluster.id,
-              Array.from({ length: 2 }, (_, index) => {
-                const camera = cluster.cameras?.[index];
-                return {
-                  id: camera?.id,
-                  name: camera?.name || `Cámara ${index + 1}`,
-                  ip: camera?.ip || '',
-                };
-              }),
+              this.createCameraForms(cluster.cameras || []),
             ]),
           );
         },
@@ -230,6 +226,36 @@ export class AdminClustersPageComponent implements OnInit, OnDestroy {
     });
   }
 
+  private createCameraForms(
+    cameras: NonNullable<ClusterRecord['cameras']>,
+  ): Array<{ id?: number; slot: number; name: string; ip: string }> {
+    const forms: Array<{ id?: number; slot: number; name: string; ip: string }> = [
+      1, 2,
+    ].map((slot) => ({
+      slot,
+      name: `Cámara ${slot}`,
+      ip: '',
+    }));
+
+    for (const [index, camera] of cameras.entries()) {
+      const nameSlot = /^Cámara ([12])$/i.exec(camera.name)?.[1];
+      const slot =
+        camera.slot === 1 || camera.slot === 2
+          ? camera.slot
+          : nameSlot
+            ? Number(nameSlot)
+            : forms.find((form) => !form.id)?.slot ?? index + 1;
+      forms[slot - 1] = {
+        id: camera.id,
+        slot,
+        name: camera.name || `Cámara ${slot}`,
+        ip: camera.ip || '',
+      };
+    }
+
+    return forms;
+  }
+
   saveCamera(cluster: ClusterRecord, index: number): void {
     const form = this.cameraForms[cluster.id]?.[index];
     const name = form?.name.trim() || '';
@@ -247,7 +273,11 @@ export class AdminClustersPageComponent implements OnInit, OnDestroy {
 
     let request: Observable<CameraRecord>;
     if (form?.id) {
-      const payload: CameraUpdatePayload = { name, ip };
+      const payload: CameraUpdatePayload = {
+        name,
+        ip,
+        slot: form.slot,
+      };
       request = this.cameraService.updateCamera(form.id, payload);
     } else {
       const deviceId = cluster.deviceId?.trim();
@@ -257,7 +287,12 @@ export class AdminClustersPageComponent implements OnInit, OnDestroy {
         return;
       }
 
-      const payload: CameraPayload = { name, ip, deviceId };
+      const payload: CameraPayload = {
+        name,
+        ip,
+        slot: form?.slot ?? index + 1,
+        deviceId,
+      };
       request = this.cameraService.createCamera(payload);
     }
 

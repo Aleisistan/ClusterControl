@@ -201,6 +201,40 @@ describe('DashboardComponent', () => {
     component.ngOnDestroy();
   });
 
+  it('renders only configured cameras and displays two once both slots are filled', () => {
+    component.selectedClusterId = 7;
+    component.selectedCluster = {
+      id: 7,
+      cameras: [
+        {
+          id: 22,
+          name: 'Cámara 2',
+          ip: 'http://192.168.2.228:8082/stream',
+          slot: 2,
+        },
+      ],
+    };
+
+    component['updateCameraStream']();
+    expect(component.cameraViews).toHaveSize(1);
+    expect(component.cameraViews[0].name).toBe('Cámara 2');
+
+    component.selectedCluster.cameras.unshift({
+      id: 21,
+      name: 'Cámara 1',
+      ip: 'http://192.168.2.228:8081/stream',
+      slot: 1,
+    });
+    component['updateCameraStream']();
+    expect(component.cameraViews).toHaveSize(2);
+    expect(component.cameraViews.map((camera) => camera.id)).toEqual([21, 22]);
+    expect(component.cameraViews.map((camera) => camera.name)).toEqual([
+      'Cámara 1',
+      'Cámara 2',
+    ]);
+    component.ngOnDestroy();
+  });
+
   it('should mark a camera inactive and record it when a refreshed stream times out', () => {
     jasmine.clock().install();
     jasmine.clock().mockDate(new Date('2026-10-16T15:00:00.000Z'));

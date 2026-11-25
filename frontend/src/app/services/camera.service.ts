@@ -8,17 +8,20 @@ export interface CameraRecord {
   id: number;
   name: string;
   ip: string;
+  slot: number;
 }
 
 export interface CameraPayload {
   name: string;
   ip: string;
+  slot: number;
   deviceId: string;
 }
 
 export interface CameraUpdatePayload {
   name: string;
   ip: string;
+  slot: number;
 }
 
 @Injectable({

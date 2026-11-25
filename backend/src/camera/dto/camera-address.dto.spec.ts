@@ -1,3 +1,4 @@
+import 'reflect-metadata';
 import { plainToInstance } from 'class-transformer';
 import { validateSync } from 'class-validator';
 import { CreateCameraDto } from './create-camera.dto';
@@ -10,6 +11,7 @@ describe('camera address DTOs', () => {
     const dto = plainToInstance(CreateCameraDto, {
       name: 'Entrada',
       ip: cameraUrl,
+      slot: 1,
       deviceId: '34',
     });
 
@@ -21,6 +23,7 @@ describe('camera address DTOs', () => {
     const dto = plainToInstance(CreateCameraDto, {
       name: 'ESP32',
       ip: '192.168.1.50',
+      slot: 2,
       deviceId: '34',
     });
 
@@ -47,6 +50,17 @@ describe('camera address DTOs', () => {
   it('rejects non-HTTP URLs', () => {
     const dto = plainToInstance(UpdateCameraDto, {
       ip: 'ftp://camera.example.com/stream',
+    });
+
+    expect(validateSync(dto)).not.toHaveLength(0);
+  });
+
+  it('rejects camera slots outside the two supported positions', () => {
+    const dto = plainToInstance(CreateCameraDto, {
+      name: 'Entrada',
+      ip: '192.168.1.50',
+      slot: 3,
+      deviceId: '34',
     });
 
     expect(validateSync(dto)).not.toHaveLength(0);

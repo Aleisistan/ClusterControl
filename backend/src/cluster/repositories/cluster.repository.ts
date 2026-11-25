@@ -46,6 +46,9 @@ export class ClusterRepository {
     );
 
     return clusters.map((cluster) => {
+      cluster.cameras?.sort(
+        (first, second) => first.slot - second.slot || first.id - second.id,
+      );
       cluster.lastSeenAt = lastSeenByCluster.get(cluster.id) ?? null;
       return cluster;
     });

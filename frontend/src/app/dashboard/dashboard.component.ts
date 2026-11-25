@@ -1907,11 +1907,25 @@ loadWeather(): void {
     this.unavailableCameras.clear();
     this.destroyHlsPlayer();
     this.camera1Loaded = false;
-    const configuredCameras = this.selectedCluster?.cameras?.length
+    const cameras = this.selectedCluster?.cameras?.length
       ? this.selectedCluster.cameras
       : this.selectedCluster?.camera
         ? [this.selectedCluster.camera]
         : [];
+    const configuredCameras = [
+      ...new Map(
+        cameras
+          .filter((camera: any) => camera.ip?.trim())
+          .map((camera: any, index: number) => [
+            Number(camera.id) || index + 1,
+            camera,
+          ]),
+      ).values(),
+    ]
+      .sort((first: any, second: any) =>
+        Number(first.slot || 0) - Number(second.slot || 0),
+      )
+      .slice(0, 2);
     this.cameraViews = configuredCameras.slice(0, 2).map((camera: any, index: number) => ({
       id: Number(camera.id) || index + 1,
       name: camera.name || `Cámara ${index + 1}`,

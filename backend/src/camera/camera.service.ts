@@ -69,6 +69,7 @@ export class CameraService {
       const newCamera = this.cameraRepository.create({
         name: `Cámara ${cluster.name}`,
         ip: data.ip,
+        slot: this.firstAvailableSlot(clusterCameras),
         cluster,
         lastSeen: new Date(),
         status: true,
@@ -122,6 +123,16 @@ export class CameraService {
       throw new ConflictException('El cluster ya tiene el máximo de 2 cámaras');
     }
 
+    const cameraInSlot = await this.cameraRepository.findByClusterSlot(
+      cluster.id,
+      data.slot,
+    );
+    if (cameraInSlot) {
+      throw new ConflictException(
+        `El slot ${data.slot} ya tiene una cámara configurada`,
+      );
+    }
+
     const existingAddress = await this.cameraRepository.findByIp(data.ip);
     if (existingAddress) {
       throw new ConflictException('La dirección ya está asignada a otra cámara');
@@ -130,10 +141,21 @@ export class CameraService {
     const camera = this.cameraRepository.create({
       name: data.name,
       ip: data.ip,
+      slot: data.slot,
       cluster,
     });
 
-    const savedCamera = await this.cameraRepository.save(camera);
+    let savedCamera;
+    try {
+      savedCamera = await this.cameraRepository.save(camera);
+    } catch (error) {
+      if (this.isUniqueConstraintViolation(error)) {
+        throw new ConflictException(
+          'La dirección o el slot ya está asignado a otra cámara',
+        );
+      }
+      throw error;
+    }
 
     this.logger.log(
       `Cámara ${savedCamera.id} creada para cluster ${data.deviceId}`,
@@ -162,7 +184,30 @@ export class CameraService {
       camera.ip = data.ip;
     }
 
-    const updatedCamera = await this.cameraRepository.save(camera);
+    if (data.slot !== undefined && data.slot !== camera.slot) {
+      const cameraInSlot = await this.cameraRepository.findByClusterSlot(
+        camera.cluster.id,
+        data.slot,
+      );
+      if (cameraInSlot && cameraInSlot.id !== camera.id) {
+        throw new ConflictException(
+          `El slot ${data.slot} ya tiene una cámara configurada`,
+        );
+      }
+      camera.slot = data.slot;
+    }
+
+    let updatedCamera;
+    try {
+      updatedCamera = await this.cameraRepository.save(camera);
+    } catch (error) {
+      if (this.isUniqueConstraintViolation(error)) {
+        throw new ConflictException(
+          'La dirección o el slot ya está asignado a otra cámara',
+        );
+      }
+      throw error;
+    }
 
     this.logger.log(`Cámara ${id} actualizada`);
 
@@ -262,6 +307,29 @@ export class CameraService {
 
     throw new Error(
       `No se pudo capturar ninguna cámara del cluster ${clusterId}: ${errors.join('; ')}`,
+    );
+  }
+
+  private firstAvailableSlot(cameras: Array<{ slot?: number }>): number {
+    const usedSlots = new Set(cameras.map((camera) => camera.slot));
+    const slot = [1, 2].find((candidate) => !usedSlots.has(candidate));
+    if (!slot) {
+      throw new ConflictException('El cluster ya tiene el máximo de 2 cámaras');
+    }
+    return slot;
+  }
+
+  private isUniqueConstraintViolation(error: unknown): boolean {
+    if (!error || typeof error !== 'object' || !('driverError' in error)) {
+      return false;
+    }
+
+    const driverError: unknown = error.driverError;
+    return (
+      driverError !== null &&
+      typeof driverError === 'object' &&
+      'code' in driverError &&
+      driverError.code === '23505'
     );
   }
 }

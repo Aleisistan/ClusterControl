@@ -1,5 +1,5 @@
-import { Transform } from 'class-transformer';
-import { IsNotEmpty, IsString, MaxLength } from 'class-validator';
+import { Transform, Type } from 'class-transformer';
+import { IsInt, IsNotEmpty, IsString, Max, MaxLength, Min } from 'class-validator';
 import {
   IsCameraAddress,
   normalizeCameraAddress,
@@ -17,6 +17,12 @@ export class CreateCameraDto {
   @MaxLength(2048)
   @Transform(({ value }) => normalizeCameraAddress(value))
   ip: string;
+
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(2)
+  slot: number;
 
   @IsString()
   @IsNotEmpty()

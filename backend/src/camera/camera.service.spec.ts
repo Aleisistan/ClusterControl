@@ -13,6 +13,7 @@ describe('CameraService', () => {
     findAllByClusterId: jest.Mock;
     findByDeviceId: jest.Mock;
     findByIp: jest.Mock;
+    findByClusterSlot: jest.Mock;
     create: jest.Mock;
     save: jest.Mock;
   };
@@ -32,6 +33,7 @@ describe('CameraService', () => {
       findAllByClusterId: jest.fn().mockResolvedValue([]),
       findByDeviceId: jest.fn(),
       findByIp: jest.fn(),
+      findByClusterSlot: jest.fn().mockResolvedValue(null),
       create: jest.fn(),
       save: jest.fn(),
     };
@@ -75,6 +77,7 @@ describe('CameraService', () => {
       id: 12,
       name: 'Entrada',
       ip: '192.168.1.50',
+      slot: 1,
       cluster,
     };
     clusterRepository.findByDeviceId.mockResolvedValue(cluster);
@@ -86,6 +89,7 @@ describe('CameraService', () => {
       service.create({
         name: 'Entrada',
         ip: '192.168.1.50',
+        slot: 1,
         deviceId: '7',
       }),
     ).resolves.toEqual(camera);
@@ -107,6 +111,7 @@ describe('CameraService', () => {
       service.create({
         name: 'Salida',
         ip: '192.168.1.52',
+        slot: 2,
         deviceId: '7',
       }),
     ).resolves.toEqual({ id: 12 });
@@ -115,9 +120,49 @@ describe('CameraService', () => {
       service.create({
         name: 'Techo',
         ip: '192.168.1.53',
+        slot: 2,
         deviceId: '7',
       }),
     ).rejects.toThrow('máximo de 2 cámaras');
+  });
+
+  it('rejects a second camera assigned to an already occupied slot', async () => {
+    const cluster = { id: 7, deviceId: '7', name: 'Cluster 7' };
+    clusterRepository.findByDeviceId.mockResolvedValue(cluster);
+    cameraRepository.findAllByClusterId.mockResolvedValue([
+      { id: 11, slot: 1 },
+    ]);
+    cameraRepository.findByClusterSlot.mockResolvedValue({ id: 11, slot: 1 });
+    cameraRepository.findByIp.mockResolvedValue(null);
+
+    await expect(
+      service.create({
+        name: 'Otra cámara',
+        ip: '192.168.1.52',
+        slot: 1,
+        deviceId: '7',
+      }),
+    ).rejects.toThrow('El slot 1 ya tiene una cámara configurada');
+    expect(cameraRepository.save).not.toHaveBeenCalled();
+  });
+
+  it('converts a database uniqueness race into a conflict response', async () => {
+    const cluster = { id: 7, deviceId: '7', name: 'Cluster 7' };
+    clusterRepository.findByDeviceId.mockResolvedValue(cluster);
+    cameraRepository.findByIp.mockResolvedValue(null);
+    cameraRepository.create.mockReturnValue({ id: 12 });
+    cameraRepository.save.mockRejectedValue({
+      driverError: { code: '23505' },
+    });
+
+    await expect(
+      service.create({
+        name: 'Salida',
+        ip: '192.168.1.52',
+        slot: 2,
+        deviceId: '7',
+      }),
+    ).rejects.toThrow('La dirección o el slot ya está asignado a otra cámara');
   });
 
   it('captures from the exact configured URL without assuming a /capture route', async () => {
