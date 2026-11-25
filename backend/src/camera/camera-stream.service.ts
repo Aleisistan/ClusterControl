@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { spawn } from 'node:child_process';
 import type { Response } from 'express';
 import axios from 'axios';
 import type { Readable } from 'node:stream';
@@ -19,6 +20,8 @@ interface SharedCameraStream {
 @Injectable()
 export class CameraStreamService {
   private static readonly MAX_PENDING_FRAME_BYTES = 10 * 1024 * 1024;
+  private static readonly MAX_CAPTURE_FRAME_BYTES = 10 * 1024 * 1024;
+  private static readonly CAPTURE_TIMEOUT_MS = 15_000;
   private static readonly JPEG_START = Buffer.from([0xff, 0xd8]);
   private static readonly JPEG_END = Buffer.from([0xff, 0xd9]);
   private readonly streams = new Map<string, SharedCameraStream>();
@@ -84,8 +87,119 @@ export class CameraStreamService {
     });
   }
 
+  async captureFrame(cameraId: number, streamUrl: string): Promise<Buffer> {
+    if (this.isStreaming(cameraId, streamUrl)) {
+      const latestFrame = await this.getLatestFrame(cameraId, streamUrl);
+      if (latestFrame) return latestFrame;
+    }
+
+    return this.captureFrameFromUrl(streamUrl);
+  }
+
   isStreaming(cameraId: number, streamUrl: string): boolean {
     return this.streams.has(`${cameraId}:${streamUrl}`);
+  }
+
+  private captureFrameFromUrl(streamUrl: string): Promise<Buffer> {
+    let url: URL;
+    try {
+      url = new URL(streamUrl);
+    } catch {
+      throw new Error('La URL de la cámara no es válida para capturar un frame');
+    }
+
+    if (
+      !['http:', 'https:'].includes(url.protocol) ||
+      url.username ||
+      url.password
+    ) {
+      throw new Error('La captura solo admite URLs HTTP o HTTPS sin credenciales');
+    }
+
+    return new Promise((resolve, reject) => {
+      const args = [
+        '-hide_banner',
+        '-loglevel',
+        'error',
+        '-nostdin',
+        '-protocol_whitelist',
+        'http,https,tcp,tls,crypto',
+        '-i',
+        streamUrl,
+        '-map',
+        '0:v:0',
+        '-frames:v',
+        '1',
+        '-an',
+        '-sn',
+        '-dn',
+        '-c:v',
+        'mjpeg',
+        '-f',
+        'image2pipe',
+        'pipe:1',
+      ];
+      const process = spawn('ffmpeg', args, {
+        stdio: ['ignore', 'pipe', 'pipe'],
+      });
+      let output = Buffer.alloc(0);
+      let errorOutput = '';
+      let settled = false;
+      const timeout = setTimeout(() => {
+        process.kill('SIGKILL');
+        finish(new Error('FFmpeg agotó el tiempo esperando un frame JPEG'));
+      }, CameraStreamService.CAPTURE_TIMEOUT_MS);
+      timeout.unref();
+
+      const finish = (error?: Error, frame?: Buffer): void => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timeout);
+        if (error) {
+          reject(error);
+        } else if (frame) {
+          resolve(frame);
+        } else {
+          reject(new Error('FFmpeg no devolvió un frame JPEG'));
+        }
+      };
+
+      process.stdout.on('data', (chunk: Buffer) => {
+        output = Buffer.concat([output, chunk]);
+        if (output.length > CameraStreamService.MAX_CAPTURE_FRAME_BYTES) {
+          process.kill('SIGKILL');
+          finish(new Error('El frame JPEG supera el límite de tamaño permitido'));
+        }
+      });
+      process.stderr.on('data', (chunk: Buffer) => {
+        errorOutput = `${errorOutput}${chunk.toString()}`.slice(-4096);
+      });
+      process.on('error', (error: Error) => {
+        finish(new Error(`No se pudo iniciar FFmpeg: ${error.message}`));
+      });
+      process.on('close', (code: number | null) => {
+        if (code !== 0) {
+          const reason = errorOutput.trim();
+          finish(
+            new Error(
+              `FFmpeg no pudo capturar la cámara${reason ? `: ${reason}` : ''}`,
+            ),
+          );
+          return;
+        }
+
+        if (
+          output.length < 4 ||
+          !output.subarray(0, 2).equals(CameraStreamService.JPEG_START) ||
+          !output.subarray(-2).equals(CameraStreamService.JPEG_END)
+        ) {
+          finish(new Error('FFmpeg no devolvió un frame JPEG válido'));
+          return;
+        }
+
+        finish(undefined, output);
+      });
+    });
   }
 
   private createStream(

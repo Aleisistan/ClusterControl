@@ -8,6 +8,10 @@ cada una con nombre e IP o URL de stream.
 - Si ingresas solo una IP, el relay usa `http://<IP>` sin añadir puerto ni
   ruta. Para cámaras que requieran un puerto o una ruta específicos, ingresa
   la URL completa, por ejemplo `http://<IP>:81/stream`.
+- Para cámaras USB conectadas al servidor Debian, se pueden publicar como
+  `http://<IP_DEBIAN>:8081/stream` y `http://<IP_DEBIAN>:8082/stream`. La guía
+  de despliegue de esos endpoints está en
+  [`deploy/usb-cameras/README.md`](../deploy/usb-cameras/README.md).
 - Si ingresas una URL completa con una IP como host, el backend la retransmite.
   Los streams MJPEG comparten una conexión de cámara entre los dashboards
   conectados a esa instancia; las URL HLS y sus recursos pasan por el proxy.
@@ -51,12 +55,15 @@ la agrega al historial del cluster. Si la cámara no responde, conserva la
 telemetría y registra el error. No toma capturas repetidas mientras la puerta
 sigue abierta: debe recibirse un cierre y una nueva apertura.
 
-La captura automática está pensada para una ESP32-CAM y, cuando no hay un
-stream activo, solicita `/capture` en el puerto `81`. Si ya hay un stream
-compatible activo, se reutiliza el último frame JPEG completo; si el stream no
-entrega un frame a tiempo, la captura falla. Si hay dos cámaras, no se puede
-elegir cuál usa la captura automática. Cámaras con rutas o puertos
-personalizados pueden mostrar el video y aun así no generar capturas.
+La captura automática usa el último frame JPEG del relay cuando el stream ya
+está abierto; si no hay un frame disponible, el backend ejecuta FFmpeg contra
+la URL HTTP(S) configurada para obtener una imagen, sin requerir una ruta
+`/capture`. Esto permite capturar cámaras MJPEG y otros formatos que FFmpeg
+pueda leer, incluidos streams HLS. El contenedor del backend debe incluir
+FFmpeg. Si hay varias cámaras configuradas, se prueban en orden de ID hasta
+obtener una imagen; se guarda una captura por apertura. Para cámaras ESP32
+antiguas registradas solo por IP se conserva como compatibilidad el fallback
+`http://<IP>:81/capture`.
 
 El endpoint autenticado para descargar una imagen es
 `GET /telemetry/door-snapshots/:id/image`.
@@ -72,8 +79,10 @@ El endpoint autenticado para descargar una imagen es
   los encabezados y el aumento de bytes. Un `401` requiere iniciar sesión de
   nuevo.
 - **Hay video pero no captura de puerta:** confirma que la telemetría sea de un
-  dispositivo real, que exista una transición de cerrada a abierta y que la
-  cámara admita `/stream` o `/capture` en el puerto `81`.
+  dispositivo real y que exista una transición de cerrada a abierta. Comprueba
+  que FFmpeg esté instalado en el backend y que su contenedor pueda alcanzar la
+  URL completa; solo las cámaras ESP32 configuradas como IP simple usan el
+  fallback `/capture` en el puerto `81`.
 
 La prueba unitaria del relay se ejecuta desde la raíz del repositorio en
 PowerShell:

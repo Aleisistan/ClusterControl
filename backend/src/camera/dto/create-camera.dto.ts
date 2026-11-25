@@ -14,7 +14,7 @@ export class CreateCameraDto {
   @IsCameraAddress()
   @IsNotEmpty()
   @IsString()
-  @MaxLength(255)
+  @MaxLength(2048)
   @Transform(({ value }) => normalizeCameraAddress(value))
   ip: string;
 

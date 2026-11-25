@@ -18,6 +18,7 @@ describe('CameraService', () => {
   };
   let clusterRepository: { findByDeviceId: jest.Mock };
   let cameraStreamService: {
+    captureFrame: jest.Mock;
     getLatestFrame: jest.Mock;
     isStreaming: jest.Mock;
   };
@@ -38,6 +39,7 @@ describe('CameraService', () => {
       findByDeviceId: jest.fn(),
     };
     cameraStreamService = {
+      captureFrame: jest.fn().mockResolvedValue(Buffer.from('jpeg')),
       getLatestFrame: jest.fn().mockResolvedValue(null),
       isStreaming: jest.fn().mockReturnValue(false),
     };
@@ -118,7 +120,57 @@ describe('CameraService', () => {
     ).rejects.toThrow('máximo de 2 cámaras');
   });
 
-  it('captures a JPEG from the configured camera for its cluster', async () => {
+  it('captures from the exact configured URL without assuming a /capture route', async () => {
+    cameraRepository.findAllByClusterId.mockResolvedValue([
+      {
+        id: 5,
+        ip: 'http://192.168.2.228:8081/stream',
+      },
+    ]);
+
+    await expect(service.captureForCluster(7)).resolves.toEqual(
+      Buffer.from('jpeg'),
+    );
+    expect(cameraStreamService.captureFrame).toHaveBeenCalledWith(
+      5,
+      'http://192.168.2.228:8081/stream',
+    );
+  });
+
+  it('tries another configured camera if the first stream cannot be captured', async () => {
+    cameraRepository.findAllByClusterId.mockResolvedValue([
+      { id: 5, ip: 'http://192.168.2.228:8081/stream' },
+      { id: 6, ip: 'http://192.168.2.228:8082/stream' },
+    ]);
+    cameraStreamService.captureFrame
+      .mockRejectedValueOnce(new Error('cámara fuera de línea'))
+      .mockResolvedValueOnce(Buffer.from('second-camera-jpeg'));
+
+    await expect(service.captureForCluster(7)).resolves.toEqual(
+      Buffer.from('second-camera-jpeg'),
+    );
+    expect(cameraStreamService.captureFrame).toHaveBeenNthCalledWith(
+      1,
+      5,
+      'http://192.168.2.228:8081/stream',
+    );
+    expect(cameraStreamService.captureFrame).toHaveBeenNthCalledWith(
+      2,
+      6,
+      'http://192.168.2.228:8082/stream',
+    );
+  });
+
+  it('preserves the ESP32 capture endpoint for legacy bare-IP cameras', async () => {
+    cameraRepository.findAllByClusterId.mockResolvedValue([
+      {
+        id: 5,
+        ip: '192.168.1.50',
+      },
+    ]);
+    cameraStreamService.captureFrame.mockRejectedValue(
+      new Error('no hay un stream en la raíz'),
+    );
     const imageData = Uint8Array.from([1, 2, 3]).buffer;
     const response: AxiosResponse<ArrayBuffer> = {
       data: imageData,
@@ -136,35 +188,31 @@ describe('CameraService', () => {
       'http://192.168.1.50:81/capture',
       { responseType: 'arraybuffer', timeout: 10000 },
     );
-
     request.mockRestore();
   });
 
-  it('uses the latest frame from the shared stream when available', async () => {
-    const frame = Buffer.from([0xff, 0xd8, 0x01, 0xff, 0xd9]);
-    cameraStreamService.isStreaming.mockReturnValue(true);
-    cameraStreamService.getLatestFrame.mockResolvedValue(frame);
-    const request = jest.spyOn(axios, 'get');
-
-    await expect(service.captureForCluster(7)).resolves.toEqual(frame);
-    expect(cameraStreamService.getLatestFrame).toHaveBeenCalledWith(
-      5,
-      'http://192.168.1.50/camera',
-    );
-    expect(request).not.toHaveBeenCalled();
-
-    request.mockRestore();
-  });
-
-  it('does not open a second capture connection when the active stream times out', async () => {
-    cameraStreamService.isStreaming.mockReturnValue(true);
-    const request = jest.spyOn(axios, 'get');
+  it('rejects capture when the cluster has no configured cameras', async () => {
+    cameraRepository.findAllByClusterId.mockResolvedValue([]);
 
     await expect(service.captureForCluster(7)).rejects.toThrow(
-      'no entregó un fotograma a tiempo',
+      'No existe cámara para el cluster 7',
     );
-    expect(request).not.toHaveBeenCalled();
+  });
 
-    request.mockRestore();
+  it('captures from the exact configured URL without assuming a /capture route', async () => {
+    cameraRepository.findAllByClusterId.mockResolvedValue([
+      {
+      id: 5,
+      ip: 'http://192.168.2.228:8081/stream',
+      },
+    ]);
+
+    await expect(service.captureForCluster(7)).resolves.toEqual(
+      Buffer.from('jpeg'),
+    );
+    expect(cameraStreamService.captureFrame).toHaveBeenCalledWith(
+      5,
+      'http://192.168.2.228:8081/stream',
+    );
   });
 });

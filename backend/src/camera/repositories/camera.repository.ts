@@ -52,6 +52,7 @@ export class CameraRepository {
           id: clusterId,
         },
       },
+      order: { id: 'ASC' },
     });
   }
 

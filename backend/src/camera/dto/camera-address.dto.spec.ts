@@ -37,6 +37,13 @@ describe('camera address DTOs', () => {
     expect(validateSync(dto)).toHaveLength(0);
   });
 
+  it('accepts long public stream URLs', () => {
+    const cameraUrl = `https://camera.example/${'stream/'.repeat(50)}`;
+    const dto = plainToInstance(UpdateCameraDto, { ip: cameraUrl });
+
+    expect(validateSync(dto)).toHaveLength(0);
+  });
+
   it('rejects non-HTTP URLs', () => {
     const dto = plainToInstance(UpdateCameraDto, {
       ip: 'ftp://camera.example.com/stream',

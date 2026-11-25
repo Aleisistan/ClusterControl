@@ -4,6 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import axios from 'axios';
+import { isIP } from 'node:net';
 
 import { LoggerService } from '../common/logger/logger.service';
 
@@ -207,51 +208,60 @@ export class CameraService {
   }
 
   async captureForCluster(clusterId: number): Promise<Buffer> {
-    const camera = await this.cameraRepository.findByClusterId(clusterId);
+    const cameras = await this.cameraRepository.findAllByClusterId(clusterId);
 
-    if (!camera) {
+    if (cameras.length === 0) {
       throw new NotFoundException(
         `No existe cámara para el cluster ${clusterId}`,
       );
     }
 
-    if (!camera.ip) {
-      throw new NotFoundException(
-        `La cámara del cluster ${clusterId} no tiene IP`,
-      );
+    const errors: string[] = [];
+    for (const camera of cameras) {
+      if (!camera.ip) {
+        errors.push(`La cámara ${camera.id} no tiene URL configurada`);
+        continue;
+      }
+
+      try {
+        const streamAddress = /^https?:\/\//i.test(camera.ip)
+          ? camera.ip
+          : `http://${camera.ip.includes(':') ? `[${camera.ip}]` : camera.ip}`;
+        const streamUrl = new URL(streamAddress).toString();
+        return await this.cameraStreamService.captureFrame(camera.id, streamUrl);
+      } catch (error) {
+        const reason = error instanceof Error ? error.message : String(error);
+        errors.push(`cámara ${camera.id}: ${reason}`);
+        this.logger.warn(
+          `[CAMERA] Falló la captura desde cámara ${camera.id}; ` +
+          `se probará la siguiente cámara configurada`,
+        );
+
+        if (isIP(camera.ip)) {
+          try {
+            const legacyCaptureUrl =
+              `http://${camera.ip.includes(':') ? `[${camera.ip}]` : camera.ip}:81/capture`;
+            const response = await axios.get<ArrayBuffer>(legacyCaptureUrl, {
+              responseType: 'arraybuffer',
+              timeout: 10000,
+            });
+            if (response.data.byteLength === 0) {
+              throw new Error('la cámara devolvió una imagen vacía');
+            }
+            return Buffer.from(response.data);
+          } catch (captureError) {
+            const captureReason =
+              captureError instanceof Error
+                ? captureError.message
+                : String(captureError);
+            errors.push(`captura ESP32 de cámara ${camera.id}: ${captureReason}`);
+          }
+        }
+      }
     }
 
-    const streamAddress = /^https?:\/\//i.test(camera.ip)
-      ? camera.ip
-      : `http://${camera.ip.includes(':') ? `[${camera.ip}]` : camera.ip}`;
-    const streamUrl = new URL(streamAddress).toString();
-    if (this.cameraStreamService.isStreaming(camera.id, streamUrl)) {
-      const streamFrame = await this.cameraStreamService.getLatestFrame(
-        camera.id,
-        streamUrl,
-      );
-      if (streamFrame) return streamFrame;
-
-      throw new Error(
-        `El stream de la cámara del cluster ${clusterId} no entregó un fotograma a tiempo`,
-      );
-    }
-
-    const cleanIp = camera.ip
-      .replace(/^https?:\/\//i, '')
-      .split('/')[0];
-    const response = await axios.get<ArrayBuffer>(
-      `http://${cleanIp}:81/capture`,
-      {
-        responseType: 'arraybuffer',
-        timeout: 10000,
-      },
+    throw new Error(
+      `No se pudo capturar ninguna cámara del cluster ${clusterId}: ${errors.join('; ')}`,
     );
-
-    if (response.data.byteLength === 0) {
-      throw new Error(`La cámara del cluster ${clusterId} devolvió una imagen vacía`);
-    }
-
-    return Buffer.from(response.data);
   }
 }

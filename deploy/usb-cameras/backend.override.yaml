@@ -1,0 +1,4 @@
+services:
+  backend:
+    image: clustercontrol-backend-camera:local
+    pull_policy: never

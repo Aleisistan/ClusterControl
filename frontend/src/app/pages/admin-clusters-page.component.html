@@ -178,9 +178,13 @@
                       type="text"
                       [name]="'cameraIp' + cluster.id + '-' + cameraIndex"
                       [(ngModel)]="cameraForm.ip"
-                      placeholder="URL/IP del stream (ej. 192.168.1.50)"
+                      maxlength="2048"
+                      placeholder="URL completa del stream (ej. http://192.168.2.228:8081/stream)"
                       [attr.aria-label]="'IP o URL de la cámara ' + (cameraIndex + 1) + ' de ' + cluster.name"
                       />
+                    <small class="muted">
+                      Usa la URL exacta del video; las capturas de puerta extraen un frame del stream.
+                    </small>
                     <div class="camera-actions">
                       <button
                         class="btn btn-sm btn-outline-info"

@@ -1,0 +1,34 @@
+name: clustercontrol-usb-cameras
+
+services:
+  usb-camera-1:
+    build:
+      context: .
+    image: clustercontrol-usb-camera:latest
+    command:
+      - --device=/dev/video0
+      - --host=0.0.0.0
+      - --port=8080
+      - --format=MJPEG
+      - --resolution=1280x720
+      - --desired-fps=30
+    devices:
+      - /dev/video0:/dev/video0
+    ports:
+      - 192.168.2.228:8081:8080
+    restart: unless-stopped
+
+  usb-camera-2:
+    image: clustercontrol-usb-camera:latest
+    command:
+      - --device=/dev/video2
+      - --host=0.0.0.0
+      - --port=8080
+      - --format=MJPEG
+      - --resolution=1280x720
+      - --desired-fps=30
+    devices:
+      - /dev/video2:/dev/video2
+    ports:
+      - 192.168.2.228:8082:8080
+    restart: unless-stopped
