@@ -35,7 +35,7 @@ const CLUSTER_STATUS_REFRESH_INTERVAL_MS = 15_000;
   standalone: true,
   imports: [CommonModule, FormsModule],
   templateUrl: './admin-clusters-page.component.html',
-  changeDetection: ChangeDetectionStrategy.Eager,
+  changeDetection: ChangeDetectionStrategy.Default,
   styleUrl: './admin-clusters-page.component.css',
 })
 export class AdminClustersPageComponent implements OnInit, OnDestroy {

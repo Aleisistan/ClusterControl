@@ -13,7 +13,7 @@ import { UserPayload, UserRecord, UserService } from '../services/user.service';
   standalone: true,
   imports: [FormsModule],
   templateUrl: './admin-users-page.component.html',
-  changeDetection: ChangeDetectionStrategy.Eager,
+  changeDetection: ChangeDetectionStrategy.Default,
   styleUrl: './admin-users-page.component.css',
 })
 export class AdminUsersPageComponent implements OnInit {

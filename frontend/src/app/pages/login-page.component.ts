@@ -12,7 +12,7 @@ import { AuthService, LoginPayload } from '../services/auth.service';
   standalone: true,
   imports: [FormsModule],
   templateUrl: './login-page.component.html',
-  changeDetection: ChangeDetectionStrategy.Eager,
+  changeDetection: ChangeDetectionStrategy.Default,
   styleUrl: './login-page.component.css',
 })
 export class LoginPageComponent implements OnInit {

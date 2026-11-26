@@ -11,7 +11,7 @@ import { AuthService, AuthUser } from './services/auth.service';
   standalone: true,
   imports: [RouterLink, RouterLinkActive, RouterOutlet],
   templateUrl: './app.component.html',
-  changeDetection: ChangeDetectionStrategy.Eager,
+  changeDetection: ChangeDetectionStrategy.Default,
   styleUrl: './app.component.css',
 })
 export class AppComponent implements OnInit, OnDestroy {

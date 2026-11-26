@@ -44,21 +44,39 @@ export class CameraService {
       ?? (Number.isInteger(numericId)
         ? await this.clusterRepository.findById(numericId)
         : null);
-    const camera = await this.cameraRepository.findByDeviceId(deviceId)
-      ?? (cluster
-        ? await this.cameraRepository.findByClusterId(cluster.id)
-        : null);
+    if (!cluster) {
+      this.logger.warn(
+        `No existe cluster para la cámara ${deviceId} ` +
+        `(se esperaba deviceId MQTT o ID interno del cluster)`,
+      );
+      return;
+    }
+
+    const clusterCameras =
+      await this.cameraRepository.findAllByClusterId(cluster.id);
+    const requestedCameraId =
+      data.cameraId !== undefined ? Number(data.cameraId) : undefined;
+    const requestedSlot =
+      data.slot !== undefined ? Number(data.slot) : undefined;
+    const cameraById =
+      requestedCameraId !== undefined
+        ? await this.cameraRepository.findById(requestedCameraId)
+        : null;
+    const cameraByIp =
+      await this.cameraRepository.findByIp(data.ip);
+    const camera =
+      (cameraById?.cluster?.id === cluster.id ? cameraById : null)
+      ?? (requestedSlot !== undefined
+        ? clusterCameras.find((item) => item.slot === requestedSlot)
+        : null)
+      ?? (requestedCameraId === undefined && requestedSlot === undefined
+        ? (cameraByIp?.cluster?.id === cluster.id ? cameraByIp : null)
+          ?? clusterCameras.find((item) => item.slot === 1)
+          ?? clusterCameras[0]
+        : null)
+      ?? null;
 
     if (!camera) {
-      if (!cluster) {
-        this.logger.warn(
-          `No existe cluster para la cámara ${deviceId} ` +
-          `(se esperaba deviceId MQTT o ID interno del cluster)`,
-        );
-        return;
-      }
-
-      const clusterCameras = await this.cameraRepository.findAllByClusterId(cluster.id);
       if (clusterCameras.length >= 2) {
         this.logger.warn(
           `No se puede registrar una tercera cámara para el cluster ${cluster.id}`,
@@ -66,10 +84,17 @@ export class CameraService {
         return;
       }
 
+      const requestedSlotAvailable =
+        requestedSlot === 1 || requestedSlot === 2
+          ? !clusterCameras.some((item) => item.slot === requestedSlot)
+          : false;
+      const newSlot = requestedSlotAvailable
+        ? requestedSlot
+        : this.firstAvailableSlot(clusterCameras);
       const newCamera = this.cameraRepository.create({
-        name: `Cámara ${cluster.name}`,
+        name: `Cámara ${newSlot}`,
         ip: data.ip,
-        slot: this.firstAvailableSlot(clusterCameras),
+        slot: newSlot,
         cluster,
         lastSeen: new Date(),
         status: true,

@@ -55,7 +55,7 @@ interface DashboardCameraView {
   standalone: true,
   imports: [CommonModule, BaseChartDirective, FormsModule],
   templateUrl: './dashboard.component.html',
-  changeDetection: ChangeDetectionStrategy.Eager,
+  changeDetection: ChangeDetectionStrategy.Default,
   styleUrls: ['./dashboard.component.css'],
 })
 export class DashboardComponent implements OnInit, OnDestroy, AfterViewChecked {
