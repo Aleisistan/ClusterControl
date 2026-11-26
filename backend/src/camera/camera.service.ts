@@ -175,6 +175,14 @@ export class CameraService {
       savedCamera = await this.cameraRepository.save(camera);
     } catch (error) {
       if (this.isUniqueConstraintViolation(error)) {
+        const conflict = this.getCameraUniqueConstraintConflict(
+          error,
+          data.slot,
+        );
+        if (conflict) {
+          throw new ConflictException(conflict);
+        }
+
         throw new ConflictException(
           'La dirección o el slot ya está asignado a otra cámara',
         );
@@ -356,5 +364,44 @@ export class CameraService {
       'code' in driverError &&
       driverError.code === '23505'
     );
+  }
+
+  private getCameraUniqueConstraintConflict(
+    error: unknown,
+    slot: number,
+  ): string | undefined {
+    if (!error || typeof error !== 'object' || !('driverError' in error)) {
+      return undefined;
+    }
+
+    const driverError: unknown = error.driverError;
+    if (!driverError || typeof driverError !== 'object') {
+      return undefined;
+    }
+
+    const constraint =
+      'constraint' in driverError && typeof driverError.constraint === 'string'
+        ? driverError.constraint
+        : '';
+    const detail =
+      'detail' in driverError && typeof driverError.detail === 'string'
+        ? driverError.detail
+        : '';
+
+    if (
+      constraint === 'UQ_camera_cluster_slot' ||
+      /Key \((?:"clusterId",\s*)?slot\)=/.test(detail)
+    ) {
+      return `El slot ${slot} ya tiene una cámara configurada`;
+    }
+
+    if (
+      constraint === 'UQ_f4ccf9e2171a1edcf08ddb2e47b' ||
+      /Key \("?ip"?\)=/.test(detail)
+    ) {
+      return 'La dirección ya está asignada a otra cámara';
+    }
+
+    return undefined;
   }
 }
