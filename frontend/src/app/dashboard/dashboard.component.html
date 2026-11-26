@@ -531,85 +531,87 @@
     }
   </div>
 
-  <details class="card state-history-card p-3 dashboard-collapsible">
-    <summary class="dashboard-collapsible-summary">
-      <span>
-        <strong>Pruebas industriales</strong>
-        <small class="d-block text-white-50">Estado actual e historial de ejecución</small>
-      </span>
-      <span class="badge ms-auto"
-        [ngClass]="getIndustrialTestStatusClass()">
-        {{ getIndustrialTestStatusLabel() }}
-      </span>
-    </summary>
+  @if (showIndustrialTests) {
+    <details class="card state-history-card p-3 dashboard-collapsible">
+      <summary class="dashboard-collapsible-summary">
+        <span>
+          <strong>Pruebas industriales</strong>
+          <small class="d-block text-white-50">Estado actual e historial de ejecución</small>
+        </span>
+        <span class="badge ms-auto"
+          [ngClass]="getIndustrialTestStatusClass()">
+          {{ getIndustrialTestStatusLabel() }}
+        </span>
+      </summary>
 
-    <div class="pt-3">
-      @if (hasIndustrialTestResults()) {
-        <p class="mb-3">
-          {{ getIndustrialTestResultsLabel() }}
-        </p>
-      }
+      <div class="pt-3">
+        @if (hasIndustrialTestResults()) {
+          <p class="mb-3">
+            {{ getIndustrialTestResultsLabel() }}
+          </p>
+        }
 
-      @if (industrialTestStatusError) {
-        <div class="telemetry-filter-error">
-          No se pudo cargar el historial de tests.
-        </div>
-      }
+        @if (industrialTestStatusError) {
+          <div class="telemetry-filter-error">
+            No se pudo cargar el historial de tests.
+          </div>
+        }
 
-      @if (!industrialTestStatusError) {
-        <div class="table-responsive">
-          <table class="table table-dark table-striped table-hover align-middle state-history-table">
-            <thead>
-              <tr>
-                <th scope="col">Ciclo</th>
-                <th scope="col">Inicio</th>
-                <th scope="col">Resultado</th>
-                <th scope="col">Tests</th>
-                <th scope="col">Fallos / errores / omitidos</th>
-                <th scope="col">Qué ocurrió</th>
-              </tr>
-            </thead>
-            <tbody>
-              @for (cycle of industrialTestCycles; track cycle) {
+        @if (!industrialTestStatusError) {
+          <div class="table-responsive">
+            <table class="table table-dark table-striped table-hover align-middle state-history-table">
+              <thead>
                 <tr>
-                  <td>{{ cycle.cycle }}</td>
-                  <td>
-                    {{ cycle.started_at | date:'dd/MM/yyyy HH:mm:ss':getClusterTimezone() }}
-                    <small class="d-block text-white-50">
-                      Duración: {{ cycle.duration_seconds | number:'1.1-1' }} s
-                    </small>
-                  </td>
-                  <td>
-                    <span class="badge" [ngClass]="getIndustrialTestCycleClass(cycle)">
-                      {{ cycle.status === 'passed' ? 'Aprobado' : 'Fallido' }}
-                    </span>
-                  </td>
-                  <td>{{ cycle.tests }}</td>
-                  <td>{{ cycle.failures }} / {{ cycle.errors }} / {{ cycle.skipped }}</td>
-                  <td>
-                    @if (cycle.failed_tests.length) {
-                      <span>
-                        {{ getIndustrialTestFailureMessages(cycle.failed_tests) }}
+                  <th scope="col">Ciclo</th>
+                  <th scope="col">Inicio</th>
+                  <th scope="col">Resultado</th>
+                  <th scope="col">Tests</th>
+                  <th scope="col">Fallos / errores / omitidos</th>
+                  <th scope="col">Qué ocurrió</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (cycle of industrialTestCycles; track cycle) {
+                  <tr>
+                    <td>{{ cycle.cycle }}</td>
+                    <td>
+                      {{ cycle.started_at | date:'dd/MM/yyyy HH:mm:ss':getClusterTimezone() }}
+                      <small class="d-block text-white-50">
+                        Duración: {{ cycle.duration_seconds | number:'1.1-1' }} s
+                      </small>
+                    </td>
+                    <td>
+                      <span class="badge" [ngClass]="getIndustrialTestCycleClass(cycle)">
+                        {{ cycle.status === 'passed' ? 'Aprobado' : 'Fallido' }}
                       </span>
-                    } @else {
-                      —
-                    }
-                  </td>
-                </tr>
-              }
-              @if (industrialTestCycles.length === 0) {
-                <tr>
-                  <td colspan="6" class="state-history-empty">
-                    Todavía no hay ciclos terminados para mostrar.
-                  </td>
-                </tr>
-              }
-            </tbody>
-          </table>
-        </div>
-      }
-    </div>
-  </details>
+                    </td>
+                    <td>{{ cycle.tests }}</td>
+                    <td>{{ cycle.failures }} / {{ cycle.errors }} / {{ cycle.skipped }}</td>
+                    <td>
+                      @if (cycle.failed_tests.length) {
+                        <span>
+                          {{ getIndustrialTestFailureMessages(cycle.failed_tests) }}
+                        </span>
+                      } @else {
+                        —
+                      }
+                    </td>
+                  </tr>
+                }
+                @if (industrialTestCycles.length === 0) {
+                  <tr>
+                    <td colspan="6" class="state-history-empty">
+                      Todavía no hay ciclos terminados para mostrar.
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+      </div>
+    </details>
+  }
 
   @if (isAlertConfigurationAdmin()) {
     <details class="card state-history-card alert-settings-card p-3 dashboard-collapsible"

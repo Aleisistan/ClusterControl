@@ -76,6 +76,7 @@ export class DashboardComponent implements OnInit, OnDestroy, AfterViewChecked {
   latest: any;
   latestDeviceTelemetry: any;
   latestDeviceTelemetryError = false;
+  showIndustrialTests = !environment.production;
   industrialTestStatus?: IndustrialTestStatus;
   industrialTestCycles: IndustrialTestCycle[] = [];
   industrialTestStatusError = false;
@@ -146,7 +147,7 @@ export class DashboardComponent implements OnInit, OnDestroy, AfterViewChecked {
   private hlsPlayers = new Map<number, Hls>();
   private hlsVideoElements = new Map<number, HTMLVideoElement>();
   private hlsInitializationIds = new Map<number, number>();
-  private industrialTestRefreshInterval?: ReturnType<typeof setInterval>;
+  private dashboardRefreshInterval?: ReturnType<typeof setInterval>;
   private cameraLoadTimeouts = new Map<number, ReturnType<typeof setTimeout>>();
   private cameraRetryTimeouts = new Map<number, ReturnType<typeof setTimeout>>();
   private snapshotImageUrls = new Map<number, string>();
@@ -323,10 +324,14 @@ export class DashboardComponent implements OnInit, OnDestroy, AfterViewChecked {
   ) {}
 
   ngOnInit(): void {
-    this.refreshIndustrialTestStatus();
-    this.industrialTestRefreshInterval = setInterval(
+    if (this.showIndustrialTests) {
+      this.refreshIndustrialTestStatus();
+    }
+    this.dashboardRefreshInterval = setInterval(
       () => {
-        this.refreshIndustrialTestStatus();
+        if (this.showIndustrialTests) {
+          this.refreshIndustrialTestStatus();
+        }
         this.refreshLatestDashboardTelemetry();
       },
       15_000,
@@ -385,8 +390,8 @@ export class DashboardComponent implements OnInit, OnDestroy, AfterViewChecked {
     this.unsubscribeTelemetry?.();
     this.unsubscribeDoorSnapshot?.();
     this.clearDoorSnapshotPreviews();
-    if (this.industrialTestRefreshInterval) {
-      clearInterval(this.industrialTestRefreshInterval);
+    if (this.dashboardRefreshInterval) {
+      clearInterval(this.dashboardRefreshInterval);
     }
     for (const timeout of this.cameraLoadTimeouts.values()) clearTimeout(timeout);
     for (const timeout of this.cameraRetryTimeouts.values()) clearTimeout(timeout);

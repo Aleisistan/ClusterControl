@@ -33,6 +33,16 @@ describe('DashboardComponent', () => {
     expect(component).toBeTruthy();
   });
 
+  it('shows industrial test status in development and hides it when disabled', () => {
+    expect(component.showIndustrialTests).toBe(!environment.production);
+    expect(fixture.nativeElement.textContent).toContain('Pruebas industriales');
+
+    component.showIndustrialTests = false;
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).not.toContain('Pruebas industriales');
+  });
+
   it('shows disconnected state on every KPI instead of stale values', () => {
     component.lastWsTime = 0;
     component.latest = {
