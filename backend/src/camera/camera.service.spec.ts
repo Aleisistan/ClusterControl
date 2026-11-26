@@ -227,6 +227,28 @@ describe('CameraService', () => {
     ).rejects.toThrow('El slot 1 ya tiene una cámara configurada');
   });
 
+  it('identifies an unknown database unique constraint for diagnosis', async () => {
+    const cluster = { id: 7, deviceId: '7', name: 'Cluster 7' };
+    clusterRepository.findByDeviceId.mockResolvedValue(cluster);
+    cameraRepository.findByIp.mockResolvedValue(null);
+    cameraRepository.create.mockReturnValue({ id: 12 });
+    cameraRepository.save.mockRejectedValue({
+      driverError: {
+        code: '23505',
+        constraint: 'unexpected_camera_constraint',
+      },
+    });
+
+    await expect(
+      service.create({
+        name: 'Entrada',
+        ip: 'http://192.168.2.228:8082/stream',
+        slot: 1,
+        deviceId: '7',
+      }),
+    ).rejects.toThrow('unexpected_camera_constraint');
+  });
+
   it('captures from the exact configured URL without assuming a /capture route', async () => {
     cameraRepository.findAllByClusterId.mockResolvedValue([
       {

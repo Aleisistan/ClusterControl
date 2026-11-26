@@ -183,8 +183,11 @@ export class CameraService {
           throw new ConflictException(conflict);
         }
 
+        const constraint = this.getUniqueConstraintName(error);
         throw new ConflictException(
-          'La dirección o el slot ya está asignado a otra cámara',
+          constraint
+            ? `La base de datos rechazó la cámara por la restricción única "${constraint}".`
+            : 'La dirección o el slot ya está asignado a otra cámara',
         );
       }
       throw error;
@@ -402,6 +405,32 @@ export class CameraService {
       return 'La dirección ya está asignada a otra cámara';
     }
 
+    if (
+      constraint === 'PK_88b40b9817f9f422121f861e1e8' ||
+      constraint === 'cameras_pkey' ||
+      /Key \(id\)=/.test(detail)
+    ) {
+      return 'La secuencia de IDs de cámaras no está sincronizada con los registros guardados';
+    }
+
     return undefined;
+  }
+
+  private getUniqueConstraintName(error: unknown): string | undefined {
+    if (!error || typeof error !== 'object' || !('driverError' in error)) {
+      return undefined;
+    }
+
+    const driverError: unknown = error.driverError;
+    if (
+      !driverError ||
+      typeof driverError !== 'object' ||
+      !('constraint' in driverError) ||
+      typeof driverError.constraint !== 'string'
+    ) {
+      return undefined;
+    }
+
+    return driverError.constraint;
   }
 }
