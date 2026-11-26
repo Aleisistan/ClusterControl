@@ -19,6 +19,11 @@ npm start
 La ejecución local espera que la API esté disponible en `localhost:3000`; para
 usar otro host, define `API_URL` antes de ejecutar `npm start`.
 
+En el dashboard, las capturas de apertura de puerta se ordenan de más nueva a
+más antigua: se muestran hasta cuatro en línea y las demás quedan en un
+desplegable. El panel de estado de pruebas industriales solo se muestra y
+consulta en desarrollo.
+
 Para compilar o ejecutar las pruebas unitarias:
 
 ```powershell

@@ -3,7 +3,11 @@
 ## Configurar una cámara
 
 En **Clusters**, un administrador puede asignar hasta dos cámaras por cluster,
-cada una con nombre e IP o URL de stream.
+cada una con nombre e IP o URL de stream. Cada cámara ocupa un slot distinto
+(1 o 2), y la dirección completa debe ser única. Dos cámaras pueden compartir
+la IP si sus puertos o rutas son diferentes; por ejemplo:
+`http://192.168.2.228:8081/stream` y
+`http://192.168.2.228:8082/stream`.
 
 - Si ingresas solo una IP, el relay usa `http://<IP>` sin añadir puerto ni
   ruta. Para cámaras que requieran un puerto o una ruta específicos, ingresa
@@ -23,6 +27,11 @@ backend también están autenticadas. Las URL con dominio se cargan directamente
 desde el navegador: el inicio de sesión de la aplicación no protege ese origen,
 que debe ser accesible y contar con su propia protección. No configures la
 cámara en una variable de entorno.
+
+En bases que originalmente permitían una sola cámara por cluster, el backend
+aplica una migración para quitar esa restricción antigua y conservar la
+unicidad por slot. Haz una copia de seguridad antes de actualizar y confirma en
+los logs del backend que las migraciones finalizaron correctamente.
 
 Para compartir la conexión de una ESP32-CAM, no abras su URL directa
 (`http://<IP>:81/stream`) en paralelo desde otro cliente: la cámara podría no
@@ -66,7 +75,10 @@ antiguas registradas solo por IP se conserva como compatibilidad el fallback
 `http://<IP>:81/capture`.
 
 El endpoint autenticado para descargar una imagen es
-`GET /telemetry/door-snapshots/:id/image`.
+`GET /telemetry/door-snapshots/:id/image`. En el dashboard, las cuatro capturas
+más recientes del período de historial seleccionado aparecen en línea; si hay
+más, las anteriores quedan dentro del desplegable **Mostrar imágenes
+anteriores**. El desplegable no elimina ni modifica las capturas guardadas.
 
 ## Diagnóstico
 

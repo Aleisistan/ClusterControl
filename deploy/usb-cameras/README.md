@@ -27,7 +27,15 @@ curl -I http://192.168.2.228:8082/stream
 
 En **Clusters**, configura las URLs completas indicadas arriba. El backend usa
 el stream para la vista en vivo y FFmpeg para extraer un JPEG al abrirse la
-puerta, aunque el stream no tenga un endpoint `/capture`.
+puerta, aunque el stream no tenga un endpoint `/capture`. Guarda cada URL en
+uno de los dos slots del mismo cluster; compartir IP con puertos diferentes es
+válido. La galería del dashboard muestra las cuatro capturas más recientes en
+línea y ofrece las anteriores en un desplegable.
+
+Al actualizar una base de datos que tenía una sola cámara por cluster, asegúrate
+de desplegar una versión del backend que incluya la migración de cámaras. Las
+migraciones se ejecutan al iniciar el backend; confirma su éxito en los logs
+antes de guardar la segunda cámara.
 
 Para construir y activar el backend actualizado del proyecto sin intentar
 descargar una imagen remota:
@@ -43,7 +51,8 @@ docker compose \
 
 Al actualizar el stack, conserva el override para que el backend siga usando
 esta imagen local. El frontend ya permite guardar direcciones IP y URLs HTTP(S)
-completas; selecciona una URL completa para cada stream.
+completas; selecciona una URL completa para cada stream. Si cambias el
+dashboard, reconstruye y despliega también la imagen del frontend.
 
 Los streams no tienen autenticación propia. Mantén estos puertos en la red
 confiable del servidor y no los publiques en Internet.

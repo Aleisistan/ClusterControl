@@ -148,6 +148,7 @@ export class DashboardComponent implements OnInit, OnDestroy, AfterViewChecked {
   private hlsVideoElements = new Map<number, HTMLVideoElement>();
   private hlsInitializationIds = new Map<number, number>();
   private dashboardRefreshInterval?: ReturnType<typeof setInterval>;
+  private currentTimeInterval?: ReturnType<typeof setInterval>;
   private cameraLoadTimeouts = new Map<number, ReturnType<typeof setTimeout>>();
   private cameraRetryTimeouts = new Map<number, ReturnType<typeof setTimeout>>();
   private snapshotImageUrls = new Map<number, string>();
@@ -380,7 +381,7 @@ export class DashboardComponent implements OnInit, OnDestroy, AfterViewChecked {
       (error: any) => console.error('ERROR OBTENIENDO CLUSTERS:', error)
     );
 
-    setInterval(() => {
+    this.currentTimeInterval = setInterval(() => {
       this.currentTime = new Date();
       this.updateClusterTime();
     }, 1000);
@@ -392,6 +393,9 @@ export class DashboardComponent implements OnInit, OnDestroy, AfterViewChecked {
     this.clearDoorSnapshotPreviews();
     if (this.dashboardRefreshInterval) {
       clearInterval(this.dashboardRefreshInterval);
+    }
+    if (this.currentTimeInterval) {
+      clearInterval(this.currentTimeInterval);
     }
     for (const timeout of this.cameraLoadTimeouts.values()) clearTimeout(timeout);
     for (const timeout of this.cameraRetryTimeouts.values()) clearTimeout(timeout);
@@ -851,7 +855,7 @@ private setAlertConfiguration(configuration: AlertConfiguration): void {
                 new Date(first.createdAt).getTime(),
             )
             .slice(0, 2000);
-          this.savedDoorSnapshots.forEach((entry) =>
+          this.savedDoorSnapshots.slice(0, 4).forEach((entry) =>
             this.loadDoorSnapshotPreview(entry),
           );
         },
@@ -1602,7 +1606,14 @@ private setAlertConfiguration(configuration: AlertConfiguration): void {
   }
 
   get savedDoorSnapshots(): DoorSnapshotHistoryEntry[] {
-    return this.stateHistory.filter((entry) => this.isDoorSnapshot(entry));
+    return this.stateHistory
+      .filter((entry) => this.isDoorSnapshot(entry))
+      .sort(
+        (first, second) =>
+          new Date(second.createdAt).getTime() -
+            new Date(first.createdAt).getTime() ||
+          second.snapshotId - first.snapshotId,
+      );
   }
 
   getDoorSnapshotImageUrl(snapshotId: number): string | undefined {
@@ -1611,6 +1622,15 @@ private setAlertConfiguration(configuration: AlertConfiguration): void {
 
   hasDoorSnapshotPreviewFailed(snapshotId: number): boolean {
     return this.snapshotPreviewFailures.has(snapshotId);
+  }
+
+  onSavedDoorSnapshotsArchiveToggle(event: Event): void {
+    const target = event.currentTarget;
+    if (!(target instanceof HTMLDetailsElement) || !target.open) return;
+
+    this.savedDoorSnapshots.slice(4).forEach((entry) =>
+      this.loadDoorSnapshotPreview(entry),
+    );
   }
 
   private loadDoorSnapshotPreview(entry: DoorSnapshotHistoryEntry): void {

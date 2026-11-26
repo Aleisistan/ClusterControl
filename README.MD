@@ -123,10 +123,10 @@ automáticamente.
 La aplicación queda disponible en el puerto `FRONTEND_HOST_PORT` (80 por
 defecto). Nginx sirve el frontend y pasa `/api` y Socket.IO al backend por la
 red interna. Producción no incluye pgAdmin, simulador, clusters de muestra ni
-runner de pruebas industriales. El administrador inicial se define mediante
-`INITIAL_ADMIN_USERNAME` y `INITIAL_ADMIN_PASSWORD`. El panel de pruebas puede
-seguir visible, pero sin runner no tendrá resultados y mostrará el estado
-desconocido/inactivo.
+runner de pruebas industriales. La sección de estado de pruebas industriales y
+sus consultas periódicas solo están habilitadas en desarrollo. El administrador
+inicial se define mediante `INITIAL_ADMIN_USERNAME` y
+`INITIAL_ADMIN_PASSWORD`.
 
 El Compose de producción usa un listener MQTT autenticado. Antes de iniciar los
 servicios, copia `mosquitto/config/aclfile.example` como `aclfile` en el
@@ -149,7 +149,12 @@ su firmware, y verifica que llegue telemetría. Consulta la
 clusters de demostración se crean solo en desarrollo.
 
 En el mismo menú se pueden asociar hasta dos cámaras a cada cluster, con nombre
-y dirección IP o URL de stream.
+y dirección IP o URL completa de stream. Cada registro ocupa el slot 1 o 2;
+dos cámaras pueden compartir una IP si usan puertos o rutas distintas, por
+ejemplo `http://192.168.2.228:8081/stream` y
+`http://192.168.2.228:8082/stream`. Al actualizar una base existente, el
+backend aplica las migraciones necesarias para permitir ambas cámaras por
+cluster.
 
 Para streams MJPEG con host IP, el backend comparte una conexión de cámara
 entre los dashboards de esa instancia; las URL HLS con host IP se retransmiten
@@ -158,6 +163,12 @@ relay compartido. No configures la cámara en una variable de entorno. Consulta
 la [guía de cámaras](./docs/camera-stream-multicliente.md). Como alternativa,
 un dispositivo que publique la IP de su cámara por MQTT puede crear o
 actualizar ese registro.
+
+Las aperturas de puerta detectadas en telemetría real pueden guardar una
+captura en PostgreSQL. El dashboard muestra en línea las cuatro capturas más
+recientes del período seleccionado y agrupa las anteriores en un desplegable;
+consulta la [guía de cámaras](./docs/camera-stream-multicliente.md) para los
+detalles.
 
 ## Hardware
 

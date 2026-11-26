@@ -491,10 +491,12 @@
       </div>
     }
 
-    @if (savedDoorSnapshots.length) {
-      <div class="row g-3">
-        @for (entry of savedDoorSnapshots; track entry) {
-          <article class="col-12 col-sm-6 col-lg-4">
+    @let savedSnapshots = savedDoorSnapshots;
+    @if (savedSnapshots.length) {
+      <ng-template #savedDoorSnapshotCard let-entry>
+        <article
+          class="col-12 col-sm-6 col-lg-3 saved-door-snapshot-card"
+          [attr.data-snapshot-id]="entry.snapshotId">
             <div class="border rounded h-100 overflow-hidden">
               @if (getDoorSnapshotImageUrl(entry.snapshotId); as imageUrl) {
                 <img
@@ -523,9 +525,35 @@
                 </button>
               </div>
             </div>
-          </article>
+        </article>
+      </ng-template>
+
+      <div class="row g-3 recent-door-snapshots">
+        @for (entry of savedSnapshots.slice(0, 4); track entry.snapshotId) {
+          <ng-container
+            [ngTemplateOutlet]="savedDoorSnapshotCard"
+            [ngTemplateOutletContext]="{ $implicit: entry }">
+          </ng-container>
         }
       </div>
+
+      @if (savedSnapshots.length > 4) {
+        <details
+          class="saved-door-snapshots-archive mt-3"
+          (toggle)="onSavedDoorSnapshotsArchiveToggle($event)">
+          <summary class="saved-door-snapshots-summary">
+            Mostrar {{ savedSnapshots.length - 4 }} imágenes anteriores
+          </summary>
+          <div class="row g-3 mt-1 older-door-snapshots">
+            @for (entry of savedSnapshots.slice(4); track entry.snapshotId) {
+              <ng-container
+                [ngTemplateOutlet]="savedDoorSnapshotCard"
+                [ngTemplateOutletContext]="{ $implicit: entry }">
+              </ng-container>
+            }
+          </div>
+        </details>
+      }
     } @else {
       <p class="state-history-empty mb-0">Todavía no hay imágenes guardadas para este período.</p>
     }

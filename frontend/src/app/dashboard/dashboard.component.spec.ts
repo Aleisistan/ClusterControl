@@ -2,9 +2,11 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideHttpClient, withFetch } from '@angular/common/http';
 import { provideRouter } from '@angular/router';
 import { provideCharts, withDefaultRegisterables } from 'ng2-charts';
+import { NEVER } from 'rxjs';
 
 import { DashboardComponent } from './dashboard.component';
 import { environment } from '../../environments/environment';
+import { DoorSnapshotHistoryEntry } from '../services/telemetry.service';
 
 describe('DashboardComponent', () => {
   let component: DashboardComponent;
@@ -41,6 +43,54 @@ describe('DashboardComponent', () => {
     fixture.detectChanges();
 
     expect(fixture.nativeElement.textContent).not.toContain('Pruebas industriales');
+  });
+
+  it('shows the four newest saved images inline and puts older ones in a collapsed dropdown', () => {
+    const snapshots: DoorSnapshotHistoryEntry[] = [1, 2, 3, 4, 5, 6].map(
+      (snapshotId) => ({
+        id: `door-snapshot-${snapshotId}`,
+        eventType: 'door-snapshot',
+        snapshotId,
+        telemetryId: snapshotId,
+        createdAt: `2026-10-0${snapshotId}T12:00:00.000Z`,
+      }),
+    );
+    component.stateHistory = snapshots;
+    fixture.detectChanges();
+
+    const inlineCards: NodeListOf<HTMLElement> =
+      fixture.nativeElement.querySelectorAll(
+        '.recent-door-snapshots .saved-door-snapshot-card',
+      );
+    const archive = fixture.nativeElement.querySelector(
+      '.saved-door-snapshots-archive',
+    ) as HTMLDetailsElement;
+    const archivedCards: NodeListOf<HTMLElement> =
+      archive.querySelectorAll('.saved-door-snapshot-card');
+
+    expect(
+      Array.from(inlineCards).map((card) => card.dataset['snapshotId']),
+    ).toEqual(['6', '5', '4', '3']);
+    expect(archive.open).toBeFalse();
+    expect(archive.querySelector('summary')?.textContent)
+      .toContain('2 imágenes anteriores');
+    expect(
+      Array.from(archivedCards).map((card) => card.dataset['snapshotId']),
+    ).toEqual(['2', '1']);
+
+    const getSnapshotImage = spyOn(
+      component['telemetryService'],
+      'getDoorSnapshotImage',
+    ).and.returnValue(NEVER);
+    archive.open = true;
+    archive.dispatchEvent(new Event('toggle'));
+    expect(getSnapshotImage.calls.allArgs().map(([id]) => id)).toEqual([2, 1]);
+
+    component.stateHistory = snapshots.slice(0, 4);
+    fixture.detectChanges();
+    expect(
+      fixture.nativeElement.querySelector('.saved-door-snapshots-archive'),
+    ).toBeNull();
   });
 
   it('shows disconnected state on every KPI instead of stale values', () => {
