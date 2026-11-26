@@ -35,6 +35,25 @@ describe('DashboardComponent', () => {
     expect(component).toBeTruthy();
   });
 
+  it('places all five dashboard status cards in one responsive grid', () => {
+    const kpiRow: HTMLElement = fixture.nativeElement.querySelector('.cards-row');
+    const columns = kpiRow.querySelectorAll(':scope > .kpi-column');
+    const expectedColumnCount = window.innerWidth <= 576
+      ? 1
+      : window.innerWidth <= 840
+        ? 3
+        : 5;
+
+    expect(columns.length).toBe(5);
+    expect(getComputedStyle(kpiRow).display).toBe('grid');
+    const visibleColumnCount = new Set(
+      Array.from(columns).map((column) =>
+        Math.round(column.getBoundingClientRect().left),
+      ),
+    ).size;
+    expect(visibleColumnCount).toBe(expectedColumnCount);
+  });
+
   it('shows industrial test status in development and hides it when disabled', () => {
     expect(component.showIndustrialTests).toBe(!environment.production);
     expect(fixture.nativeElement.textContent).toContain('Pruebas industriales');
