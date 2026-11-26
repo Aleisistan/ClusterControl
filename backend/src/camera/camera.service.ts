@@ -72,7 +72,7 @@ export class CameraService {
       ?? (requestedCameraId === undefined && requestedSlot === undefined
         ? (cameraByIp?.cluster?.id === cluster.id ? cameraByIp : null)
           ?? clusterCameras.find((item) => item.slot === 1)
-          ?? clusterCameras[0]
+          ?? (clusterCameras.length >= 2 ? clusterCameras[0] : null)
         : null)
       ?? null;
 

@@ -97,6 +97,46 @@ describe('CameraService', () => {
     expect(cameraRepository.save).toHaveBeenCalledWith(camera);
   });
 
+  it('creates camera 1 when an MQTT announcement arrives and only camera 2 exists', async () => {
+    const cluster = { id: 7, deviceId: '7', name: 'Cluster 7' };
+    const camera2 = {
+      id: 12,
+      name: 'Salida',
+      ip: '192.168.1.52',
+      slot: 2,
+      cluster,
+    };
+    clusterRepository.findByDeviceId.mockResolvedValue(cluster);
+    cameraRepository.findAllByClusterId.mockResolvedValue([camera2]);
+    cameraRepository.findByIp.mockResolvedValue(null);
+    cameraRepository.create.mockImplementation((camera) => camera);
+    cameraRepository.save.mockImplementation(async (camera) => camera);
+
+    await service.updateFromMqtt({
+      deviceId: '7',
+      ip: '192.168.1.51',
+    });
+
+    expect(cameraRepository.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: 'Cámara 1',
+        ip: '192.168.1.51',
+        slot: 1,
+        cluster,
+      }),
+    );
+    expect(cameraRepository.save).toHaveBeenCalledWith(
+      expect.objectContaining({ slot: 1, ip: '192.168.1.51' }),
+    );
+    expect(camera2).toEqual({
+      id: 12,
+      name: 'Salida',
+      ip: '192.168.1.52',
+      slot: 2,
+      cluster,
+    });
+  });
+
   it('allows a second camera but rejects a third camera for the same cluster', async () => {
     const cluster = { id: 7, deviceId: '7', name: 'Cluster 7' };
     clusterRepository.findByDeviceId.mockResolvedValue(cluster);
