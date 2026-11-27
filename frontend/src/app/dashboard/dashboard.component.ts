@@ -80,6 +80,9 @@ export class DashboardComponent implements OnInit, OnDestroy, AfterViewChecked {
   industrialTestStatus?: IndustrialTestStatus;
   industrialTestCycles: IndustrialTestCycle[] = [];
   industrialTestStatusError = false;
+  industrialTestStartHours = 24;
+  industrialTestStarting = false;
+  industrialTestStartMessage = '';
   avgTemperature: number = 0;
   avgHumidity: number = 0;
   weather: any;
@@ -1453,6 +1456,35 @@ private setAlertConfiguration(configuration: AlertConfiguration): void {
           ? 'Resultado al interrumpir'
           : 'Resultado final';
     return `${outcome}: ${status.completed_cycles} ciclos (${status.passed_cycles} aprobados, ${status.failed_cycles} fallidos); ${totals.tests} tests, ${totals.failures} fallas, ${totals.errors} errores y ${totals.skipped} omitidos.`;
+  }
+
+  startIndustrialEnduranceTest(): void {
+    if (!this.authService.isAdmin() || this.industrialTestStarting) return;
+
+    const hours = Number(this.industrialTestStartHours);
+    if (!Number.isInteger(hours) || hours < 24 || hours > 8760) {
+      this.industrialTestStartMessage =
+        'Ingresá una duración entera entre 24 y 8760 horas.';
+      return;
+    }
+
+    this.industrialTestStarting = true;
+    this.industrialTestStartMessage = '';
+    this.telemetryService.startIndustrialTest(hours).subscribe({
+      next: () => {
+        this.industrialTestStartMessage =
+          `Prueba de resistencia de ${hours} horas iniciada correctamente.`;
+        this.industrialTestStarting = false;
+        this.refreshIndustrialTestStatus();
+      },
+      error: (error: HttpErrorResponse) => {
+        this.industrialTestStartMessage =
+          error.error?.message ??
+          'No se pudo iniciar la prueba de resistencia.';
+        this.industrialTestStarting = false;
+        this.refreshIndustrialTestStatus();
+      },
+    });
   }
 
   private refreshIndustrialTestStatus(): void {
