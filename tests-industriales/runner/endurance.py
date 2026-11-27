@@ -195,28 +195,38 @@ def main():
                 "-q",
                 f"--junitxml={junit_path}",
             ]
-            result = subprocess.run(
-                command,
-                cwd=REPOSITORY_ROOT,
-                capture_output=True,
-                text=True,
-                check=False,
-            )
+            with log_path.open("w", encoding="utf-8") as cycle_log:
+                process = subprocess.Popen(
+                    command,
+                    cwd=REPOSITORY_ROOT,
+                    stdout=cycle_log,
+                    stderr=subprocess.STDOUT,
+                    text=True,
+                )
+                while process.poll() is None:
+                    time.sleep(20)
+                    if process.poll() is None:
+                        write_runner_status(
+                            state="running",
+                            started_at=started_at,
+                            run_dir=run_dir,
+                            args=args,
+                            cycle_number=cycle_number,
+                            cycles=cycles,
+                        )
+                exit_code = process.returncode
+
             summary = parse_junit(junit_path)
             cycle = {
                 "cycle": cycle_number,
                 "started_at": cycle_started_at,
                 "duration_seconds": round(time.monotonic() - cycle_start, 3),
-                "exit_code": result.returncode,
-                "status": "passed" if result.returncode == 0 else "failed",
+                "exit_code": exit_code,
+                "status": "passed" if exit_code == 0 else "failed",
                 **summary,
                 "junit": junit_path.name,
                 "log": log_path.name,
             }
-            log_path.write_text(
-                result.stdout + ("\n" if result.stdout else "") + result.stderr,
-                encoding="utf-8",
-            )
             cycles.append(cycle)
             print(
                 f'Cycle {cycle_number}: {cycle["status"]} '
