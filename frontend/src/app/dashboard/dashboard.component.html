@@ -590,14 +590,14 @@
                   step="1"
                   style="width: 150px"
                   [(ngModel)]="industrialTestStartHours"
-                  [disabled]="industrialTestStarting || industrialTestStatus?.active"
+                  [disabled]="industrialTestStarting || industrialTestStatus?.active === true"
                 />
               </div>
               <button
                 type="button"
                 class="btn btn-primary"
                 (click)="startIndustrialEnduranceTest()"
-                [disabled]="industrialTestStarting || industrialTestStatus?.active || industrialTestStartHours < 24 || industrialTestStartHours > 8760"
+                [disabled]="industrialTestStarting || industrialTestStatus?.active === true || industrialTestStartHours < 24 || industrialTestStartHours > 8760"
               >
                 {{ industrialTestStarting ? 'Iniciando...' : 'Iniciar resistencia' }}
               </button>
