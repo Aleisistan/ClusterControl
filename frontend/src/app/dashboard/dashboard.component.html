@@ -575,6 +575,42 @@
       </summary>
 
       <div class="pt-3">
+        @if (isAlertConfigurationAdmin()) {
+          <div class="border rounded p-3 mb-3">
+            <h6 class="mb-2">Nueva prueba de resistencia</h6>
+            <div class="d-flex flex-wrap align-items-end gap-2">
+              <div>
+                <label class="form-label mb-1" for="industrial-test-hours">Duración (horas)</label>
+                <input
+                  id="industrial-test-hours"
+                  class="form-control"
+                  type="number"
+                  min="24"
+                  max="8760"
+                  step="1"
+                  style="width: 150px"
+                  [(ngModel)]="industrialTestStartHours"
+                  [disabled]="industrialTestStarting || industrialTestStatus?.active"
+                />
+              </div>
+              <button
+                type="button"
+                class="btn btn-primary"
+                (click)="startIndustrialEnduranceTest()"
+                [disabled]="industrialTestStarting || industrialTestStatus?.active || industrialTestStartHours < 24 || industrialTestStartHours > 8760"
+              >
+                {{ industrialTestStarting ? 'Iniciando...' : 'Iniciar resistencia' }}
+              </button>
+            </div>
+            <small class="d-block text-white-50 mt-2">
+              Mínimo 24 horas. Máximo 8760 horas (1 año). Se ejecuta en DEV y continúa aunque cierres el navegador.
+            </small>
+            @if (industrialTestStartMessage) {
+              <div class="mt-2" role="status">{{ industrialTestStartMessage }}</div>
+            }
+          </div>
+        }
+
         @if (hasIndustrialTestResults()) {
           <p class="mb-3">
             {{ getIndustrialTestResultsLabel() }}
