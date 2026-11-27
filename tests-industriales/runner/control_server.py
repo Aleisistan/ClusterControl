@@ -22,15 +22,21 @@ runner_process: subprocess.Popen | None = None
 
 
 def status_is_active() -> bool:
+    if not STATUS.exists():
+        return False
     try:
         value = json.loads(STATUS.read_text(encoding="utf-8"))
-        if value.get("active") is not True:
-            return False
+    except (OSError, ValueError, TypeError):
+        # Fail closed: an unreadable status must not allow a second endurance run.
+        return True
+    if not isinstance(value, dict) or value.get("active") is not True:
+        return False
+    try:
         updated = datetime.fromisoformat(value["updated_at"].replace("Z", "+00:00"))
         age = (datetime.now(timezone.utc) - updated).total_seconds()
-        return age <= 300
-    except (OSError, ValueError, KeyError, TypeError):
-        return False
+    except (ValueError, KeyError, TypeError, AttributeError):
+        return True
+    return age <= 300
 
 
 class Handler(BaseHTTPRequestHandler):
