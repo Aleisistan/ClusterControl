@@ -90,8 +90,6 @@ class Handler(BaseHTTPRequestHandler):
                         str(ROOT / "runner" / "endurance.py"),
                         "--hours",
                         str(hours),
-                        "--interval-seconds",
-                        "60",
                     ],
                     cwd=ROOT.parent,
                     stdin=subprocess.DEVNULL,
