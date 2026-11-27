@@ -50,6 +50,26 @@ jobs:
         working-directory: frontend
         run: npm test -- --watch=false --browsers=ChromeHeadless
 
+  industrial-runner-check:
+    name: Industrial runner Python checks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: tests-industriales/requirements.txt
+
+      - name: Install industrial test dependencies
+        run: python -m pip install -r tests-industriales/requirements.txt
+
+      - name: Compile industrial runner and tests
+        run: python -m compileall -q tests-industriales
+
   publish:
     name: Build and publish Docker images
     needs: test
