@@ -1,7 +1,12 @@
 import {
   Injectable,
   InternalServerErrorException,
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+  ServiceUnavailableException,
 } from '@nestjs/common';
+import axios from 'axios';
 import { ConfigService } from '@nestjs/config';
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
@@ -121,6 +126,67 @@ export class IndustrialTestStatusService {
       process.cwd(),
       configuredPath ?? '../tests-industriales/reports/runner-status.json',
     );
+  }
+
+  async startRun(hoursInput: unknown): Promise<{ accepted: boolean; requested_hours: number }> {
+    if (process.env.INDUSTRIAL_TESTS_ENABLED !== 'true') {
+      throw new ForbiddenException(
+        'El inicio de pruebas industriales solo está habilitado en desarrollo.',
+      );
+    }
+
+    if (
+      typeof hoursInput !== 'number' ||
+      !Number.isInteger(hoursInput) ||
+      hoursInput < 24 ||
+      hoursInput > 8760
+    ) {
+      throw new BadRequestException(
+        'La duración debe ser un número entero entre 24 y 8760 horas.',
+      );
+    }
+
+    const controlUrl = process.env.INDUSTRIAL_TEST_CONTROL_URL;
+    const controlToken = process.env.INDUSTRIAL_TEST_CONTROL_TOKEN;
+    if (!controlUrl || !controlToken) {
+      throw new ServiceUnavailableException(
+        'El control de pruebas industriales no está configurado en este entorno.',
+      );
+    }
+
+    const current = await this.getStatus();
+    if ('active' in current && current.active) {
+      throw new ConflictException(
+        'Ya hay una prueba de resistencia en ejecución.',
+      );
+    }
+
+    try {
+      const response = await axios.post(
+        `${controlUrl.replace(/\/$/, '')}/runs`,
+        { hours: hoursInput },
+        {
+          headers: { 'X-Industrial-Test-Token': controlToken },
+          timeout: 10000,
+        },
+      );
+      return response.data as {
+        accepted: boolean;
+        requested_hours: number;
+      };
+    } catch (error) {
+      if (axios.isAxiosError(error) && error.response?.status === 409) {
+        throw new ConflictException(
+          'Ya hay una prueba de resistencia en ejecución.',
+        );
+      }
+      if (axios.isAxiosError(error) && error.response?.status === 400) {
+        throw new BadRequestException('La duración solicitada no es válida.');
+      }
+      throw new ServiceUnavailableException(
+        'No se pudo iniciar el runner de pruebas industriales.',
+      );
+    }
   }
 
   async getStatus(): Promise<RunnerStatus | IdleRunnerStatus> {

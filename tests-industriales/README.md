@@ -45,7 +45,7 @@ El panel **Pruebas industriales** del dashboard no ejecuta pruebas. Solo muestra
 el estado y los resultados de la última corrida de endurance. El runner guarda
 el estado en `tests-industriales/reports/runner-status.json`; la API lo expone
 en `GET /industrial-tests/status` y el backend lo monta en modo solo lectura.
-Si aún no se ejecutó el runner, el estado será desconocido/inactivo.
+El inicio se realiza mediante `POST /industrial-tests/start`, protegido por JWT y rol ADMIN. El backend solicita la ejecución al servicio interno del contenedor `industrial-tests`, autenticado con `INDUSTRIAL_TEST_CONTROL_TOKEN`. Este token debe existir en `.env.development.local` y no debe compartirse ni versionarse. El servicio de control no publica puertos en el host. Si aún no se ejecutó el runner, el estado será desconocido/inactivo.
 
 Los reportes de cada corrida quedan en `tests-industriales/reports/` y no se
 versionan. Las pruebas publican datos marcados como `industrial-test` y no se

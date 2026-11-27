@@ -36,6 +36,20 @@ No necesitas instalar Node.js ni Python para iniciar la aplicación con Docker.
    SOCKET_URL=
    ```
 
+   Para habilitar el inicio de pruebas de resistencia desde el dashboard, agrega
+   una clave interna aleatoria al archivo local (no la compartas ni la subas a
+   Git). En PowerShell, si todavía no existe:
+
+   ```powershell
+   if (-not (Select-String -Path .env.development.local -Pattern '^INDUSTRIAL_TEST_CONTROL_TOKEN=' -Quiet)) {
+     $token = python -c "import secrets; print(secrets.token_urlsafe(48))"
+     Add-Content .env.development.local "INDUSTRIAL_TEST_CONTROL_TOKEN=$token"
+   }
+   ```
+
+   El backend y el contenedor de pruebas usan la misma clave; el servicio de
+   control no publica ningún puerto en el host.
+
    Si accedes desde otro equipo, reemplaza `localhost` por la IP o el DNS del
    servidor. `SOCKET_URL` vacío hace que Socket.IO use ese mismo host. Este es
    el único archivo de entorno de desarrollo; el backend también lo usa al
@@ -64,7 +78,9 @@ docker compose --env-file .env.development.local -f docker-compose.dev.yml up --
 ```
 
 El entorno incluye PostgreSQL, Mosquitto, el simulador MQTT y un contenedor de
-pruebas industriales que queda en espera hasta que lo uses. El simulador
+pruebas industriales que expone el control de ejecución solo en la red interna
+de Docker. Desde el dashboard, un administrador puede iniciar pruebas de
+resistencia de 24 a 8760 horas; el runner continúa aunque se cierre el navegador. El simulador
 publica telemetría de ejemplo para China y Alemania; el dashboard de desarrollo
 muestra esas lecturas junto con las de dispositivos reales, pero excluye los
 datos de pruebas industriales. Si cambias la configuración del clima, agrega tu

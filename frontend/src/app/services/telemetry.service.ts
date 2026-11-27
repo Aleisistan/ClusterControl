@@ -147,6 +147,13 @@ export class TelemetryService {
     );
   }
 
+  startIndustrialTest(hours: number) {
+    return this.http.post<{ accepted: boolean; requested_hours: number }>(
+      `${environment.apiUrl}/industrial-tests/start`,
+      { hours },
+    );
+  }
+
   getDoorSnapshotImage(snapshotId: number) {
     return this.http.get(
       `${this.apiUrl}/door-snapshots/${snapshotId}/image`,

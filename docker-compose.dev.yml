@@ -72,6 +72,9 @@ services:
       SEED_DEFAULT_CLUSTERS: "true"
       SEED_DEFAULT_USER: "true"
       INDUSTRIAL_TEST_STATUS_PATH: /app/industrial-reports/runner-status.json
+      INDUSTRIAL_TESTS_ENABLED: "true"
+      INDUSTRIAL_TEST_CONTROL_URL: http://industrial-tests:8765
+      INDUSTRIAL_TEST_CONTROL_TOKEN: ${INDUSTRIAL_TEST_CONTROL_TOKEN:?Set INDUSTRIAL_TEST_CONTROL_TOKEN in .env.development.local}
     depends_on:
       postgres:
         condition: service_healthy
@@ -117,7 +120,7 @@ services:
   industrial-tests:
     build:
       context: ./tests-industriales
-    restart: unless-stopped
+    restart: "no"
     depends_on:
       backend:
         condition: service_started
@@ -134,7 +137,7 @@ services:
     volumes:
       - ./tests-industriales:/workspace
     working_dir: /workspace
-    command: ["sleep", "infinity"]
+    command: ["python", "runner/control_server.py"]
 
 volumes:
   postgres_data:
