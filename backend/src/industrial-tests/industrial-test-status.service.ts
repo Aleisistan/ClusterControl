@@ -1,7 +1,11 @@
 import {
   Injectable,
   InternalServerErrorException,
+  BadRequestException,
+  ConflictException,
+  ServiceUnavailableException,
 } from '@nestjs/common';
+import axios from 'axios';
 import { ConfigService } from '@nestjs/config';
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
@@ -123,7 +127,62 @@ export class IndustrialTestStatusService {
     );
   }
 
-  async startRun(hoursInput: unknown): Promise<{ accepted: boolean; requested_hours: number }> {\n    if (typeof hoursInput !== 'number' || !Number.isInteger(hoursInput) || hoursInput < 24 || hoursInput > 8760) {\n      throw new BadRequestException('La duración debe ser un número entero entre 24 y 8760 horas.');\n    }\n\n    const controlUrl = process.env.INDUSTRIAL_TEST_CONTROL_URL;\n    const controlToken = process.env.INDUSTRIAL_TEST_CONTROL_TOKEN;\n    if (!controlUrl || !controlToken) {\n      throw new ServiceUnavailableException('El control de pruebas industriales no está configurado en este entorno.');\n    }\n\n    const current = await this.getStatus();\n    if ('active' in current && current.active) {\n      throw new ConflictException('Ya hay una prueba de resistencia en ejecución.');\n    }\n\n    try {\n      const response = await axios.post(\n        `${controlUrl.replace(/\\/$/, '')}/runs`,\n        { hours: hoursInput },\n        { headers: { 'X-Industrial-Test-Token': controlToken }, timeout: 10000 },\n      );\n      return response.data as { accepted: boolean; requested_hours: number };\n    } catch (error) {\n      if (axios.isAxiosError(error) && error.response?.status === 409) {\n        throw new ConflictException('Ya hay una prueba de resistencia en ejecución.');\n      }\n      if (axios.isAxiosError(error) && error.response?.status === 400) {\n        throw new BadRequestException('La duración solicitada no es válida.');\n      }\n      throw new ServiceUnavailableException('No se pudo iniciar el runner de pruebas industriales.');\n    }\n  }\n\n  async getStatus(): Promise<RunnerStatus | IdleRunnerStatus> {
+  async startRun(hoursInput: unknown): Promise<{ accepted: boolean; requested_hours: number }> {\n    if (typeof hoursInput !== 'number' || !Number.isInteger(hoursInput) || hoursInput < 24 || hoursInput > 8760) {\n      throw new BadRequestException('La duración debe ser un número entero entre 24 y 8760 horas.');\n    }\n\n    const controlUrl = process.env.INDUSTRIAL_TEST_CONTROL_URL;\n    const controlToken = process.env.INDUSTRIAL_TEST_CONTROL_TOKEN;\n    if (!controlUrl || !controlToken) {\n      throw new ServiceUnavailableException('El control de pruebas industriales no está configurado en este entorno.');\n    }\n\n    const current = await this.getStatus();\n    if ('active' in current && current.active) {\n      throw new ConflictException('Ya hay una prueba de resistencia en ejecución.');\n    }\n\n    try {\n      const response = await axios.post(\n        `${controlUrl.replace(/\\/$/, '')}/runs`,\n        { hours: hoursInput },\n        { headers: { 'X-Industrial-Test-Token': controlToken }, timeout: 10000 },\n      );\n      return response.data as { accepted: boolean; requested_hours: number };\n    } catch (error) {\n      if (axios.isAxiosError(error) && error.response?.status === 409) {\n        throw new ConflictException('Ya hay una prueba de resistencia en ejecución.');\n      }\n      if (axios.isAxiosError(error) && error.response?.status === 400) {\n        throw new BadRequestException('La duración solicitada no es válida.');\n      }\n      throw new ServiceUnavailableException('No se pudo iniciar el runner de pruebas industriales.');\n    }\n  }\n\n  async startRun(hoursInput: unknown): Promise<{ accepted: boolean; requested_hours: number }> {
+    if (
+      typeof hoursInput !== 'number' ||
+      !Number.isInteger(hoursInput) ||
+      hoursInput < 24 ||
+      hoursInput > 8760
+    ) {
+      throw new BadRequestException(
+        'La duración debe ser un número entero entre 24 y 8760 horas.',
+      );
+    }
+
+    const controlUrl = process.env.INDUSTRIAL_TEST_CONTROL_URL;
+    const controlToken = process.env.INDUSTRIAL_TEST_CONTROL_TOKEN;
+    if (!controlUrl || !controlToken) {
+      throw new ServiceUnavailableException(
+        'El control de pruebas industriales no está configurado en este entorno.',
+      );
+    }
+
+    const current = await this.getStatus();
+    if ('active' in current && current.active) {
+      throw new ConflictException(
+        'Ya hay una prueba de resistencia en ejecución.',
+      );
+    }
+
+    try {
+      const response = await axios.post(
+        `${controlUrl.replace(/\/$/, '')}/runs`,
+        { hours: hoursInput },
+        {
+          headers: { 'X-Industrial-Test-Token': controlToken },
+          timeout: 10000,
+        },
+      );
+      return response.data as {
+        accepted: boolean;
+        requested_hours: number;
+      };
+    } catch (error) {
+      if (axios.isAxiosError(error) && error.response?.status === 409) {
+        throw new ConflictException(
+          'Ya hay una prueba de resistencia en ejecución.',
+        );
+      }
+      if (axios.isAxiosError(error) && error.response?.status === 400) {
+        throw new BadRequestException('La duración solicitada no es válida.');
+      }
+      throw new ServiceUnavailableException(
+        'No se pudo iniciar el runner de pruebas industriales.',
+      );
+    }
+  }
+
+  async getStatus(): Promise<RunnerStatus | IdleRunnerStatus> {
     let contents: string;
     try {
       contents = await readFile(this.statusPath, 'utf8');
