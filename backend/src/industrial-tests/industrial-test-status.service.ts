@@ -3,6 +3,7 @@ import {
   InternalServerErrorException,
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   ServiceUnavailableException,
 } from '@nestjs/common';
 import axios from 'axios';
@@ -128,6 +129,12 @@ export class IndustrialTestStatusService {
   }
 
   async startRun(hoursInput: unknown): Promise<{ accepted: boolean; requested_hours: number }> {
+    if (process.env.INDUSTRIAL_TESTS_ENABLED !== 'true') {
+      throw new ForbiddenException(
+        'El inicio de pruebas industriales solo está habilitado en desarrollo.',
+      );
+    }
+
     if (
       typeof hoursInput !== 'number' ||
       !Number.isInteger(hoursInput) ||
